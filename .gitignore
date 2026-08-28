@@ -2,3 +2,6 @@ node_modules/
 .env
 dist/
 build/
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
