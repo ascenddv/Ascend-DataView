@@ -5,3 +5,12 @@ build/
 *.sqlite
 *.sqlite-shm
 *.sqlite-wal
+
+# transient test bundle from frontend/test/render-smoke.mjs
+frontend/test/.render-smoke.bundle.cjs
+
+# local Postgres cluster (Phase 7 dev)
+.pgdata/
+
+# transient Phase 7 migration verification output
+backend/pgcheck/

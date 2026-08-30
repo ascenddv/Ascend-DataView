@@ -1,0 +1,7 @@
+{
+  "ok": true,
+  "status": "ok",
+  "why": "Growth led all dimensions with a health score of 58, driven by Revenue increasing by 3400 (10.9%) to reach 34600. This top-line increase outpaced Expenses, which grew by 2700 (9.4%) to 31400, lifting Cash balance by 11100 (10.6%) to 116000.",
+  "recommendation": "Build on this revenue momentum by directing resources toward expanding Donations (16100) and Grants (11500) while keeping expense growth disciplined relative to the 9.4% rate.",
+  "model": "gemini-flash-latest"
+}

@@ -1,0 +1,7 @@
+{
+  "ok": true,
+  "status": "ok",
+  "why": "The primary signal is a triggered cash runway risk, as cash on hand of $26,150 covers only about 1.4 months of operations based on average trailing expenses of $18,300, falling below the 3-month threshold. This is driven by Revenue dropping by -$1,450 (-7.5%) to $17,800, which leaves latest monthly receipts trailing latest Expenses of $18,400. Note that Growth and Community health dimensions remain unavailable because required native data has not yet been provided.",
+  "recommendation": "Focus immediately on stabilizing cash reserves and reducing the deficit between the $17,800 in Revenue and $18,400 in Expenses to extend the 1.4-month runway.",
+  "model": "gemini-flash-latest"
+}

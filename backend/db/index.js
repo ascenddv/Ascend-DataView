@@ -1,57 +1,357 @@
 /**
- * SQLite connection and schema bootstrap.
+ * Postgres connection, schema bootstrap, and data-access helpers.
  *
- * The `standardized_data` table columns are generated from the canonical field
- * dictionary so that field names live in exactly one place (config/schema.js).
+ * Phase 7: storage engine SQLite -> Postgres (data helpers became async).
+ * Phase 8: multi-tenancy. `organizations` + `users` tables; `standardized_data`
+ * and `mapping_cache` gain a NOT NULL `org_id`. Every helper that reads or writes
+ * tenant data takes `orgId` as its first argument and scopes the query by it —
+ * middleware is not the only line of defence. A missing/blank `orgId` throws
+ * before any SQL runs (CLAUDE.md: an unscoped tenant query is a gate-blocking bug).
+ *
+ * Table columns for `standardized_data` are still generated from the canonical
+ * field dictionary so field names live in exactly one place (config/schema.js).
  */
 
-const path = require('path');
-const fs = require('fs');
-const Database = require('better-sqlite3');
+const { Pool } = require('pg');
 
-const { FIELDS, TYPE } = require('../config/schema');
+const { FIELDS, FIELD_NAMES, TYPE } = require('../config/schema');
 
-const DB_DIR = path.join(__dirname);
-const DB_PATH = process.env.ASCENDDV_DB_PATH || path.join(DB_DIR, 'ascenddv.sqlite');
+const CONNECTION_STRING =
+  process.env.DATABASE_URL || 'postgresql://postgres@127.0.0.1:5433/ascenddv';
+
+const DB_PATH = CONNECTION_STRING; // kept as an export for backwards compat
+
+const DEMO_ORG_NAME = 'Demo Nonprofit';
 
 function sqlColumnType(field) {
-  // Dates are stored as ISO-8601 `YYYY-MM-DD` strings; everything else numeric.
-  return field.type === TYPE.DATE ? 'TEXT' : 'REAL';
+  // period_date stays TEXT ('YYYY-MM-DD'); everything else DOUBLE PRECISION
+  // (8-byte IEEE float, matching SQLite's REAL exactly).
+  return field.type === TYPE.DATE ? 'TEXT' : 'DOUBLE PRECISION';
 }
 
 function buildStandardizedDataDDL() {
   const columns = FIELDS.map((f) => `  ${f.name} ${sqlColumnType(f)}`);
   return [
     'CREATE TABLE IF NOT EXISTS standardized_data (',
-    '  id INTEGER PRIMARY KEY AUTOINCREMENT,',
+    '  id SERIAL PRIMARY KEY,',
+    '  org_id INTEGER REFERENCES organizations(id),',
     columns.join(',\n') + ',',
-    '  source_meta TEXT,', // JSON: original source + per-row mapping confidence
-    "  created_at TEXT NOT NULL DEFAULT (datetime('now'))",
+    '  source_meta TEXT,',
+    '  created_at TIMESTAMPTZ NOT NULL DEFAULT now()',
     ');',
   ].join('\n');
 }
 
-const MAPPING_CACHE_DDL = `
-CREATE TABLE IF NOT EXISTS mapping_cache (
-  header_hash TEXT PRIMARY KEY,
-  mapping_json TEXT NOT NULL,
-  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+const ORGANIZATIONS_DDL = `
+CREATE TABLE IF NOT EXISTS organizations (
+  id SERIAL PRIMARY KEY,
+  name TEXT NOT NULL,
+  org_type TEXT NOT NULL DEFAULT 'small_nonprofit',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 `;
 
-let db;
+const USERS_DDL = `
+CREATE TABLE IF NOT EXISTS users (
+  id SERIAL PRIMARY KEY,
+  org_id INTEGER NOT NULL REFERENCES organizations(id),
+  email TEXT NOT NULL UNIQUE,
+  password_hash TEXT NOT NULL,
+  role TEXT NOT NULL DEFAULT 'owner',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+`;
+
+const MAPPING_CACHE_DDL = `
+CREATE TABLE IF NOT EXISTS mapping_cache (
+  org_id INTEGER REFERENCES organizations(id),
+  header_hash TEXT NOT NULL,
+  mapping_json TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+`;
+
+let pool;
 
 function getDb() {
-  if (db) return db;
-
-  fs.mkdirSync(DB_DIR, { recursive: true });
-  db = new Database(DB_PATH);
-  db.pragma('journal_mode = WAL');
-
-  db.exec(buildStandardizedDataDDL());
-  db.exec(MAPPING_CACHE_DDL);
-
-  return db;
+  if (pool) return pool;
+  pool = new Pool({ connectionString: CONNECTION_STRING });
+  // A pooled connection that dies while idle (DB restart, dropped network,
+  // pg_terminate_backend) makes node-postgres emit 'error' on the Pool. With no
+  // listener Node treats it as uncaught and crashes the process — outside any
+  // request's try/catch. Swallow it: the broken client is discarded, the next
+  // query gets a healthy one or fails inside a route's try/catch (clean 500).
+  pool.on('error', (err) => {
+    console.error('Postgres pool: idle client error —', err.message);
+  });
+  return pool;
 }
 
-module.exports = { getDb, DB_PATH, buildStandardizedDataDDL };
+async function closeDb() {
+  if (pool) {
+    await pool.end();
+    pool = undefined;
+  }
+}
+
+/**
+ * Converge the schema to the current shape, whether starting from an empty DB
+ * or from a Phase 7 (pre-tenancy) database. Every statement is idempotent.
+ */
+async function initDb() {
+  const conn = getDb();
+
+  await conn.query(ORGANIZATIONS_DDL);
+  await conn.query(USERS_DDL);
+  await conn.query(buildStandardizedDataDDL());
+  await conn.query(MAPPING_CACHE_DDL);
+
+  // Add any schema fields introduced since the table was created (CREATE TABLE
+  // IF NOT EXISTS won't add columns to an existing table). Idempotent.
+  for (const f of FIELDS) {
+    await conn.query(
+      `ALTER TABLE standardized_data ADD COLUMN IF NOT EXISTS ${f.name} ${sqlColumnType(f)}`
+    );
+  }
+
+  // --- add org_id to pre-tenancy tables (no-op on a fresh DB) ---------------
+  await conn.query('ALTER TABLE standardized_data ADD COLUMN IF NOT EXISTS org_id INTEGER REFERENCES organizations(id)');
+  await conn.query('ALTER TABLE mapping_cache ADD COLUMN IF NOT EXISTS org_id INTEGER REFERENCES organizations(id)');
+
+  // --- backfill any rows left without an org onto the Demo Nonprofit org ----
+  const orphanData = await conn.query('SELECT 1 FROM standardized_data WHERE org_id IS NULL LIMIT 1');
+  const orphanCache = await conn.query('SELECT 1 FROM mapping_cache WHERE org_id IS NULL LIMIT 1');
+  if (orphanData.rowCount > 0 || orphanCache.rowCount > 0) {
+    let { rows } = await conn.query('SELECT id FROM organizations WHERE name = $1', [DEMO_ORG_NAME]);
+    if (rows.length === 0) {
+      rows = (await conn.query('INSERT INTO organizations (name, org_type) VALUES ($1, $2) RETURNING id', [
+        DEMO_ORG_NAME,
+        'small_nonprofit',
+      ])).rows;
+    }
+    const demoOrgId = rows[0].id;
+    await conn.query('UPDATE standardized_data SET org_id = $1 WHERE org_id IS NULL', [demoOrgId]);
+    await conn.query('UPDATE mapping_cache SET org_id = $1 WHERE org_id IS NULL', [demoOrgId]);
+    console.log(`initDb: backfilled Stage 1 data onto "${DEMO_ORG_NAME}" (org ${demoOrgId})`);
+  }
+
+  // --- enforce NOT NULL once nothing is orphaned ---------------------------
+  await conn.query('ALTER TABLE standardized_data ALTER COLUMN org_id SET NOT NULL');
+  await conn.query('ALTER TABLE mapping_cache ALTER COLUMN org_id SET NOT NULL');
+
+  // --- mapping_cache: composite (org_id, header_hash) primary key ----------
+  // Two orgs with coincidentally identical header shapes must stay separate
+  // cache entries (CLAUDE.md).
+  await conn.query('ALTER TABLE mapping_cache DROP CONSTRAINT IF EXISTS mapping_cache_pkey');
+  await conn.query(`
+    DO $$ BEGIN
+      IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'mapping_cache_org_header_pk'
+      ) THEN
+        ALTER TABLE mapping_cache ADD CONSTRAINT mapping_cache_org_header_pk PRIMARY KEY (org_id, header_hash);
+      END IF;
+    END $$;
+  `);
+
+  // --- standardized_data: one row per (org, period) ----------------------
+  // Lets manual single-period entry upsert cleanly; the CSV/xlsx path already
+  // de-dupes before storing so this never rejects a file import.
+  await conn.query(`
+    DO $$ BEGIN
+      IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'standardized_data_org_period_uq'
+      ) THEN
+        ALTER TABLE standardized_data
+          ADD CONSTRAINT standardized_data_org_period_uq UNIQUE (org_id, period_date);
+      END IF;
+    END $$;
+  `);
+
+  return conn;
+}
+
+/* -------------------------------------------------------------------------- */
+/* org_id guard — an unscoped tenant query must never reach SQL               */
+/* -------------------------------------------------------------------------- */
+
+function assertOrgId(orgId, fnName) {
+  if (!Number.isInteger(orgId) || orgId <= 0) {
+    throw new Error(`${fnName}: a valid integer orgId is required (got ${JSON.stringify(orgId)})`);
+  }
+}
+
+/* -------------------------------------------------------------------------- */
+/* organizations / users                                                      */
+/* -------------------------------------------------------------------------- */
+
+async function createOrganization({ name, orgType = 'small_nonprofit' }) {
+  const conn = getDb();
+  const { rows } = await conn.query(
+    'INSERT INTO organizations (name, org_type) VALUES ($1, $2) RETURNING id, name, org_type, created_at',
+    [name, orgType]
+  );
+  return rows[0];
+}
+
+async function getOrganizationById(id) {
+  const conn = getDb();
+  const { rows } = await conn.query(
+    'SELECT id, name, org_type, created_at FROM organizations WHERE id = $1',
+    [id]
+  );
+  return rows[0] || null;
+}
+
+async function createUser({ orgId, email, passwordHash, role = 'owner' }) {
+  assertOrgId(orgId, 'createUser');
+  const conn = getDb();
+  const { rows } = await conn.query(
+    `INSERT INTO users (org_id, email, password_hash, role)
+     VALUES ($1, $2, $3, $4)
+     RETURNING id, org_id, email, role, created_at`,
+    [orgId, email.toLowerCase(), passwordHash, role]
+  );
+  return rows[0];
+}
+
+/** Full row incl. password_hash — for login verification only. */
+async function getUserByEmail(email) {
+  const conn = getDb();
+  const { rows } = await conn.query(
+    'SELECT id, org_id, email, password_hash, role, created_at FROM users WHERE email = $1',
+    [String(email || '').toLowerCase()]
+  );
+  return rows[0] || null;
+}
+
+async function getUserById(id) {
+  const conn = getDb();
+  const { rows } = await conn.query(
+    'SELECT id, org_id, email, role, created_at FROM users WHERE id = $1',
+    [id]
+  );
+  return rows[0] || null;
+}
+
+/* -------------------------------------------------------------------------- */
+/* standardized_data — org-scoped                                             */
+/* -------------------------------------------------------------------------- */
+
+async function replaceStandardizedData(orgId, rows) {
+  assertOrgId(orgId, 'replaceStandardizedData');
+  const conn = getDb();
+  const cols = ['org_id', ...FIELD_NAMES, 'source_meta'];
+  const placeholders = cols.map((_, i) => `$${i + 1}`).join(', ');
+  const insertSql = `INSERT INTO standardized_data (${cols.join(', ')}) VALUES (${placeholders})`;
+
+  const client = await conn.connect();
+  try {
+    await client.query('BEGIN');
+    await client.query('DELETE FROM standardized_data WHERE org_id = $1', [orgId]);
+    for (const row of rows) {
+      const values = [orgId, ...FIELD_NAMES.map((name) => (row[name] === undefined ? null : row[name]))];
+      values.push(
+        row.source_meta === undefined || row.source_meta === null
+          ? null
+          : JSON.stringify(row.source_meta)
+      );
+      await client.query(insertSql, values);
+    }
+    await client.query('COMMIT');
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
+
+  return rows.length;
+}
+
+/**
+ * Insert or update a single period's row for an org (manual entry). Upserts on
+ * the (org_id, period_date) unique constraint so re-entering a period edits it.
+ */
+async function upsertStandardizedRow(orgId, row) {
+  assertOrgId(orgId, 'upsertStandardizedRow');
+  const conn = getDb();
+  const cols = ['org_id', ...FIELD_NAMES, 'source_meta'];
+  const placeholders = cols.map((_, i) => `$${i + 1}`).join(', ');
+  const updateCols = [...FIELD_NAMES.filter((f) => f !== 'period_date'), 'source_meta'];
+  const updateSet = updateCols.map((c) => `${c} = EXCLUDED.${c}`).join(', ');
+
+  const values = [
+    orgId,
+    ...FIELD_NAMES.map((name) => (row[name] === undefined ? null : row[name])),
+    row.source_meta === undefined || row.source_meta === null
+      ? null
+      : JSON.stringify(row.source_meta),
+  ];
+
+  await conn.query(
+    `INSERT INTO standardized_data (${cols.join(', ')}) VALUES (${placeholders})
+     ON CONFLICT (org_id, period_date) DO UPDATE SET ${updateSet}`,
+    values
+  );
+  return 1;
+}
+
+async function getStandardizedData(orgId) {
+  assertOrgId(orgId, 'getStandardizedData');
+  const conn = getDb();
+  const { rows } = await conn.query(
+    `SELECT ${FIELD_NAMES.join(', ')}, source_meta
+     FROM standardized_data
+     WHERE org_id = $1
+     ORDER BY period_date ASC`,
+    [orgId]
+  );
+  return rows.map((r) => ({
+    ...r,
+    source_meta: r.source_meta ? JSON.parse(r.source_meta) : null,
+  }));
+}
+
+/* -------------------------------------------------------------------------- */
+/* mapping_cache — org-scoped (no cross-org sharing, even on identical headers)*/
+/* -------------------------------------------------------------------------- */
+
+async function getCachedMapping(orgId, headerHash) {
+  assertOrgId(orgId, 'getCachedMapping');
+  const conn = getDb();
+  const { rows } = await conn.query(
+    'SELECT mapping_json FROM mapping_cache WHERE org_id = $1 AND header_hash = $2',
+    [orgId, headerHash]
+  );
+  return rows[0] ? JSON.parse(rows[0].mapping_json) : null;
+}
+
+async function putCachedMapping(orgId, headerHash, mapping) {
+  assertOrgId(orgId, 'putCachedMapping');
+  const conn = getDb();
+  await conn.query(
+    `INSERT INTO mapping_cache (org_id, header_hash, mapping_json)
+     VALUES ($1, $2, $3)
+     ON CONFLICT (org_id, header_hash) DO UPDATE SET mapping_json = EXCLUDED.mapping_json`,
+    [orgId, headerHash, JSON.stringify(mapping)]
+  );
+}
+
+module.exports = {
+  getDb,
+  initDb,
+  closeDb,
+  DB_PATH,
+  DEMO_ORG_NAME,
+  buildStandardizedDataDDL,
+  createOrganization,
+  getOrganizationById,
+  createUser,
+  getUserByEmail,
+  getUserById,
+  replaceStandardizedData,
+  upsertStandardizedRow,
+  getStandardizedData,
+  getCachedMapping,
+  putCachedMapping,
+};

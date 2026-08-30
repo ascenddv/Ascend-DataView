@@ -12,6 +12,12 @@ const CATEGORY = {
   FINANCIAL: 'Financial',
   GROWTH: 'Growth',
   COMMUNITY: 'Community',
+  // Stage 2 (Phase 9) health dimensions
+  PEOPLE: 'People',
+  MARKETING: 'Marketing',
+  FUNDRAISING: 'Fundraising',
+  IMPACT: 'Impact',
+  STRATEGIC: 'Strategic',
   NONE: null,
 };
 
@@ -45,6 +51,20 @@ const FIELDS = [
 
   { name: 'website_visitors',    required: false, category: CATEGORY.GROWTH,    type: TYPE.NUMBER, notes: '' },
   { name: 'social_followers',    required: false, category: CATEGORY.GROWTH,    type: TYPE.NUMBER, notes: '' },
+
+  // --- Stage 2 (Phase 9): additional health dimensions ---
+  { name: 'employees_total',              required: false, category: CATEGORY.PEOPLE,      type: TYPE.NUMBER, notes: '' },
+  { name: 'employees_new',                required: false, category: CATEGORY.PEOPLE,      type: TYPE.NUMBER, notes: '' },
+  { name: 'employees_departed',           required: false, category: CATEGORY.PEOPLE,      type: TYPE.NUMBER, notes: '' },
+  { name: 'marketing_spend',              required: false, category: CATEGORY.MARKETING,   type: TYPE.NUMBER, notes: '' },
+  { name: 'email_subscribers',            required: false, category: CATEGORY.MARKETING,   type: TYPE.NUMBER, notes: '' },
+  { name: 'email_open_rate',              required: false, category: CATEGORY.MARKETING,   type: TYPE.NUMBER, notes: 'Fraction 0–1' },
+  { name: 'grant_applications_submitted', required: false, category: CATEGORY.FUNDRAISING, type: TYPE.NUMBER, notes: '' },
+  { name: 'grant_applications_awarded',   required: false, category: CATEGORY.FUNDRAISING, type: TYPE.NUMBER, notes: '' },
+  { name: 'program_outcomes_achieved',   required: false, category: CATEGORY.IMPACT,      type: TYPE.NUMBER, notes: '' },
+  { name: 'program_outcomes_targeted',   required: false, category: CATEGORY.IMPACT,      type: TYPE.NUMBER, notes: '' },
+  { name: 'goals_total',                 required: false, category: CATEGORY.STRATEGIC,   type: TYPE.NUMBER, notes: '' },
+  { name: 'goals_completed',             required: false, category: CATEGORY.STRATEGIC,   type: TYPE.NUMBER, notes: '' },
 ];
 
 const FIELD_NAMES = FIELDS.map((f) => f.name);

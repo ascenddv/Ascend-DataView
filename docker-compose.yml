@@ -1,0 +1,29 @@
+# Local Postgres for AscendDV dev (Phase 7+).
+#
+# Usage:
+#   docker compose up -d
+#   then set backend/.env → DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5432/ascenddv
+#
+# A local Postgres install works equally well; this session's dev instance runs
+# from a project-local cluster on port 5433 (see README / .env) because the
+# machine's Postgres service could not be started without elevation.
+
+services:
+  postgres:
+    image: postgres:18
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: ascenddv
+    ports:
+      - "5432:5432"
+    volumes:
+      - ascenddv_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d ascenddv"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  ascenddv_pgdata:

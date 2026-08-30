@@ -1,1 +1,48 @@
 @import "tailwindcss";
+
+/*
+ * Data-viz + surface palette — the validated reference palette from the dataviz
+ * skill (light steps, plus the skill's hand-picked dark steps). Referenced by
+ * role from both Tailwind arbitrary values and Recharts props, so light/dark
+ * swap in exactly one place.
+ */
+:root {
+  --page:            #f9f9f7;
+  --surface-1:       #fcfcfb;
+  --text-primary:    #0b0b0b;
+  --text-secondary:  #52514e;
+  --text-muted:      #898781;
+  --gridline:        #e1e0d9;
+  --baseline:        #c3c2b7;
+  --border:          rgba(11, 11, 11, 0.10);
+
+  --series-1:        #2a78d6;   /* single-hue charts: trend line, comparison bars */
+
+  --status-good:     #0ca30c;
+  --status-warning:  #fab219;
+  --status-serious:  #ec835a;
+  --status-critical: #d03b3b;
+  --delta-up:        #006300;   /* "up is good" text, light surface */
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --page:            #0d0d0d;
+    --surface-1:       #1a1a19;
+    --text-primary:    #ffffff;
+    --text-secondary:  #c3c2b7;
+    --text-muted:      #898781;
+    --gridline:        #2c2c2a;
+    --baseline:        #383835;
+    --border:          rgba(255, 255, 255, 0.10);
+
+    --series-1:        #3987e5;
+
+    --delta-up:        #0ca30c;
+  }
+}
+
+html, body {
+  background: var(--page);
+  color: var(--text-primary);
+}
