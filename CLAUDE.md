@@ -31,7 +31,7 @@ What was wrong was the **band thresholds** used to label a score (Strong / Stabl
 - a real decline of even a few percent (score < 48) → Watch. `fixture_sparse.csv` (Financial 47, a genuine ~−3% decline) correctly stays Watch.
 - Strong is reserved for ~+14%+ sustained MoM growth across every sub-metric (score ≥ 64) — rare and genuinely outperforming; the old `≥ 80` cutoff required +30% and was effectively unreachable.
 
-Implemented in `frontend/src/lib/healthBands.js` (single source of truth, consumed by `HealthScoreCard` and — later — the Phase 17 tour). `calculateHealthScore` and the formula are untouched.
+Implemented in `frontend/src/lib/healthBands.js` (labels, colours, the `healthBand()` mapping — consumed by `HealthScoreCard` and the Phase 17 tour). The two threshold **numbers** (Stable ≥ 48, Strong ≥ 64) live in one place, `shared/health-bands.json` at the repo root, read by both `healthBands.js` and the backend PDF report (`backend/services/pdfReport.js`) so the dashboard and the PDF snapshot can't drift; `backend/test/healthBandsSync.test.mjs` fails if either side re-hardcodes them. `calculateHealthScore` and the formula are untouched.
 
 ---
 

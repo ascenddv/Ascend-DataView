@@ -30,10 +30,10 @@ function fmtPeriod(iso) {
   return m ? `${MONTHS[Number(m[2]) - 1]} ${m[1]}` : String(iso || '');
 }
 
-// Band thresholds mirror frontend/src/lib/healthBands.js and the "Health score
-// display bands" section of CLAUDE.md. Keep the three numbers in sync.
-const STABLE_MIN = 48;
-const STRONG_MIN = 64;
+// Band thresholds come from the single shared config at the repo root, the same
+// file frontend/src/lib/healthBands.js reads — so the PDF's band labels can
+// never drift from the dashboard's. (test/healthBandsSync.test.mjs enforces it.)
+const { stableMin: STABLE_MIN, strongMin: STRONG_MIN } = require('../../shared/health-bands.json');
 const bandLabel = (score) =>
   !isNum(score) ? 'Unavailable' : score >= STRONG_MIN ? 'Strong' : score >= STABLE_MIN ? 'Stable' : 'Watch';
 
@@ -273,4 +273,10 @@ function buildOverviewPdf(metrics, insight, meta = {}) {
   });
 }
 
-module.exports = { buildOverviewPdf };
+module.exports = {
+  buildOverviewPdf,
+  // exported for the cross-package band-threshold sync test
+  bandLabel,
+  HEALTH_BAND_STABLE_MIN: STABLE_MIN,
+  HEALTH_BAND_STRONG_MIN: STRONG_MIN,
+};

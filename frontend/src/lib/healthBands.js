@@ -20,7 +20,13 @@
  *
  *   The old 60/80 cutoffs required +10% MoM on *every* sub-metric just to clear
  *   "Watch" and +30% to read "Strong", so ordinary healthy orgs all read Watch.
+ *
+ * The two threshold values live in `shared/health-bands.json` at the repo root
+ * so this module and the backend PDF report (backend/services/pdfReport.js)
+ * cannot drift apart; a test fails if either side stops reading from it.
  */
+
+import BANDS from '../../../shared/health-bands.json' with { type: 'json' };
 
 export const HEALTH_BANDS = {
   WATCH: {
@@ -40,8 +46,8 @@ export const HEALTH_BANDS = {
   },
 };
 
-export const STABLE_MIN = 48;
-export const STRONG_MIN = 64;
+export const STABLE_MIN = BANDS.stableMin;
+export const STRONG_MIN = BANDS.strongMin;
 
 /** Map a numeric health score to its band descriptor. */
 export function healthBand(score) {

@@ -9,6 +9,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 import { healthBand, STABLE_MIN, STRONG_MIN } from '../src/lib/healthBands.js';
+import SHARED_BANDS from '../../shared/health-bands.json' with { type: 'json' };
 
 const load = (n) =>
   JSON.parse(readFileSync(fileURLToPath(new URL(`./fixtures/${n}.json`, import.meta.url))));
@@ -16,6 +17,11 @@ const load = (n) =>
 test('thresholds are the derived values (48 / 64), not the old 60 / 80', () => {
   assert.equal(STABLE_MIN, 48);
   assert.equal(STRONG_MIN, 64);
+});
+
+test('thresholds come straight from the shared repo-root config', () => {
+  assert.equal(STABLE_MIN, SHARED_BANDS.stableMin);
+  assert.equal(STRONG_MIN, SHARED_BANDS.strongMin);
 });
 
 test('band boundaries', () => {

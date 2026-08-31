@@ -6,6 +6,8 @@ export default defineConfig({
   plugins: [react(), tailwindcss()],
   server: {
     port: 5173,
+    // Allow importing shared/*.json from the repo root (one level above frontend/).
+    fs: { allow: ['..'] },
     proxy: {
       // The React dev server talks to the Express backend through /api.
       // Backend default port is 3001; override with BACKEND_PORT if that port

@@ -18,6 +18,9 @@ function Workspace({ user, org, onLogout }) {
   const [onboarded, setOnboarded] = useState(org.onboardingCompleted === true);
   const [autoTour, setAutoTour] = useState(false);
 
+  // Persist onboarding as done. Per the spec this happens ONLY on tour
+  // completion, an explicit tour skip, or an explicit wizard skip — never just
+  // because a file was uploaded.
   function markOnboardingDone() {
     setOnboarded(true);
     completeOnboarding(org.id).catch(() => {
@@ -39,7 +42,10 @@ function Workspace({ user, org, onLogout }) {
   }
 
   function handleWizardComplete(result) {
-    markOnboardingDone();
+    // Leave the wizard and start the tour, but DON'T persist onboarding yet —
+    // that waits until the tour is finished or skipped. If the user closes the
+    // tab now, next login re-runs onboarding so the tour still gets shown.
+    setOnboarded(true);
     setAutoTour(true);
     handleResult(result.report);
   }
