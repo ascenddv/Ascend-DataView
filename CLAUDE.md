@@ -33,6 +33,8 @@ What was wrong was the **band thresholds** used to label a score (Strong / Stabl
 
 Implemented in `frontend/src/lib/healthBands.js` (labels, colours, the `healthBand()` mapping — consumed by `HealthScoreCard` and the Phase 17 tour). The two threshold **numbers** (Stable ≥ 48, Strong ≥ 64) live in one place, `shared/health-bands.json` at the repo root, read by both `healthBands.js` and the backend PDF report (`backend/services/pdfReport.js`) so the dashboard and the PDF snapshot can't drift; `backend/test/healthBandsSync.test.mjs` fails if either side re-hardcodes them. `calculateHealthScore` and the formula are untouched.
 
+**Thin dimensions have no averaging cushion.** A dimension's score is the mean of its *available* sub-metrics (the mapping lives in `backend/services/subMetrics.js`). Dimensions built from only one or two sub-metrics — currently **Strategic** (one) and **People**, **Fundraising**, and **Impact** (two each) — can have their whole band flipped by a single noisy or declining input on its own. This is exactly what happened to People in the Phase 12 realistic-fixture check: one extra staff departure in the final month pushed its (inverted) turnover-rate sub-metric to a subScore of ~36, and with only one other, healthy sub-metric to average against, the dimension landed at 46 → Watch. That is a property of `mean(subScores)` at *any* threshold, **not** a banding defect — do not "fix" it by moving the bands or changing the formula for a specific case. It's recorded here so that a thin dimension looking surprising on real data is recognised, not re-diagnosed from scratch.
+
 ---
 
 ## Upload behavior: merge, not replace (Phase 13)
