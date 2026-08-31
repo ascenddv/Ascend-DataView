@@ -1,0 +1,28 @@
+name: IIQ Config
+version: 1.0.0
+schema: v1
+models:
+  - name: Qwen3 Coder
+    provider: ollama
+    model: qwen3-coder:latest
+    contextLength: 32768
+    roles:
+      - chat
+      - edit
+      - apply
+  - name: Qwen3 Coder Autocomplete
+    provider: ollama
+    model: qwen3-coder:latest
+    contextLength: 32768
+    roles:
+      - autocomplete
+  - name: Qwen3 Embeddings
+    provider: ollama
+    model: nomic-embed-text
+    roles:
+      - embed
+context:
+  - provider: codebase
+  - provider: folder
+  - provider: diff
+  - provider: terminal

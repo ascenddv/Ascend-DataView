@@ -1,25 +1,26 @@
 import CardShell, { CardLabel } from './CardShell.jsx';
+import { healthBand } from '../lib/healthBands.js';
 
 /**
  * Health Score card — a large 0–100 score with a qualitative label.
  *
- * The label bands (Strong / Stable / Watch) are a DISPLAY concern and live only
- * here — they are not part of the scoring formula. A dimension that did not score
- * produces no card at all (handled by the registry), so this component never has
- * to render "N/A" or a placeholder.
+ * The band label (Strong / Stable / Watch) is a DISPLAY concern only — the
+ * thresholds live in ../lib/healthBands.js and the scoring formula is untouched.
+ * A dimension that did not score produces no card at all (handled by the
+ * registry), so this component never has to render "N/A" or a placeholder.
  */
-function band(score) {
-  if (score >= 80) return { label: 'Strong', color: 'var(--status-good)' };
-  if (score >= 60) return { label: 'Stable', color: 'var(--series-1)' };
-  return { label: 'Watch', color: 'var(--status-warning)' };
-}
-
-export default function HealthScoreCard({ dimension, score, subScores = [] }) {
-  const { label, color } = band(score);
+export default function HealthScoreCard({
+  dimension,
+  score,
+  subScores = [],
+  confidence = null,
+  definition = null,
+}) {
+  const { label, color } = healthBand(score);
   const signalCount = subScores.length;
 
   return (
-    <CardShell accent={color} tint>
+    <CardShell accent={color} tint confidence={confidence} definition={definition}>
       <CardLabel>{dimension} health</CardLabel>
 
       <div className="mt-2 flex items-end gap-2">

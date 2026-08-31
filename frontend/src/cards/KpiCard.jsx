@@ -18,6 +18,8 @@ export default function KpiCard({
   growthRate,
   format = 'number',
   limited = false,
+  confidence = null,
+  definition = null,
 }) {
   const value = formatValue(latest, format);
   const dir = changeDirection(change);
@@ -37,7 +39,7 @@ export default function KpiCard({
   const pctText = formatPercent(growthRate);
 
   return (
-    <CardShell>
+    <CardShell confidence={confidence} definition={definition}>
       <CardLabel>{label}</CardLabel>
       <div
         className="mt-2 text-3xl font-semibold"

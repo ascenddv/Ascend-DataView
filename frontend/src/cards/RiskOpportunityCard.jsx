@@ -5,14 +5,20 @@ import CardShell, { CardLabel } from './CardShell.jsx';
  * opportunity are visually distinct (accent colour + word label + icon), never
  * colour alone.
  */
-export default function RiskOpportunityCard({ type, title, detail }) {
+export default function RiskOpportunityCard({
+  type,
+  title,
+  detail,
+  confidence = null,
+  definition = null,
+}) {
   const isRisk = type === 'risk';
   const accent = isRisk ? 'var(--status-critical)' : 'var(--status-good)';
   const kicker = isRisk ? 'Risk' : 'Opportunity';
   const icon = isRisk ? '▲' : '★';
 
   return (
-    <CardShell accent={accent} tint>
+    <CardShell accent={accent} tint confidence={confidence} definition={definition}>
       <div className="flex items-center gap-1.5">
         <span aria-hidden="true" style={{ color: accent }}>
           {icon}

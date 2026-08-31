@@ -1,25 +1,34 @@
 /**
- * POST /api/upload        — CSV or .xlsx upload (multipart).
- * POST /api/manual-entry  — a single period entered by hand.
- * GET  /api/data          — the current standardized dataset (for inspection).
+ * POST /api/upload         — CSV or .xlsx upload (multipart). MERGES into the
+ *                            org's history (upsert by period_date); never wipes.
+ *                            If any column mapping is low-confidence the upload
+ *                            pauses (Phase 14b) and nothing is stored until
+ *                            POST /api/upload/confirm.
+ * POST /api/upload/confirm — finish a paused upload with confirmed/corrected
+ *                            mappings.
+ * POST /api/manual-entry   — a single period entered by hand (also merges).
+ * GET  /api/data           — the current standardized dataset (for inspection).
  *
- * All three route through the one ingestion pipeline in services/ingest.js and
- * are scoped by req.auth.orgId.
+ * All route through the one ingestion pipeline in services/ingest.js and are
+ * scoped by req.auth.orgId.
  */
 
 const express = require('express');
 const multer = require('multer');
 
+const { FIELDS } = require('../config/schema');
 const {
-  ingestCsv,
-  ingestXlsx,
+  parseCsv,
+  parseXlsx,
+  ingestParsed,
   ingestManualEntry,
 } = require('../services/ingest');
 const {
-  replaceStandardizedData,
+  mergeStandardizedData,
   upsertStandardizedRow,
   getStandardizedData,
 } = require('../db');
+const pendingUploads = require('../services/pendingUploads');
 
 const router = express.Router();
 
@@ -44,6 +53,34 @@ const upload = multer({
   },
 });
 
+const SCHEMA_FIELD_CHOICES = FIELDS.map((f) => ({
+  name: f.name,
+  category: f.category,
+  required: f.required,
+}));
+
+/** Up to 3 non-empty example cell values for a header, to show in the UI. */
+function sampleValues(parsed, header) {
+  const out = [];
+  for (const row of parsed.rows) {
+    const v = row[header];
+    if (v !== undefined && v !== null && String(v).trim() !== '') out.push(String(v).trim());
+    if (out.length === 3) break;
+  }
+  return out;
+}
+
+function mergeResponse(res, report, periodsAdded, periodsUpdated, extra = {}) {
+  res.json({
+    ok: true,
+    stored: periodsAdded + periodsUpdated,
+    periodsAdded,
+    periodsUpdated,
+    ...report,
+    ...extra,
+  });
+}
+
 router.post('/upload', upload.single('file'), async (req, res, next) => {
   try {
     if (!req.file) {
@@ -52,18 +89,103 @@ router.post('/upload', upload.single('file'), async (req, res, next) => {
     }
 
     const orgId = req.auth.orgId;
-    const isXlsx =
-      XLSX_EXT.test(req.file.originalname) || req.file.mimetype === XLSX_MIME;
+    const isXlsx = XLSX_EXT.test(req.file.originalname) || req.file.mimetype === XLSX_MIME;
+    const source = isXlsx ? 'xlsx_upload' : 'csv_upload';
+    const parsed = isXlsx
+      ? parseXlsx(req.file.buffer)
+      : parseCsv(req.file.buffer.toString('utf8'));
 
-    const { report, rows } = isXlsx
-      ? await ingestXlsx(req.file.buffer, { filename: req.file.originalname, orgId })
-      : await ingestCsv(req.file.buffer.toString('utf8'), {
-          filename: req.file.originalname,
-          orgId,
-        });
+    const { report, rows } = await ingestParsed(parsed, {
+      filename: req.file.originalname,
+      orgId,
+      source,
+    });
 
-    const stored = await replaceStandardizedData(orgId, rows);
-    res.json({ ok: true, stored, ...report });
+    // Phase 14b: a low-confidence mapping pauses the upload before storage.
+    if (report.fieldsNeedingConfirmation.length > 0) {
+      const pendingId = pendingUploads.put({
+        orgId,
+        parsed,
+        mapping: report.columnMapping,
+        filename: req.file.originalname,
+        source,
+      });
+      res.json({
+        ok: true,
+        needsConfirmation: true,
+        pendingId,
+        filename: req.file.originalname,
+        headers: report.headers,
+        columnMapping: report.columnMapping,
+        fieldsNeedingConfirmation: report.fieldsNeedingConfirmation.map((f) => ({
+          ...f,
+          samples: sampleValues(parsed, f.header),
+        })),
+        unmappedHeaders: report.unmappedHeaders,
+        schemaFields: SCHEMA_FIELD_CHOICES,
+      });
+      return;
+    }
+
+    const { periodsAdded, periodsUpdated } = await mergeStandardizedData(orgId, rows);
+    mergeResponse(res, report, periodsAdded, periodsUpdated);
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post('/upload/confirm', async (req, res, next) => {
+  try {
+    const orgId = req.auth.orgId;
+    const { pendingId, corrections } = req.body || {};
+    const entry = pendingUploads.take(pendingId, orgId);
+    if (!entry) {
+      res.status(404).json({
+        ok: false,
+        error: 'That pending upload expired or was already completed. Please upload the file again.',
+      });
+      return;
+    }
+
+    const validField = new Set(SCHEMA_FIELD_CHOICES.map((f) => f.name));
+    const mapping = JSON.parse(JSON.stringify(entry.mapping));
+    const confirmedFields = [];
+
+    for (const [header, choiceRaw] of Object.entries(corrections || {})) {
+      if (!(header in mapping)) continue;
+      const choice = choiceRaw ? String(choiceRaw) : null;
+      const prev = mapping[header] || { field: null, confidence: 0 };
+
+      if (!choice) {
+        mapping[header] = { field: null, confidence: 0, source: 'user_rejected' };
+      } else if (!validField.has(choice)) {
+        continue;
+      } else if (choice === prev.field) {
+        // Confirmed the guess as-is: keep its low confidence so 14a still caps
+        // the card at Medium, but record that a human signed off.
+        mapping[header] = { ...prev, source: 'user_confirmed' };
+        confirmedFields.push(choice);
+      } else {
+        // Deliberately re-pointed to a different field — treat as authoritative.
+        mapping[header] = { field: choice, confidence: 1, source: 'user_corrected' };
+      }
+    }
+
+    const { report, rows } = await ingestParsed(entry.parsed, {
+      filename: entry.filename,
+      orgId,
+      source: entry.source,
+      mapping,
+      confirmedFields,
+    });
+
+    const { periodsAdded, periodsUpdated } = await mergeStandardizedData(orgId, rows);
+    mergeResponse(res, report, periodsAdded, periodsUpdated, {
+      confirmedMappingApplied: true,
+      // Every low-confidence mapping in this file has now been through the
+      // confirmation step — don't re-nag about it in the summary.
+      fieldsNeedingConfirmation: [],
+    });
   } catch (err) {
     next(err);
   }
@@ -74,8 +196,15 @@ router.post('/manual-entry', async (req, res, next) => {
     const orgId = req.auth.orgId;
     const values = (req.body && req.body.values) || req.body || {};
     const { row, warnings } = ingestManualEntry(values, { orgId });
-    await upsertStandardizedRow(orgId, row);
-    res.json({ ok: true, stored: 1, period: row.period_date, warnings });
+    const { inserted } = await upsertStandardizedRow(orgId, row);
+    res.json({
+      ok: true,
+      stored: 1,
+      period: row.period_date,
+      periodsAdded: inserted ? 1 : 0,
+      periodsUpdated: inserted ? 0 : 1,
+      warnings,
+    });
   } catch (err) {
     next(err);
   }

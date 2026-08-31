@@ -6,7 +6,7 @@ import { useRef, useState } from 'react';
  *                             rows / warnings — that's a successful upload)
  *   onError(message)        — wrong file type, unparseable file, or server error
  */
-export default function Uploader({ onResult, onError }) {
+export default function Uploader({ onResult, onError, onNeedsConfirmation }) {
   const inputRef = useRef(null);
   const [status, setStatus] = useState('idle'); // idle | uploading | done
   const [filename, setFilename] = useState(null);
@@ -44,8 +44,16 @@ export default function Uploader({ onResult, onError }) {
         return;
       }
 
-      setStatus('done');
       onError(null);
+
+      if (json.needsConfirmation) {
+        setStatus('idle');
+        setFilename(null);
+        onNeedsConfirmation(json);
+        return;
+      }
+
+      setStatus('done');
       onResult(json);
     } catch (err) {
       setStatus('idle');
@@ -104,10 +112,12 @@ export default function Uploader({ onResult, onError }) {
         )}
         {status === 'done' && (
           <>
-            Loaded <b>{filename}</b>. Drop another CSV here to replace it.
+            Loaded <b>{filename}</b>. Drop another file to merge in more periods — a
+            new file adds new periods and overwrites any it shares.
           </>
         )}
-        {status === 'idle' && 'Drop a CSV here, or choose a file. Only the latest upload is shown.'}
+        {status === 'idle' &&
+          'Drop a CSV or Excel file here, or choose one. New uploads merge into your existing history.'}
       </span>
     </div>
   );

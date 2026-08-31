@@ -115,7 +115,27 @@ function toNarrationInput(metrics) {
       latest: k.latest,
       change: k.change,
       growthRatePct: k.growthRate == null ? null : Number((k.growthRate * 100).toFixed(1)),
+      trailingAverage: k.trailingAverage ?? null,
+      vsTrailingAveragePct: k.vsTrailingAveragePct ?? null,
     })),
+    // Phase 15: per-dimension trend + self-baseline, all computed in code. Empty
+    // when there isn't enough history — the prompt then narrates the latest
+    // period only.
+    trends: Object.fromEntries(
+      Object.entries(metrics.trends || {}).map(([dimension, t]) => [
+        dimension,
+        {
+          metric: t.metric,
+          direction: t.direction,
+          consistency: t.consistency,
+          consecutivePeriods: t.consecutivePeriods,
+          periodsAnalyzed: t.periodsAnalyzed,
+          latest: t.latest,
+          trailingAverage: t.trailingAverage,
+          deltaFromTrailingPct: t.deltaFromTrailingPct,
+        },
+      ])
+    ),
     revenueByCategory: (metrics.revenueByCategory || []).map((c) => ({
       source: c.label,
       amount: c.value,
@@ -135,12 +155,20 @@ function toNarrationInput(metrics) {
 /* -------------------------------------------------------------------------- */
 
 function buildPrompt(narrationInput) {
+  const hasHistory = Object.keys(narrationInput.trends || {}).length > 0;
+
+  const historyGuidance = hasHistory
+    ? `INPUT.trends holds, per dimension, a code-computed trend "direction" (increasing / flat / declining), a "consistency" read, a "consecutivePeriods" run count, and the latest value of that dimension's primary "metric" against the organization's OWN "trailingAverage" ("deltaFromTrailingPct"). INPUT.kpis may also carry "trailingAverage" / "vsTrailingAveragePct". You MAY use this for trend and self-relative framing — e.g. "the third consecutive month of decline" or "revenue is 12% above its own recent average" — but only with the exact direction, counts, and numbers given, and only where they are present.`
+    : `INPUT has no "trends" data — there isn't enough history yet. Narrate the latest period only, as a single-period snapshot. Do NOT describe a trend, a streak, or a comparison to past periods.`;
+
   return `You are the analyst voice for AscendDV, a dashboard for small nonprofits with incomplete data.
 
-You are given ONLY figures that deterministic code has already computed. Do NOT invent, recompute, estimate, or extrapolate any number. Every figure you mention must appear verbatim in INPUT. If a health dimension is "Unavailable", say the data isn't there yet — never guess a score.
+You are given ONLY figures that deterministic code has already computed. Do NOT invent, recompute, estimate, or extrapolate any number. Every figure you mention must appear verbatim in INPUT. Do NOT compute a trend, average, or streak yourself — only cite the ones already in INPUT. If a health dimension is "Unavailable", say the data isn't there yet — never guess a score.
+
+${historyGuidance}
 
 Produce two short pieces:
-- "why": ONE paragraph, 2-3 sentences. Anchor it to the single biggest signal in the data — the largest health-score movement, or a triggered risk/opportunity — and name the specific metric change behind it (cite the actual number).
+- "why": ONE paragraph, 2-3 sentences. Anchor it to the single biggest signal in the data — the largest health-score movement, a triggered risk/opportunity, or a clear trend — and name the specific metric change behind it (cite the actual number).
 - "recommendation": ONE short paragraph, 1-2 sentences, on the most useful next step, grounded in that same signal.
 
 Plain, concrete, specific to these numbers. No preamble, no bullet lists, no restating the whole dashboard.

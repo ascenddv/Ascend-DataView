@@ -14,10 +14,16 @@ const {
   calculateGrowthRate,
   calculateHealthScore,
 } = require('./metrics');
-const { buildSubMetrics, HEALTH_DIMENSIONS } = require('./subMetrics');
+const {
+  buildSubMetrics,
+  HEALTH_DIMENSIONS,
+  DIMENSION_SUBMETRICS,
+} = require('./subMetrics');
 const { evaluateRiskRules } = require('./riskRules');
 const { evaluateCardEligibility } = require('./eligibility');
 const { detectGranularity } = require('./normalize');
+const { cardConfidence } = require('./confidence');
+const { buildTrends, trailingComparison } = require('./trends');
 
 const LABELS = {
   revenue: 'Revenue',
@@ -39,12 +45,18 @@ const round = (v, dp = 4) =>
 
 const isNum = (v) => typeof v === 'number' && Number.isFinite(v);
 
-/** KPI: latest value + change vs the immediately preceding period. */
+/**
+ * KPI: latest value + change vs the immediately preceding period, plus (Phase
+ * 15) the latest against the organization's own trailing average when there is
+ * enough history for that to mean something.
+ */
 function buildKpi(rows, field) {
   const n = rows.length;
   const latest = n >= 1 ? rows[n - 1][field] : null;
   const previous = n >= 2 ? rows[n - 2][field] : null;
   if (!isNum(latest)) return null;
+
+  const trailing = trailingComparison(rows.map((r) => r[field]).filter(isNum));
 
   return {
     key: field,
@@ -53,6 +65,8 @@ function buildKpi(rows, field) {
     previous: isNum(previous) ? previous : null,
     change: isNum(previous) ? calculateChange(latest, previous) : null,
     growthRate: isNum(previous) ? round(calculateGrowthRate(latest, previous)) : null,
+    trailingAverage: trailing ? trailing.trailingAverage : null,
+    vsTrailingAveragePct: trailing ? trailing.deltaFromTrailingPct : null,
   };
 }
 
@@ -121,6 +135,74 @@ function buildHealthScores(rows) {
   return out;
 }
 
+/** Schema fields that feed each dimension's health score (native + borrowed). */
+function healthCardFields(dimension) {
+  const fields = new Set();
+  for (const def of DIMENSION_SUBMETRICS[dimension] || []) {
+    if (def.field) fields.add(def.field);
+    if (def.numerator) fields.add(def.numerator);
+    if (def.denominator) fields.add(def.denominator);
+  }
+  return [...fields];
+}
+
+/** Schema fields each deterministic risk/opportunity rule reads. */
+const RISK_CARD_FIELDS = {
+  funding_concentration: ['revenue', ...REVENUE_SUBCATEGORY_FIELDS],
+  cash_runway: ['cash_balance', 'expenses'],
+  revenue_decline: ['revenue'],
+  donor_retention: ['donors_returning', 'donors_total'],
+};
+
+/**
+ * Confidence tier per rendered card, keyed exactly like the frontend registry's
+ * card keys so it can attach each block without re-deriving anything.
+ */
+function buildConfidence(sorted, { healthScores, kpis, revenueByCategory, risksOpportunities }) {
+  const periods = sorted.map((r) => r.period_date);
+  const lastN = (n) => periods.slice(-n);
+  const out = {};
+
+  for (const dimension of HEALTH_DIMENSIONS) {
+    if (healthScores[dimension]?.status !== 'Available') continue;
+    out[`health-${dimension}`] = cardConfidence({
+      fields: healthCardFields(dimension),
+      rows: sorted,
+      periods: lastN(3),
+    });
+  }
+
+  for (const kpi of kpis) {
+    out[`kpi-${kpi.key}`] = cardConfidence({
+      fields: [kpi.key],
+      rows: sorted,
+      periods: lastN(2),
+    });
+  }
+
+  for (const key of ['revenue', 'expenses', 'cash_balance']) {
+    out[`trend-${key}`] = cardConfidence({ fields: [key], rows: sorted });
+  }
+
+  if (revenueByCategory.length >= 2) {
+    out['bar-revenue-by-source'] = cardConfidence({
+      fields: ['revenue', ...revenueByCategory.map((c) => c.key)],
+      rows: sorted,
+      periods: lastN(1),
+    });
+  }
+
+  for (const r of risksOpportunities) {
+    out[`risk-${r.key}`] = cardConfidence({
+      fields: RISK_CARD_FIELDS[r.key] || [],
+      rows: sorted,
+      periods: lastN(3),
+    });
+  }
+
+  return out;
+}
+
 function buildMetrics(rows) {
   const sorted = [...(Array.isArray(rows) ? rows : [])].sort((a, b) =>
     String(a.period_date).localeCompare(String(b.period_date))
@@ -152,6 +234,15 @@ function buildMetrics(rows) {
     firedRuleCount: risksOpportunities.length,
   });
 
+  const confidence = buildConfidence(sorted, {
+    healthScores,
+    kpis,
+    revenueByCategory,
+    risksOpportunities,
+  });
+
+  const trends = buildTrends(sorted, healthScores);
+
   return {
     dataset: {
       periodCount,
@@ -165,6 +256,8 @@ function buildMetrics(rows) {
     healthScores,
     risksOpportunities,
     cards,
+    confidence,
+    trends,
   };
 }
 

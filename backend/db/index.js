@@ -47,6 +47,7 @@ CREATE TABLE IF NOT EXISTS organizations (
   id SERIAL PRIMARY KEY,
   name TEXT NOT NULL,
   org_type TEXT NOT NULL DEFAULT 'small_nonprofit',
+  onboarding_completed BOOLEAN NOT NULL DEFAULT false,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 `;
@@ -105,6 +106,11 @@ async function initDb() {
   await conn.query(USERS_DDL);
   await conn.query(buildStandardizedDataDDL());
   await conn.query(MAPPING_CACHE_DDL);
+
+  // Phase 17: onboarding flag on pre-existing organizations tables.
+  await conn.query(
+    "ALTER TABLE organizations ADD COLUMN IF NOT EXISTS onboarding_completed BOOLEAN NOT NULL DEFAULT false"
+  );
 
   // Add any schema fields introduced since the table was created (CREATE TABLE
   // IF NOT EXISTS won't add columns to an existing table). Idempotent.
@@ -187,7 +193,7 @@ function assertOrgId(orgId, fnName) {
 async function createOrganization({ name, orgType = 'small_nonprofit' }) {
   const conn = getDb();
   const { rows } = await conn.query(
-    'INSERT INTO organizations (name, org_type) VALUES ($1, $2) RETURNING id, name, org_type, created_at',
+    'INSERT INTO organizations (name, org_type) VALUES ($1, $2) RETURNING id, name, org_type, onboarding_completed, created_at',
     [name, orgType]
   );
   return rows[0];
@@ -196,10 +202,21 @@ async function createOrganization({ name, orgType = 'small_nonprofit' }) {
 async function getOrganizationById(id) {
   const conn = getDb();
   const { rows } = await conn.query(
-    'SELECT id, name, org_type, created_at FROM organizations WHERE id = $1',
+    'SELECT id, name, org_type, onboarding_completed, created_at FROM organizations WHERE id = $1',
     [id]
   );
   return rows[0] || null;
+}
+
+/** Phase 17: mark (or unmark) an org's first-run onboarding as done. */
+async function setOnboardingCompleted(orgId, value = true) {
+  assertOrgId(orgId, 'setOnboardingCompleted');
+  const conn = getDb();
+  const { rows } = await conn.query(
+    'UPDATE organizations SET onboarding_completed = $2 WHERE id = $1 RETURNING onboarding_completed',
+    [orgId, value === true]
+  );
+  return rows[0] ? rows[0].onboarding_completed : null;
 }
 
 async function createUser({ orgId, email, passwordHash, role = 'owner' }) {
@@ -237,63 +254,92 @@ async function getUserById(id) {
 /* standardized_data — org-scoped                                             */
 /* -------------------------------------------------------------------------- */
 
-async function replaceStandardizedData(orgId, rows) {
-  assertOrgId(orgId, 'replaceStandardizedData');
-  const conn = getDb();
-  const cols = ['org_id', ...FIELD_NAMES, 'source_meta'];
-  const placeholders = cols.map((_, i) => `$${i + 1}`).join(', ');
-  const insertSql = `INSERT INTO standardized_data (${cols.join(', ')}) VALUES (${placeholders})`;
+const STD_COLS = ['org_id', ...FIELD_NAMES, 'source_meta'];
+const STD_PLACEHOLDERS = STD_COLS.map((_, i) => `$${i + 1}`).join(', ');
+const STD_UPDATE_SET = [...FIELD_NAMES.filter((f) => f !== 'period_date'), 'source_meta']
+  .map((c) => `${c} = EXCLUDED.${c}`)
+  .join(', ');
+const STD_UPSERT_SQL = `INSERT INTO standardized_data (${STD_COLS.join(', ')})
+  VALUES (${STD_PLACEHOLDERS})
+  ON CONFLICT (org_id, period_date) DO UPDATE SET ${STD_UPDATE_SET}`;
 
-  const client = await conn.connect();
-  try {
-    await client.query('BEGIN');
-    await client.query('DELETE FROM standardized_data WHERE org_id = $1', [orgId]);
-    for (const row of rows) {
-      const values = [orgId, ...FIELD_NAMES.map((name) => (row[name] === undefined ? null : row[name]))];
-      values.push(
-        row.source_meta === undefined || row.source_meta === null
-          ? null
-          : JSON.stringify(row.source_meta)
-      );
-      await client.query(insertSql, values);
-    }
-    await client.query('COMMIT');
-  } catch (err) {
-    await client.query('ROLLBACK');
-    throw err;
-  } finally {
-    client.release();
-  }
-
-  return rows.length;
-}
-
-/**
- * Insert or update a single period's row for an org (manual entry). Upserts on
- * the (org_id, period_date) unique constraint so re-entering a period edits it.
- */
-async function upsertStandardizedRow(orgId, row) {
-  assertOrgId(orgId, 'upsertStandardizedRow');
-  const conn = getDb();
-  const cols = ['org_id', ...FIELD_NAMES, 'source_meta'];
-  const placeholders = cols.map((_, i) => `$${i + 1}`).join(', ');
-  const updateCols = [...FIELD_NAMES.filter((f) => f !== 'period_date'), 'source_meta'];
-  const updateSet = updateCols.map((c) => `${c} = EXCLUDED.${c}`).join(', ');
-
-  const values = [
+function stdRowValues(orgId, row) {
+  return [
     orgId,
     ...FIELD_NAMES.map((name) => (row[name] === undefined ? null : row[name])),
     row.source_meta === undefined || row.source_meta === null
       ? null
       : JSON.stringify(row.source_meta),
   ];
+}
 
-  await conn.query(
-    `INSERT INTO standardized_data (${cols.join(', ')}) VALUES (${placeholders})
-     ON CONFLICT (org_id, period_date) DO UPDATE SET ${updateSet}`,
-    values
+/**
+ * Merge a batch of standardized rows into an org's history (Phase 13): a period
+ * already present is overwritten, a new one is added. NEVER deletes — a full
+ * wipe only happens through deleteStandardizedData (the explicit reset action).
+ * @returns {{ periodsAdded: number, periodsUpdated: number }}
+ */
+async function mergeStandardizedData(orgId, rows) {
+  assertOrgId(orgId, 'mergeStandardizedData');
+  const conn = getDb();
+  const client = await conn.connect();
+  try {
+    await client.query('BEGIN');
+
+    const { rows: existing } = await client.query(
+      'SELECT period_date FROM standardized_data WHERE org_id = $1',
+      [orgId]
+    );
+    const present = new Set(existing.map((r) => r.period_date));
+
+    let periodsAdded = 0;
+    let periodsUpdated = 0;
+    for (const row of rows) {
+      if (present.has(row.period_date)) periodsUpdated += 1;
+      else {
+        periodsAdded += 1;
+        present.add(row.period_date); // guard against a dup within this same batch
+      }
+      await client.query(STD_UPSERT_SQL, stdRowValues(orgId, row));
+    }
+
+    await client.query('COMMIT');
+    return { periodsAdded, periodsUpdated };
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
+/**
+ * Insert or update a single period's row for an org (manual entry). Upserts on
+ * the (org_id, period_date) unique constraint so re-entering a period edits it.
+ * @returns {{ inserted: boolean }} — true if this was a new period
+ */
+async function upsertStandardizedRow(orgId, row) {
+  assertOrgId(orgId, 'upsertStandardizedRow');
+  const conn = getDb();
+  const { rows } = await conn.query(
+    `${STD_UPSERT_SQL} RETURNING (xmax = 0) AS inserted`,
+    stdRowValues(orgId, row)
   );
-  return 1;
+  return { inserted: rows[0]?.inserted === true };
+}
+
+/**
+ * The explicit, destructive reset (Phase 13). Wipes ONLY this org's rows.
+ * @returns {number} rows deleted
+ */
+async function deleteStandardizedData(orgId) {
+  assertOrgId(orgId, 'deleteStandardizedData');
+  const conn = getDb();
+  const { rowCount } = await conn.query(
+    'DELETE FROM standardized_data WHERE org_id = $1',
+    [orgId]
+  );
+  return rowCount;
 }
 
 async function getStandardizedData(orgId) {
@@ -346,11 +392,13 @@ module.exports = {
   buildStandardizedDataDDL,
   createOrganization,
   getOrganizationById,
+  setOnboardingCompleted,
   createUser,
   getUserByEmail,
   getUserById,
-  replaceStandardizedData,
+  mergeStandardizedData,
   upsertStandardizedRow,
+  deleteStandardizedData,
   getStandardizedData,
   getCachedMapping,
   putCachedMapping,

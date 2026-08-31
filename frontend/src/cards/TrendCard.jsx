@@ -21,7 +21,13 @@ function rangeGrowth(first, last) {
  * `Available` (> MIN_PERIODS_FOR_TREND_CARD periods); a `Limited` 3-point series
  * is intentionally not shown.
  */
-export default function TrendCard({ label, series = [], format = 'number' }) {
+export default function TrendCard({
+  label,
+  series = [],
+  format = 'number',
+  confidence = null,
+  definition = null,
+}) {
   const points = series.filter((p) => Number.isFinite(p.value));
   const latest = points.length ? points[points.length - 1].value : null;
   const first = points.length ? points[0].value : null;
@@ -36,21 +42,18 @@ export default function TrendCard({ label, series = [], format = 'number' }) {
         : 'var(--text-muted)';
 
   return (
-    <CardShell>
-      <div className="flex items-baseline justify-between gap-2">
-        <CardLabel>{label}</CardLabel>
+    <CardShell confidence={confidence} definition={definition}>
+      <CardLabel>{label}</CardLabel>
+
+      <div className="mt-1 flex items-baseline gap-2">
+        <span className="text-2xl font-semibold" style={{ color: 'var(--text-primary)' }}>
+          {formatValue(latest, format)}
+        </span>
         {overall !== null && (
           <span className="text-xs" style={{ color: tone }}>
             {formatPercent(overall)} over range
           </span>
         )}
-      </div>
-
-      <div
-        className="mt-1 text-2xl font-semibold"
-        style={{ color: 'var(--text-primary)' }}
-      >
-        {formatValue(latest, format)}
       </div>
 
       <div className="mt-2 h-14">

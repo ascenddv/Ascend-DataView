@@ -3,18 +3,45 @@ import AuthGate from './components/AuthGate.jsx';
 import Uploader from './components/Uploader.jsx';
 import ManualEntry from './components/ManualEntry.jsx';
 import IngestionSummary from './components/IngestionSummary.jsx';
+import MappingConfirmation from './components/MappingConfirmation.jsx';
 import UploadErrorBanner from './components/UploadErrorBanner.jsx';
 import Overview from './components/Overview.jsx';
+import DangerZone from './components/DangerZone.jsx';
+import OnboardingWizard from './components/OnboardingWizard.jsx';
+import { completeOnboarding } from './lib/api.js';
 
 function Workspace({ user, org, onLogout }) {
   const [report, setReport] = useState(null);
+  const [pendingMapping, setPendingMapping] = useState(null);
   const [uploadError, setUploadError] = useState(null);
   const [dataVersion, setDataVersion] = useState(0);
+  const [onboarded, setOnboarded] = useState(org.onboardingCompleted === true);
+  const [autoTour, setAutoTour] = useState(false);
+
+  function markOnboardingDone() {
+    setOnboarded(true);
+    completeOnboarding(org.id).catch(() => {
+      /* non-critical: the wizard/tour just won't be suppressed until the next successful call */
+    });
+  }
 
   function handleResult(json) {
     setUploadError(null);
+    setPendingMapping(null);
     setReport(json);
     setDataVersion((v) => v + 1);
+  }
+
+  function handleNeedsConfirmation(json) {
+    setUploadError(null);
+    setReport(null);
+    setPendingMapping(json);
+  }
+
+  function handleWizardComplete(result) {
+    markOnboardingDone();
+    setAutoTour(true);
+    handleResult(result.report);
   }
 
   return (
@@ -42,14 +69,40 @@ function Workspace({ user, org, onLogout }) {
           </button>
         </header>
 
-        <Uploader onResult={handleResult} onError={setUploadError} />
-        <ManualEntry onEntered={() => setDataVersion((v) => v + 1)} />
-        <UploadErrorBanner message={uploadError} onDismiss={() => setUploadError(null)} />
-        {report && <IngestionSummary report={report} onDismiss={() => setReport(null)} />}
+        {!onboarded ? (
+          <OnboardingWizard onComplete={handleWizardComplete} onSkip={markOnboardingDone} />
+        ) : (
+          <>
+            <Uploader
+              onResult={handleResult}
+              onError={setUploadError}
+              onNeedsConfirmation={handleNeedsConfirmation}
+            />
+            <ManualEntry onEntered={() => setDataVersion((v) => v + 1)} />
+            <UploadErrorBanner message={uploadError} onDismiss={() => setUploadError(null)} />
+            {pendingMapping && (
+              <MappingConfirmation
+                pending={pendingMapping}
+                onConfirmed={handleResult}
+                onCancel={() => setPendingMapping(null)}
+              />
+            )}
+            {report && <IngestionSummary report={report} onDismiss={() => setReport(null)} />}
 
-        <main>
-          <Overview key={dataVersion} />
-        </main>
+            <main>
+              <Overview
+                key={dataVersion}
+                autoStartTour={autoTour}
+                onTourDone={() => {
+                  setAutoTour(false);
+                  markOnboardingDone();
+                }}
+              />
+            </main>
+
+            <DangerZone org={org} onReset={() => setDataVersion((v) => v + 1)} />
+          </>
+        )}
       </div>
     </div>
   );

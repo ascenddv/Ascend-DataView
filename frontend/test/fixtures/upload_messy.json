@@ -1,1 +1,79 @@
-{"ok":true,"stored":5,"filename":"fixture_messy.csv","headers":["Month","Rev ($)","Total Expenses","Cash on Hand","Other Income","Total Donors","New Donors"],"columnMapping":{"Month":{"field":"period_date","confidence":0.95,"source":"llm"},"Rev ($)":{"field":"revenue","confidence":0.95,"source":"llm"},"Total Expenses":{"field":"expenses","confidence":0.95,"source":"llm"},"Cash on Hand":{"field":"cash_balance","confidence":0.95,"source":"llm"},"Other Income":{"field":"revenue_other","confidence":0.9,"source":"llm"},"Total Donors":{"field":"donors_total","confidence":0.95,"source":"llm"},"New Donors":{"field":"donors_new","confidence":0.95,"source":"llm"}},"mappingFromCache":true,"llmUsed":false,"llmError":null,"fieldsNeedingConfirmation":[],"unmappedHeaders":[],"dateGranularity":"monthly","dateGaps":1,"validPeriods":5,"rowsProcessed":8,"rowsStored":5,"rowsSkipped":3,"skippedReasons":["Row 4: missing required field(s): expenses","Row 6: duplicate period 2025-04-30 — kept the earlier row","Row 8: missing required field(s): period_date"],"duplicatesFlagged":["Row 6: duplicate period 2025-04-30 — kept the earlier row"],"valueWarnings":[],"revenueSubcategoryWarnings":[],"confidenceSummary":{"high":5,"low":0},"parseErrors":[]}
+{
+  "ok": true,
+  "stored": 5,
+  "periodsAdded": 5,
+  "periodsUpdated": 0,
+  "filename": "fixture_messy.csv",
+  "headers": [
+    "Month",
+    "Rev ($)",
+    "Total Expenses",
+    "Cash on Hand",
+    "Other Income",
+    "Total Donors",
+    "New Donors"
+  ],
+  "columnMapping": {
+    "Month": {
+      "field": "period_date",
+      "confidence": 0.95,
+      "source": "llm"
+    },
+    "Rev ($)": {
+      "field": "revenue",
+      "confidence": 0.95,
+      "source": "llm"
+    },
+    "Total Expenses": {
+      "field": "expenses",
+      "confidence": 0.95,
+      "source": "llm"
+    },
+    "Cash on Hand": {
+      "field": "cash_balance",
+      "confidence": 0.95,
+      "source": "llm"
+    },
+    "Other Income": {
+      "field": "revenue_other",
+      "confidence": 0.9,
+      "source": "llm"
+    },
+    "Total Donors": {
+      "field": "donors_total",
+      "confidence": 0.95,
+      "source": "llm"
+    },
+    "New Donors": {
+      "field": "donors_new",
+      "confidence": 0.95,
+      "source": "llm"
+    }
+  },
+  "mappingFromCache": true,
+  "llmUsed": false,
+  "llmError": null,
+  "fieldsNeedingConfirmation": [],
+  "unmappedHeaders": [],
+  "dateGranularity": "monthly",
+  "dateGaps": 1,
+  "validPeriods": 5,
+  "rowsProcessed": 8,
+  "rowsStored": 5,
+  "rowsSkipped": 3,
+  "skippedReasons": [
+    "Row 4: missing required field(s): expenses",
+    "Row 6: duplicate period 2025-04-30 — kept the earlier row",
+    "Row 8: missing required field(s): period_date"
+  ],
+  "duplicatesFlagged": [
+    "Row 6: duplicate period 2025-04-30 — kept the earlier row"
+  ],
+  "valueWarnings": [],
+  "revenueSubcategoryWarnings": [],
+  "confidenceSummary": {
+    "high": 5,
+    "low": 0
+  },
+  "parseErrors": []
+}

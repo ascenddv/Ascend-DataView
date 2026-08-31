@@ -32,7 +32,12 @@ export default function ManualEntry({ onEntered }) {
     );
     try {
       const result = await submitManualEntry(payload);
-      setStatus({ kind: 'done', period: result.period, warnings: result.warnings || [] });
+      setStatus({
+        kind: 'done',
+        period: result.period,
+        verb: result.periodsUpdated ? 'Updated' : 'Added',
+        warnings: result.warnings || [],
+      });
       setValues({});
       onEntered(result);
     } catch (err) {
@@ -123,7 +128,7 @@ export default function ManualEntry({ onEntered }) {
             </button>
             {status.kind === 'done' && (
               <span className="text-sm" style={{ color: 'var(--delta-up)' }}>
-                Added {status.period}
+                {status.verb} {status.period}
                 {status.warnings.length ? ` (${status.warnings.length} warning${status.warnings.length === 1 ? '' : 's'})` : ''}.
               </span>
             )}

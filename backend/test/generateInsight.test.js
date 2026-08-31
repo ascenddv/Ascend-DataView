@@ -112,6 +112,82 @@ test('toNarrationInput: drops per-period series, keeps computed aggregates verba
   assert.equal(n.kpis[0].growthRatePct, 10.9);
 });
 
+/* --- Phase 15: historical context in the narration input ---------------- */
+
+function metricsWithTrends(over = {}) {
+  return metricsFixture({
+    kpis: [
+      { key: 'revenue', label: 'Revenue', latest: 34600, previous: 31200, change: 3400, growthRate: 0.109, trailingAverage: 30100, vsTrailingAveragePct: 15.0 },
+    ],
+    trends: {
+      Financial: {
+        metric: 'Revenue',
+        direction: 'declining',
+        consistency: 'consistent',
+        consecutivePeriods: 3,
+        periodsAnalyzed: 7,
+        latest: 34600,
+        trailingAverage: 30100,
+        deltaFromTrailingPct: 15.0,
+      },
+    },
+    ...over,
+  });
+}
+
+test('toNarrationInput: passes through the code-computed trend block, allow-listed', () => {
+  const n = toNarrationInput(metricsWithTrends());
+  assert.equal(n.trends.Financial.direction, 'declining');
+  assert.equal(n.trends.Financial.consecutivePeriods, 3);
+  assert.equal(n.trends.Financial.deltaFromTrailingPct, 15.0);
+  assert.equal(n.kpis[0].trailingAverage, 30100);
+  assert.equal(n.kpis[0].vsTrailingAveragePct, 15.0);
+  // nothing outside the allow-list leaks in
+  assert.deepEqual(
+    Object.keys(n.trends.Financial).sort(),
+    ['consecutivePeriods', 'consistency', 'deltaFromTrailingPct', 'direction', 'latest', 'metric', 'periodsAnalyzed', 'trailingAverage']
+  );
+});
+
+test('sanitizeForPrompt: an identifier planted inside trends is still caught', () => {
+  assert.throws(
+    () => sanitizeForPrompt(metricsWithTrends({ trends: { Financial: { org_name: 'Acme', direction: 'flat' } } })),
+    /identifier-like key "org_name"/
+  );
+});
+
+test('the prompt offers trend / self-relative framing when history is present', async () => {
+  let seen = '';
+  await generateInsight(metricsWithTrends(), {
+    completeJson: async (p) => ((seen = p), { why: 'x', recommendation: 'y' }),
+  });
+  assert.match(seen, /"trends"/);
+  assert.match(seen, /"direction": "declining"/);
+  assert.match(seen, /trailingAverage/);
+  assert.match(seen, /consecutive|self-relative|its own recent average/i);
+});
+
+test('with too little history the prompt forbids inventing a trend', async () => {
+  let seen = '';
+  await generateInsight(metricsFixture({ trends: {}, dataset: { periodCount: 2, periods: ['2025-01-31', '2025-02-28'], latestPeriod: '2025-02-28', granularity: 'monthly' } }), {
+    completeJson: async (p) => ((seen = p), { why: 'x', recommendation: 'y' }),
+  });
+  assert.match(seen, /no "trends" data/i);
+  assert.match(seen, /single-period|latest period only/i);
+  assert.doesNotMatch(seen, /"direction":/);
+});
+
+test('generateInsight still narrates: a model that cites the trend facts yields a valid insight', async () => {
+  const res = await generateInsight(metricsWithTrends(), {
+    completeJson: async () => ({
+      why: 'Revenue is the third consecutive month of decline, though the latest $34,600 sits 15.0% above its own trailing average of $30,100.',
+      recommendation: 'Treat the streak as the priority and protect the largest revenue source next month.',
+    }),
+  });
+  assert.equal(res.status, 'ok');
+  assert.match(res.why, /third consecutive month/);
+});
+
 /* --- generateInsight orchestration --------------------------------------- */
 
 test('generateInsight: no data -> unavailable, and the model is never called', async () => {

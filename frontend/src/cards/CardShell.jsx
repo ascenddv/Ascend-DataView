@@ -1,5 +1,14 @@
+import CardChrome from './CardChrome.jsx';
+
 /** Shared visual shell for every dashboard card. */
-export default function CardShell({ children, accent = null, tint = false, className = '' }) {
+export default function CardShell({
+  children,
+  accent = null,
+  tint = false,
+  className = '',
+  confidence = null,
+  definition = null,
+}) {
   const style = {
     background: tint && accent
       ? `color-mix(in srgb, ${accent} 5%, var(--surface-1))`
@@ -8,8 +17,16 @@ export default function CardShell({ children, accent = null, tint = false, class
     ...(accent ? { borderLeftColor: accent, borderLeftWidth: '3px' } : null),
   };
 
+  const hasChrome = Boolean(confidence || definition);
+
   return (
-    <div className={`flex h-full flex-col rounded-xl border p-4 ${className}`} style={style}>
+    <div
+      className={`relative flex h-full flex-col rounded-xl border p-4 ${
+        hasChrome ? 'pr-20' : ''
+      } ${className}`}
+      style={style}
+    >
+      <CardChrome confidence={confidence} definition={definition} />
       {children}
     </div>
   );

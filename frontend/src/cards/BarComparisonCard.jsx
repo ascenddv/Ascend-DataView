@@ -15,12 +15,18 @@ import { formatValue } from '../lib/format.js';
  * (revenue by source). Horizontal bars, single sequential hue, values
  * direct-labelled; recessive axes. Only rendered when >= 2 categories exist.
  */
-export default function BarComparisonCard({ title, data = [], format = 'currency' }) {
+export default function BarComparisonCard({
+  title,
+  data = [],
+  format = 'currency',
+  confidence = null,
+  definition = null,
+}) {
   const rows = data.filter((d) => Number.isFinite(d.value));
   const height = Math.max(120, rows.length * 44);
 
   return (
-    <CardShell>
+    <CardShell confidence={confidence} definition={definition}>
       <CardLabel>{title}</CardLabel>
       <div className="mt-3" style={{ height }}>
         <ResponsiveContainer width="100%" height="100%">

@@ -8,7 +8,7 @@ import DashboardSkeleton from './DashboardSkeleton.jsx';
  * Dashboard. Metrics render as soon as they arrive; the (slower) AI insight
  * fills in when it resolves, so its latency never blocks the dashboard.
  */
-export default function Overview() {
+export default function Overview({ autoStartTour = false, onTourDone }) {
   const [metricsState, setMetricsState] = useState({ status: 'loading' });
   const [insightState, setInsightState] = useState({ status: 'loading' });
 
@@ -42,5 +42,12 @@ export default function Overview() {
     );
   }
 
-  return <Dashboard metrics={metricsState.metrics} insightState={insightState} />;
+  return (
+    <Dashboard
+      metrics={metricsState.metrics}
+      insightState={insightState}
+      autoStartTour={autoStartTour}
+      onTourDone={onTourDone}
+    />
+  );
 }

@@ -170,4 +170,9 @@ function summarize(mapping) {
   return { fieldsNeedingConfirmation, unmappedHeaders };
 }
 
-module.exports = { mapColumns, hashHeaders, deterministicMatch };
+module.exports = {
+  mapColumns,
+  hashHeaders,
+  deterministicMatch,
+  summarizeMapping: summarize,
+};

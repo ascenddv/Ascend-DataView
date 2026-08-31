@@ -33,7 +33,10 @@ const {
   REVENUE_RECONCILE_TOLERANCE_PCT,
 } = require('../config/thresholds');
 const { normalizeNumber, normalizeDate, detectGranularity } = require('./normalize');
-const { mapColumns: defaultMapColumns } = require('./mapColumns');
+const {
+  mapColumns: defaultMapColumns,
+  summarizeMapping,
+} = require('./mapColumns');
 
 /* -------------------------------------------------------------------------- */
 /* Parsers — each produces { headers, rows, parseErrors } in one shape        */
@@ -144,6 +147,10 @@ async function ingestParsed(parsed, opts = {}) {
   const orgId = opts.orgId;
   const source = opts.source || 'file_upload';
   const mapColumns = opts.mapColumns || defaultMapColumns;
+  // Phase 14b: a caller can supply an already-resolved (and user-corrected)
+  // mapping to re-run normalization against — the confirmation step does this.
+  const mappingOverride = opts.mapping || null;
+  const confirmedFields = new Set(opts.confirmedFields || []);
   const uploadedAt = new Date().toISOString();
 
   const { headers, rows: rawRows, parseErrors } = parsed;
@@ -160,7 +167,9 @@ async function ingestParsed(parsed, opts = {}) {
   }
 
   // --- Column mapping ---------------------------------------------------------
-  const mapResult = await mapColumns(headers, { orgId });
+  const mapResult = mappingOverride
+    ? { mapping: mappingOverride, fromCache: false, llmUsed: false, llmError: null, ...summarizeMapping(mappingOverride) }
+    : await mapColumns(headers, { orgId });
   const { mapping } = mapResult;
 
   const mappedRequired = REQUIRED_FIELDS.filter((f) =>
@@ -225,11 +234,13 @@ async function ingestParsed(parsed, opts = {}) {
     }
 
     const usedMapConfidence = {};
+    const mappingConfirmed = {};
     let allHigh = true;
     for (const [, m] of Object.entries(activeMap)) {
       if (out[m.field] !== null && out[m.field] !== undefined) {
         usedMapConfidence[m.field] = m.confidence;
         if (m.confidence < LLM_MAPPING_AUTO_ACCEPT_CONFIDENCE) allHigh = false;
+        if (confirmedFields.has(m.field)) mappingConfirmed[m.field] = true;
       }
     }
 
@@ -239,6 +250,7 @@ async function ingestParsed(parsed, opts = {}) {
       uploaded_at: uploadedAt,
       row_confidence: allHigh ? 'high' : 'low',
       mapping_confidence: usedMapConfidence,
+      mapping_confirmed: mappingConfirmed,
     };
 
     storedRows.push(out);
@@ -344,6 +356,7 @@ function ingestManualEntry(values, opts = {}) {
     uploaded_at: new Date().toISOString(),
     row_confidence: 'high', // canonical fields, no mapping involved
     mapping_confidence: {},
+    mapping_confirmed: {},
   };
 
   return { row: out, warnings };

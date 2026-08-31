@@ -55,6 +55,8 @@ export default function IngestionSummary({ report, onDismiss }) {
     rowsProcessed = 0,
     rowsStored = 0,
     rowsSkipped = 0,
+    periodsAdded = 0,
+    periodsUpdated = 0,
     validPeriods = 0,
     dateGranularity,
     duplicatesFlagged = [],
@@ -68,7 +70,13 @@ export default function IngestionSummary({ report, onDismiss }) {
     llmUsed,
     llmError,
     mappingFromCache,
+    confirmedMappingApplied = false,
   } = report;
+
+  const mergeSummary =
+    periodsUpdated > 0
+      ? `${periodsAdded} period${periodsAdded === 1 ? '' : 's'} added, ${periodsUpdated} updated`
+      : `${periodsAdded} period${periodsAdded === 1 ? '' : 's'} added`;
 
   const hasIssues =
     rowsSkipped > 0 ||
@@ -81,8 +89,8 @@ export default function IngestionSummary({ report, onDismiss }) {
 
   const tone = hasIssues ? 'var(--status-warning)' : 'var(--status-good)';
   const headline = hasIssues
-    ? `Loaded ${filename} with ${rowsSkipped} row${rowsSkipped === 1 ? '' : 's'} skipped and some notes`
-    : `Loaded ${filename} — all ${rowsStored} rows imported cleanly`;
+    ? `Loaded ${filename} — ${mergeSummary}, ${rowsSkipped} row${rowsSkipped === 1 ? '' : 's'} skipped and some notes`
+    : `Loaded ${filename} — ${mergeSummary}`;
 
   const mappingRows = Object.entries(columnMapping);
   const renamed = mappingRows.filter(([h, m]) => m.field && m.field !== h);
@@ -113,9 +121,14 @@ export default function IngestionSummary({ report, onDismiss }) {
         )}
       </div>
 
-      <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-5">
+      <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-6">
         <Chip label="Rows read" value={rowsProcessed} />
-        <Chip label="Imported" value={rowsStored} tone={rowsStored > 0 ? 'good' : 'neutral'} />
+        <Chip label="Periods added" value={periodsAdded} tone={periodsAdded > 0 ? 'good' : 'neutral'} />
+        <Chip
+          label="Periods updated"
+          value={periodsUpdated}
+          tone={periodsUpdated > 0 ? 'warn' : 'neutral'}
+        />
         <Chip
           label="Skipped"
           value={rowsSkipped}
@@ -126,12 +139,14 @@ export default function IngestionSummary({ report, onDismiss }) {
           value={duplicatesFlagged.length}
           tone={duplicatesFlagged.length > 0 ? 'warn' : 'neutral'}
         />
-        <Chip label={`${dateGranularity || 'unknown'} periods`} value={validPeriods} />
+        <Chip label={`${dateGranularity || 'unknown'} periods in file`} value={validPeriods} />
       </div>
 
       <p className="mt-3 text-xs" style={{ color: 'var(--text-muted)' }}>
         Column mapping:{' '}
-        {mappingFromCache
+        {confirmedMappingApplied
+          ? 'applied the matches you confirmed'
+          : mappingFromCache
           ? 'reused from a previous upload with the same headers'
           : llmError
             ? 'name-matching only — the AI assist was unavailable'

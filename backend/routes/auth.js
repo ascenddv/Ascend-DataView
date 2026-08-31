@@ -23,6 +23,7 @@ const {
   getUserById,
   getOrganizationById,
 } = require('../db');
+const { authLimiter } = require('../middleware/rateLimit');
 
 const router = express.Router();
 
@@ -31,7 +32,7 @@ function setSession(res, user) {
   res.cookie(COOKIE_NAME, token, cookieOptions());
 }
 
-router.post('/signup', async (req, res, next) => {
+router.post('/signup', authLimiter, async (req, res, next) => {
   try {
     const { email, password, orgName } = req.body || {};
 
@@ -53,14 +54,14 @@ router.post('/signup', async (req, res, next) => {
     res.status(201).json({
       ok: true,
       user: { email: user.email, role: user.role },
-      org: { id: org.id, name: org.name },
+      org: { id: org.id, name: org.name, onboardingCompleted: org.onboarding_completed === true },
     });
   } catch (err) {
     next(err);
   }
 });
 
-router.post('/login', async (req, res, next) => {
+router.post('/login', authLimiter, async (req, res, next) => {
   try {
     const { email, password } = req.body || {};
     const user = await getUserByEmail(email);
@@ -76,7 +77,7 @@ router.post('/login', async (req, res, next) => {
     res.json({
       ok: true,
       user: { email: user.email, role: user.role },
-      org: { id: org.id, name: org.name },
+      org: { id: org.id, name: org.name, onboardingCompleted: org.onboarding_completed === true },
     });
   } catch (err) {
     next(err);
@@ -111,7 +112,7 @@ router.get('/me', async (req, res, next) => {
       ok: true,
       authenticated: true,
       user: { email: user.email, role: user.role },
-      org: { id: org.id, name: org.name },
+      org: { id: org.id, name: org.name, onboardingCompleted: org.onboarding_completed === true },
     });
   } catch (err) {
     next(err);

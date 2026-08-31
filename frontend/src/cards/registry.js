@@ -17,6 +17,7 @@
  */
 
 import { formatPeriod } from '../lib/format.js';
+import { definitionFor } from '../lib/metricDefinitions.js';
 
 export const CARD_TYPES = {
   HEALTH: 'health',
@@ -62,6 +63,7 @@ export function planCards(metrics) {
     revenueByCategory = [],
     risksOpportunities = [],
     dataset = {},
+    confidence = {},
   } = metrics;
 
   const out = [];
@@ -149,6 +151,14 @@ export function planCards(metrics) {
         props: { type: r.type, title: r.title, detail: r.detail },
       });
     }
+  }
+
+  // Phase 14: attach the per-card confidence tier and the plain-language
+  // definition. Both are display-only metadata — a missing entry just means the
+  // card shows no badge / no (i), never a fabricated one.
+  for (const card of out) {
+    card.props.confidence = confidence[card.key] || null;
+    card.props.definition = definitionFor(card);
   }
 
   return out.sort((a, b) => a.priority - b.priority);

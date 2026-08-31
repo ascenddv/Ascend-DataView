@@ -1,0 +1,6 @@
+period_date,revenue,expenses,cash_balance,revenue_donations,revenue_grants,revenue_events,revenue_other,donors_total,donors_new,donors_returning,volunteers_active,volunteer_hours,program_participants,website_visitors,social_followers,employees_total,employees_new,employees_departed,marketing_spend,email_subscribers,email_open_rate,grant_applications_submitted,grant_applications_awarded,program_outcomes_achieved,program_outcomes_targeted,goals_total,goals_completed
+2025-10-31,28408,27169,99601,13038,9540,4876,954,214,19,195,35,283,138,2141,1291,33,1,5,1400,2700,0.30,6,4,64,82,12,7
+2025-11-30,33072,28987,108047,15264,11130,5618,1060,229,33,196,39,318,152,2420,1372,35,2,5,1500,2860,0.31,5,3,70,85,12,8
+2025-12-31,36676,31714,119480,17066,12190,6360,1060,241,30,211,42,342,164,2655,1465,37,2,5,1600,3020,0.32,7,4,76,90,12,9
+2026-01-31,38143,32983,124259,17749,12678,6614,1102,251,31,219,44,356,171,2761,1524,38,2,5,1664,3141,0,7,4,79,94,12,9
+2026-02-28,39669,34302,129229,18459,13185,6879,1146,261,32,228,46,370,178,2871,1585,40,2,5,1731,3267,0,7,4,82,98,12,9

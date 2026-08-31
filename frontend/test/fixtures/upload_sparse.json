@@ -1,1 +1,55 @@
-{"ok":true,"stored":3,"filename":"fixture_sparse.csv","headers":["period_date","revenue","expenses","cash_balance"],"columnMapping":{"period_date":{"field":"period_date","confidence":1,"source":"exact"},"revenue":{"field":"revenue","confidence":1,"source":"exact"},"expenses":{"field":"expenses","confidence":1,"source":"exact"},"cash_balance":{"field":"cash_balance","confidence":1,"source":"exact"}},"mappingFromCache":true,"llmUsed":false,"llmError":null,"fieldsNeedingConfirmation":[],"unmappedHeaders":[],"dateGranularity":"monthly","dateGaps":0,"validPeriods":3,"rowsProcessed":3,"rowsStored":3,"rowsSkipped":0,"skippedReasons":[],"duplicatesFlagged":[],"valueWarnings":[],"revenueSubcategoryWarnings":[],"confidenceSummary":{"high":3,"low":0},"parseErrors":[]}
+{
+  "ok": true,
+  "stored": 3,
+  "periodsAdded": 3,
+  "periodsUpdated": 0,
+  "filename": "fixture_sparse.csv",
+  "headers": [
+    "period_date",
+    "revenue",
+    "expenses",
+    "cash_balance"
+  ],
+  "columnMapping": {
+    "period_date": {
+      "field": "period_date",
+      "confidence": 1,
+      "source": "exact"
+    },
+    "revenue": {
+      "field": "revenue",
+      "confidence": 1,
+      "source": "exact"
+    },
+    "expenses": {
+      "field": "expenses",
+      "confidence": 1,
+      "source": "exact"
+    },
+    "cash_balance": {
+      "field": "cash_balance",
+      "confidence": 1,
+      "source": "exact"
+    }
+  },
+  "mappingFromCache": false,
+  "llmUsed": false,
+  "llmError": null,
+  "fieldsNeedingConfirmation": [],
+  "unmappedHeaders": [],
+  "dateGranularity": "monthly",
+  "dateGaps": 0,
+  "validPeriods": 3,
+  "rowsProcessed": 3,
+  "rowsStored": 3,
+  "rowsSkipped": 0,
+  "skippedReasons": [],
+  "duplicatesFlagged": [],
+  "valueWarnings": [],
+  "revenueSubcategoryWarnings": [],
+  "confidenceSummary": {
+    "high": 3,
+    "low": 0
+  },
+  "parseErrors": []
+}
