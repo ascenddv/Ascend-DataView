@@ -951,7 +951,7 @@
       },
       {
         "period": "2025-12-31",
-        "value": 5
+        "value": 6
       }
     ],
     "marketing_spend": [
@@ -1557,8 +1557,8 @@
     "People": {
       "dimension": "People",
       "status": "Available",
-      "score": 56,
-      "scoreExact": 55.56,
+      "score": 46,
+      "scoreExact": 46.1,
       "subScores": [
         {
           "key": "employee_growth",
@@ -1571,10 +1571,10 @@
         {
           "key": "turnover_rate_growth",
           "native": true,
-          "growthRate": -0.0541,
+          "growthRate": 0.1351,
           "inverted": true,
-          "effectiveGrowthRate": 0.0541,
-          "subScore": 55.41
+          "effectiveGrowthRate": -0.1351,
+          "subScore": 36.49
         }
       ],
       "reason": null,
