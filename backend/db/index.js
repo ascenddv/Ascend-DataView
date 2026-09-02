@@ -105,9 +105,26 @@ CREATE TABLE IF NOT EXISTS ascendai_usage (
 
 let pool;
 
+// A hosted Postgres (Neon / Supabase / Vercel Postgres / RDS) needs TLS; the
+// local dev cluster on 127.0.0.1 does not. In a serverless runtime keep the
+// pool tiny — each concurrent invocation is its own process.
+const IS_LOCAL_DB = /(^|@)(localhost|127\.0\.0\.1)[:/]/.test(CONNECTION_STRING);
+const IS_SERVERLESS = Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
+
+function poolConfig() {
+  const cfg = { connectionString: CONNECTION_STRING };
+  if (!IS_LOCAL_DB) cfg.ssl = { rejectUnauthorized: false };
+  if (IS_SERVERLESS) {
+    cfg.max = 2;
+    cfg.idleTimeoutMillis = 10000;
+    cfg.connectionTimeoutMillis = 10000;
+  }
+  return cfg;
+}
+
 function getDb() {
   if (pool) return pool;
-  pool = new Pool({ connectionString: CONNECTION_STRING });
+  pool = new Pool(poolConfig());
   // A pooled connection that dies while idle (DB restart, dropped network,
   // pg_terminate_backend) makes node-postgres emit 'error' on the Pool. With no
   // listener Node treats it as uncaught and crashes the process — outside any

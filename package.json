@@ -1,0 +1,29 @@
+{
+  "name": "ascenddv",
+  "version": "0.1.0",
+  "private": true,
+  "description": "AscendDV — deployed as one Vercel project: static frontend + the Express backend as a serverless function under /api.",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "build": "npm --prefix frontend install --no-audit --no-fund && npm --prefix frontend run build",
+    "dev:backend": "npm --prefix backend run dev",
+    "dev:frontend": "npm --prefix frontend run dev",
+    "test": "npm --prefix backend test && npm --prefix frontend test"
+  },
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.1",
+    "express": "^5.1.0",
+    "express-rate-limit": "^8.7.0",
+    "jsonwebtoken": "^9.0.3",
+    "multer": "^2.3.0",
+    "papaparse": "^5.7.0",
+    "pdfkit": "^0.15.2",
+    "pg": "^8.23.0",
+    "xlsx": "^0.18.5"
+  }
+}
