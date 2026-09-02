@@ -16,14 +16,18 @@ const { Pool } = require('pg');
 
 const { FIELDS, FIELD_NAMES, TYPE } = require('../config/schema');
 
-/** Trim whitespace and strip an accidental `psql `/quote wrapper from an env value. */
+/**
+ * Normalise a connection string pasted into an env var: drop a stray `psql `
+ * prefix, surrounding quotes, and ALL whitespace (a URL-form connection string
+ * has none — a space usually means the value got line-wrapped on paste).
+ */
 function cleanConnectionString(raw) {
   if (!raw) return '';
   let s = String(raw).trim().replace(/^psql\s+/i, '').trim();
   if (s.length >= 2 && ((s[0] === '"' && s.at(-1) === '"') || (s[0] === "'" && s.at(-1) === "'"))) {
-    s = s.slice(1, -1).trim();
+    s = s.slice(1, -1);
   }
-  return s;
+  return s.replace(/\s+/g, '');
 }
 
 const CONNECTION_STRING =
