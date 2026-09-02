@@ -17,7 +17,9 @@ const { Pool } = require('pg');
 const { FIELDS, FIELD_NAMES, TYPE } = require('../config/schema');
 
 const CONNECTION_STRING =
-  process.env.DATABASE_URL || 'postgresql://postgres@127.0.0.1:5433/ascenddv';
+  process.env.DATABASE_URL ||
+  process.env.POSTGRES_URL || // set automatically by the Vercel Postgres integration
+  'postgresql://postgres@127.0.0.1:5433/ascenddv';
 
 const DB_PATH = CONNECTION_STRING; // kept as an export for backwards compat
 
