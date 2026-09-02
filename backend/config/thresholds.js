@@ -24,6 +24,12 @@ const TREND_TRAILING_WINDOW = 6;
 // direction — keeps ordinary noise from being narrated as a trend.
 const TREND_FLAT_BAND_PCT = 0.02;
 
+// --- AscendAI chat (Stage 4) ---
+// Hard ceiling on how many model<->tool round trips a single chat turn may make
+// before we stop and return whatever the model has. Bounds cost and latency and
+// stops a pathological tool loop; a normal answer needs 1-2.
+const ASCENDAI_MAX_TOOL_ITERATIONS = 5;
+
 // --- Ingestion: revenue subcategory reconciliation ---
 // The revenue_* fields are an *optional, possibly partial* breakdown. The
 // sum-to-revenue check only runs when ALL four subcategory fields are present
@@ -42,5 +48,6 @@ module.exports = {
   MIN_PERIODS_FOR_TREND_SIGNAL,
   TREND_TRAILING_WINDOW,
   TREND_FLAT_BAND_PCT,
+  ASCENDAI_MAX_TOOL_ITERATIONS,
   REVENUE_RECONCILE_TOLERANCE_PCT,
 };

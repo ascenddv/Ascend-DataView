@@ -12,6 +12,7 @@ const schemaRoutes = require('./routes/schema');
 const metricsRoutes = require('./routes/metrics');
 const insightRoutes = require('./routes/insight');
 const pdfRoutes = require('./routes/pdf');
+const ascendaiRoutes = require('./routes/ascendai');
 const { requireAuth } = require('./middleware/requireAuth');
 const { initDb, DB_PATH } = require('./db');
 
@@ -55,6 +56,7 @@ app.use('/api', schemaRoutes);
 app.use('/api', metricsRoutes);
 app.use('/api', insightRoutes);
 app.use('/api', pdfRoutes);
+app.use('/api', ascendaiRoutes);
 
 // Centralised error handler — keeps failures as clean JSON, not stack dumps.
 app.use((err, _req, res, _next) => {
