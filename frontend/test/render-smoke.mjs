@@ -30,6 +30,7 @@ const probeSource = `
   import MappingConfirmation from '../src/components/MappingConfirmation.jsx';
   import OnboardingWizard from '../src/components/OnboardingWizard.jsx';
   import DashboardTour from '../src/components/DashboardTour.jsx';
+  import AscendAiPanel from '../src/components/AscendAiPanel.jsx';
   export function render(metrics, insightState, initialView) {
     return renderToStaticMarkup(
       <Dashboard metrics={metrics} insightState={insightState} initialView={initialView} />
@@ -52,6 +53,9 @@ const probeSource = `
   export function renderTour(metrics) {
     return renderToStaticMarkup(<DashboardTour metrics={metrics} onClose={() => {}} />);
   }
+  export function renderAscendAi(open, messages) {
+    return renderToStaticMarkup(<AscendAiPanel initialOpen={open} initialMessages={messages} />);
+  }
 `;
 
 let render;
@@ -60,6 +64,7 @@ let renderDangerZone;
 let renderMappingConfirmation;
 let renderWizard;
 let renderTour;
+let renderAscendAi;
 
 test.before(async () => {
   const out = here('./.render-smoke.bundle.cjs');
@@ -72,7 +77,7 @@ test.before(async () => {
     jsx: 'automatic',
     logLevel: 'silent',
   });
-  ({ render, renderSummary, renderDangerZone, renderMappingConfirmation, renderWizard, renderTour } = require(out));
+  ({ render, renderSummary, renderDangerZone, renderMappingConfirmation, renderWizard, renderTour, renderAscendAi } = require(out));
 });
 
 const FORBIDDEN = ['N/A', 'NaN', 'undefined', 'Infinity'];
@@ -226,6 +231,41 @@ test('the tour degrades to a friendly close on an empty dashboard', () => {
 test('"Take a tour" is offered on the populated Overview, not before', () => {
   assert.ok(render(load('metrics_rich'), null).includes('Take a tour'));
   assert.ok(!render({ dataset: { periodCount: 0 }, cards: {} }, null).includes('Take a tour'));
+});
+
+/* ------------------- Phase 20: AscendAI chat panel ------------------- */
+
+test('AscendAI: the closed panel is just the "Ask AscendAI" launcher', () => {
+  const html = renderAscendAi(false, null);
+  assert.ok(html.includes('Ask AscendAI'));
+  assert.ok(!html.includes('AscendAI chat'), 'the dialog is not mounted while closed');
+});
+
+test('AscendAI: the open panel renders user + assistant bubbles and the clear control', () => {
+  const html = renderAscendAi(true, [
+    { role: 'user', content: 'What is my cash runway?' },
+    { role: 'assistant', content: 'Cash covers about 1.4 months.' },
+  ]);
+  assert.ok(html.includes('AscendAI chat'), 'dialog is mounted when open');
+  assert.ok(html.includes('What is my cash runway?'));
+  assert.ok(html.includes('Cash covers about 1.4 months.'));
+  assert.ok(html.includes('Clear'));
+  assertClean(html, 'ascendai-open');
+});
+
+test('AscendAI: the degraded server states render as friendly inline notices, from server copy', () => {
+  const unavailableCopy = 'AscendAI is temporarily unavailable. Please try again in a moment.';
+  const rateLimitedCopy = "You've reached today's AscendAI message limit for your organization. It resets at 00:00 UTC — please try again then.";
+  const html = renderAscendAi(true, [
+    { role: 'notice', kind: 'unavailable', content: unavailableCopy },
+    { role: 'notice', kind: 'rate_limited', content: rateLimitedCopy },
+  ]);
+  // the panel renders the server's strings, not reworded copy of its own
+  // (React HTML-escapes apostrophes, so assert on the plain fragments)
+  assert.ok(html.includes('temporarily unavailable. Please try again in a moment.'));
+  assert.ok(html.includes('message limit for your organization'));
+  assert.ok(html.includes('resets at 00:00 UTC'));
+  assertClean(html, 'ascendai-degraded');
 });
 
 /* ------------------- Phase 16: PDF export affordance ------------------ */

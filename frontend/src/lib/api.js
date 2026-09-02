@@ -42,6 +42,35 @@ export async function downloadOverviewPdf() {
   return { blob, filename: m ? m[1] : 'ascenddv-overview.pdf' };
 }
 
+/* --- AscendAI chat (Stage 4) --------------------------------------- */
+
+export async function fetchChatHistory() {
+  return asJson(await fetch('/api/ascendai/chat', opts()), 'GET /api/ascendai/chat');
+}
+
+/**
+ * Send one chat turn. Resolves to { status, reply, reason } where status is
+ * 'ok' | 'unavailable' | 'rate_limited' — the degraded statuses are a normal
+ * 200 response the caller renders, not an error.
+ */
+export async function sendChatMessage(message) {
+  return asJson(
+    await fetch('/api/ascendai/chat', opts({
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message }),
+    })),
+    'AscendAI chat'
+  );
+}
+
+export async function clearChat() {
+  return asJson(
+    await fetch('/api/ascendai/chat', opts({ method: 'DELETE' })),
+    'clear AscendAI chat'
+  );
+}
+
 export async function submitManualEntry(values) {
   return asJson(
     await fetch('/api/manual-entry', opts({

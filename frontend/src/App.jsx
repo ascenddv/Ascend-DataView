@@ -8,6 +8,7 @@ import UploadErrorBanner from './components/UploadErrorBanner.jsx';
 import Overview from './components/Overview.jsx';
 import DangerZone from './components/DangerZone.jsx';
 import OnboardingWizard from './components/OnboardingWizard.jsx';
+import AscendAiPanel from './components/AscendAiPanel.jsx';
 import { completeOnboarding } from './lib/api.js';
 
 function Workspace({ user, org, onLogout }) {
@@ -110,6 +111,9 @@ function Workspace({ user, org, onLogout }) {
           </>
         )}
       </div>
+
+      {/* AscendAI — available from every dashboard view once past onboarding */}
+      {onboarded && <AscendAiPanel />}
     </div>
   );
 }
