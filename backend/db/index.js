@@ -16,9 +16,19 @@ const { Pool } = require('pg');
 
 const { FIELDS, FIELD_NAMES, TYPE } = require('../config/schema');
 
+/** Trim whitespace and strip an accidental `psql `/quote wrapper from an env value. */
+function cleanConnectionString(raw) {
+  if (!raw) return '';
+  let s = String(raw).trim().replace(/^psql\s+/i, '').trim();
+  if (s.length >= 2 && ((s[0] === '"' && s.at(-1) === '"') || (s[0] === "'" && s.at(-1) === "'"))) {
+    s = s.slice(1, -1).trim();
+  }
+  return s;
+}
+
 const CONNECTION_STRING =
-  process.env.DATABASE_URL ||
-  process.env.POSTGRES_URL || // set automatically by the Vercel Postgres integration
+  cleanConnectionString(process.env.DATABASE_URL) ||
+  cleanConnectionString(process.env.POSTGRES_URL) || // set by the Vercel Postgres integration
   'postgresql://postgres@127.0.0.1:5433/ascenddv';
 
 const DB_PATH = CONNECTION_STRING; // kept as an export for backwards compat
@@ -126,6 +136,18 @@ function poolConfig() {
 
 function getDb() {
   if (pool) return pool;
+
+  // Fail with an actionable message instead of a bare "Invalid URL" from deep in pg.
+  try {
+    new URL(CONNECTION_STRING); // eslint-disable-line no-new
+  } catch {
+    throw new Error(
+      'The database connection string (DATABASE_URL) is malformed. Check for an unreplaced ' +
+        '[YOUR-PASSWORD] placeholder, unescaped special characters in the password (URL-encode ' +
+        '@ # ? / & =), or surrounding quotes. Expected: postgresql://user:password@host:5432/dbname'
+    );
+  }
+
   pool = new Pool(poolConfig());
   // A pooled connection that dies while idle (DB restart, dropped network,
   // pg_terminate_backend) makes node-postgres emit 'error' on the Pool. With no
