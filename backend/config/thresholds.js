@@ -30,6 +30,17 @@ const TREND_FLAT_BAND_PCT = 0.02;
 // stops a pathological tool loop; a normal answer needs 1-2.
 const ASCENDAI_MAX_TOOL_ITERATIONS = 5;
 
+// How many of the most recent conversation messages (user + assistant) are
+// loaded as context for a turn. Caps tokens per call — history is a sliding
+// window, never the whole unbounded transcript.
+const ASCENDAI_HISTORY_WINDOW_MESSAGES = 12;
+
+// Per-organization ceiling on AscendAI chat turns per calendar day (UTC).
+// Defense in depth alongside the prepaid balance: stops one org, one user, or a
+// looping client from draining the balance quickly. A turn that reaches the
+// provider counts whether it succeeds or fails.
+const ASCENDAI_DAILY_MESSAGE_LIMIT_PER_ORG = 50;
+
 // --- Ingestion: revenue subcategory reconciliation ---
 // The revenue_* fields are an *optional, possibly partial* breakdown. The
 // sum-to-revenue check only runs when ALL four subcategory fields are present
@@ -49,5 +60,7 @@ module.exports = {
   TREND_TRAILING_WINDOW,
   TREND_FLAT_BAND_PCT,
   ASCENDAI_MAX_TOOL_ITERATIONS,
+  ASCENDAI_HISTORY_WINDOW_MESSAGES,
+  ASCENDAI_DAILY_MESSAGE_LIMIT_PER_ORG,
   REVENUE_RECONCILE_TOLERANCE_PCT,
 };

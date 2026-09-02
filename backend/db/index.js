@@ -72,6 +72,37 @@ CREATE TABLE IF NOT EXISTS mapping_cache (
 );
 `;
 
+// Stage 4 (Phase 19): AscendAI conversation history, scoped by (org_id, user_id)
+// exactly like every other tenant table.
+const CHAT_MESSAGES_DDL = `
+CREATE TABLE IF NOT EXISTS chat_messages (
+  id SERIAL PRIMARY KEY,
+  org_id INTEGER NOT NULL REFERENCES organizations(id),
+  user_id INTEGER NOT NULL REFERENCES users(id),
+  role TEXT NOT NULL,
+  content TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+`;
+
+// Stage 4 (Phase 19): one row per attempted AscendAI chat turn — token totals
+// for cost visibility, and the source of truth for the per-org daily rate limit.
+// Deliberately NOT cleared by DELETE /api/ascendai/chat: clearing a conversation
+// must not reset the day's usage or bypass the limit.
+const ASCENDAI_USAGE_DDL = `
+CREATE TABLE IF NOT EXISTS ascendai_usage (
+  id SERIAL PRIMARY KEY,
+  org_id INTEGER NOT NULL REFERENCES organizations(id),
+  user_id INTEGER NOT NULL REFERENCES users(id),
+  status TEXT NOT NULL,
+  prompt_tokens INTEGER NOT NULL DEFAULT 0,
+  completion_tokens INTEGER NOT NULL DEFAULT 0,
+  total_tokens INTEGER NOT NULL DEFAULT 0,
+  iterations INTEGER NOT NULL DEFAULT 0,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+`;
+
 let pool;
 
 function getDb() {
@@ -106,6 +137,10 @@ async function initDb() {
   await conn.query(USERS_DDL);
   await conn.query(buildStandardizedDataDDL());
   await conn.query(MAPPING_CACHE_DDL);
+  await conn.query(CHAT_MESSAGES_DDL);
+  await conn.query(ASCENDAI_USAGE_DDL);
+  await conn.query('CREATE INDEX IF NOT EXISTS chat_messages_org_user_idx ON chat_messages (org_id, user_id, created_at)');
+  await conn.query('CREATE INDEX IF NOT EXISTS ascendai_usage_org_time_idx ON ascendai_usage (org_id, created_at)');
 
   // Phase 17: onboarding flag on pre-existing organizations tables.
   await conn.query(
@@ -383,6 +418,83 @@ async function putCachedMapping(orgId, headerHash, mapping) {
   );
 }
 
+/* -------------------------------------------------------------------------- */
+/* AscendAI chat — (org_id, user_id)-scoped conversation + per-org usage       */
+/* -------------------------------------------------------------------------- */
+
+function assertUserId(userId, fnName) {
+  if (!Number.isInteger(userId) || userId <= 0) {
+    throw new Error(`${fnName}: a valid integer userId is required (got ${JSON.stringify(userId)})`);
+  }
+}
+
+async function insertChatMessage(orgId, userId, role, content) {
+  assertOrgId(orgId, 'insertChatMessage');
+  assertUserId(userId, 'insertChatMessage');
+  const conn = getDb();
+  const { rows } = await conn.query(
+    `INSERT INTO chat_messages (org_id, user_id, role, content)
+     VALUES ($1, $2, $3, $4) RETURNING id, role, content, created_at`,
+    [orgId, userId, role, content]
+  );
+  return rows[0];
+}
+
+/** Most recent `limit` messages for one user's conversation, oldest-first. */
+async function getRecentChatMessages(orgId, userId, limit) {
+  assertOrgId(orgId, 'getRecentChatMessages');
+  assertUserId(userId, 'getRecentChatMessages');
+  const cap = Math.max(0, Math.min(200, Number(limit) || 0));
+  const conn = getDb();
+  const { rows } = await conn.query(
+    `SELECT id, role, content, created_at
+     FROM (
+       SELECT id, role, content, created_at
+       FROM chat_messages
+       WHERE org_id = $1 AND user_id = $2
+       ORDER BY created_at DESC, id DESC
+       LIMIT $3
+     ) recent
+     ORDER BY created_at ASC, id ASC`,
+    [orgId, userId, cap]
+  );
+  return rows;
+}
+
+/** Clear one user's conversation. Does NOT touch ascendai_usage. */
+async function deleteChatMessages(orgId, userId) {
+  assertOrgId(orgId, 'deleteChatMessages');
+  assertUserId(userId, 'deleteChatMessages');
+  const conn = getDb();
+  const { rowCount } = await conn.query(
+    'DELETE FROM chat_messages WHERE org_id = $1 AND user_id = $2',
+    [orgId, userId]
+  );
+  return rowCount;
+}
+
+async function recordAscendaiUsage(orgId, userId, { status, promptTokens = 0, completionTokens = 0, totalTokens = 0, iterations = 0 }) {
+  assertOrgId(orgId, 'recordAscendaiUsage');
+  assertUserId(userId, 'recordAscendaiUsage');
+  const conn = getDb();
+  await conn.query(
+    `INSERT INTO ascendai_usage (org_id, user_id, status, prompt_tokens, completion_tokens, total_tokens, iterations)
+     VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+    [orgId, userId, status, promptTokens, completionTokens, totalTokens, iterations]
+  );
+}
+
+/** How many AscendAI turns this ORG (all its users) has run since `sinceIso`. */
+async function countAscendaiUsageSince(orgId, sinceIso) {
+  assertOrgId(orgId, 'countAscendaiUsageSince');
+  const conn = getDb();
+  const { rows } = await conn.query(
+    'SELECT count(*)::int AS n FROM ascendai_usage WHERE org_id = $1 AND created_at >= $2',
+    [orgId, sinceIso]
+  );
+  return rows[0].n;
+}
+
 module.exports = {
   getDb,
   initDb,
@@ -402,4 +514,9 @@ module.exports = {
   getStandardizedData,
   getCachedMapping,
   putCachedMapping,
+  insertChatMessage,
+  getRecentChatMessages,
+  deleteChatMessages,
+  recordAscendaiUsage,
+  countAscendaiUsageSince,
 };
