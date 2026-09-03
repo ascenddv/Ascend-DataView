@@ -36,9 +36,10 @@ async function complete(prompt, opts = {}) {
     throw new Error('LLM provider not configured: GEMINI_API_KEY is missing');
   }
 
-  const url = `${GEMINI_ENDPOINT}/${GEMINI_MODEL}:generateContent?key=${encodeURIComponent(
-    process.env.GEMINI_API_KEY
-  )}`;
+  // The API key goes in the x-goog-api-key HEADER, never the URL — a URL can end
+  // up in a fetch error message, a log line, or an error-report context; a
+  // header does not.
+  const url = `${GEMINI_ENDPOINT}/${GEMINI_MODEL}:generateContent`;
 
   const body = {
     contents: [{ parts: [{ text: prompt }] }],
@@ -59,7 +60,10 @@ async function complete(prompt, opts = {}) {
     try {
       res = await fetch(url, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'x-goog-api-key': process.env.GEMINI_API_KEY,
+        },
         body: JSON.stringify(body),
         signal: controller.signal,
       });
