@@ -237,9 +237,14 @@ router.post('/reset-password', authLimiter, async (req, res, next) => {
   }
 });
 
-// Accept a team invitation: the token identifies the org + role + email, so the
-// only thing the invitee supplies is a password. The email is treated as
-// verified — they demonstrably received the link.
+// Accept a team invitation. The invite ROW (looked up by the random 32-byte
+// token) is the sole source of org_id, role and email — the invitee supplies
+// only a password; any org_id/role/email in the request body is ignored.
+//
+// The account's email is marked verified on accept. The security boundary here
+// is POSSESSION OF THE LINK, not proof of mailbox control: whoever opens the
+// (single-use, 72h, owner-revocable) link becomes the invited email in the org.
+// This matches the "anyone with the link" model used by GitHub/Slack invites.
 router.post('/accept-invite', authLimiter, async (req, res, next) => {
   try {
     const { token, password } = req.body || {};

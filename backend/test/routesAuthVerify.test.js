@@ -31,6 +31,7 @@ const store = {
   verifications: new Map(), // token -> { userId, used, expired }
   resets: new Map(), // token -> { userId, used, expired }
   invitations: new Map(), // token -> { orgId, email, role, accepted }
+  acceptCalls: [], // { token, email } acceptInvitation was actually invoked with
   nextId: 1,
 };
 const sent = []; // captured emails
@@ -42,6 +43,7 @@ function resetStore() {
   store.verifications.clear();
   store.resets.clear();
   store.invitations.clear();
+  store.acceptCalls = [];
   store.nextId = 1;
   sent.length = 0;
   breached = new Set();
@@ -106,6 +108,7 @@ require.cache[dbId] = {
       return { token, org_id: row.orgId, email: row.email, role: row.role };
     },
     acceptInvitation: async ({ token, email, passwordHash }) => {
+      store.acceptCalls.push({ token, email });
       const row = store.invitations.get(token);
       if (!row || row.accepted) return null;
       if (store.byEmail.has(email.toLowerCase())) return null;
@@ -258,6 +261,38 @@ test('accept-invite: a valid token creates a verified member in the invite’s o
   assert.equal(body.org.id, 777);
   assert.match(r.headers.get('set-cookie') || '', /ascenddv_token=/);
   assert.equal(store.invitations.get('inv-tok').accepted, true);
+});
+
+test('accept-invite: hostile body fields (orgId / role / email) are ignored — the grant comes only from the invitation row', async () => {
+  store.invitations.set('inv-adv', { orgId: 777, email: 'invited@team.co', role: 'member', accepted: false });
+
+  const r = await post('/api/auth/accept-invite', {
+    token: 'inv-adv',
+    password: 'a-fresh-strong-pass-8890',
+    // everything below is an attacker trying to escalate:
+    orgId: 999,
+    org_id: 999,
+    role: 'owner',
+    email: 'attacker@evil.com',
+  });
+  assert.equal(r.status, 201);
+  const body = await r.json();
+
+  // the new account is bound to the INVITATION, not the request body
+  assert.equal(body.org.id, 777, 'org must be the invitation\'s org, not the body\'s orgId');
+  assert.equal(body.user.role, 'member', 'role must be the invitation\'s role, not the body\'s role');
+  assert.equal(body.user.email, 'invited@team.co', 'email must be the invitation\'s email, not the body\'s email');
+
+  // and the route never even forwarded the hostile email into the db layer
+  assert.deepEqual(store.acceptCalls, [{ token: 'inv-adv', email: 'invited@team.co' }]);
+
+  // no user was created for the attacker address
+  assert.equal(store.byEmail.has('attacker@evil.com'), false);
+  const created = [...store.users.values()];
+  assert.equal(created.length, 1);
+  assert.equal(created[0].org_id, 777);
+  assert.equal(created[0].role, 'member');
+  assert.equal(created[0].email, 'invited@team.co');
 });
 
 test('accept-invite: invalid/revoked token -> 400; reused token -> 400; weak or breached password -> 400', async () => {
