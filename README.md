@@ -124,24 +124,78 @@ an owner flips it from the Team panel.
 
 ## Runbooks
 
-### Rotate `JWT_SECRET`
+### INCIDENT: suspected session-token or `JWT_SECRET` compromise
 
-Changing the secret invalidates every existing session (all tokens fail
-signature verification), which is the desired effect. There is no need to touch
-`token_version` — that column is for *selective* revocation (logout-all, password
-reset). Steps:
+Use this when you believe a session cookie was stolen, `JWT_SECRET` leaked
+(committed, logged, pasted, present in a breached backup), or an attacker may
+hold a valid token. Goal: **every outstanding token is dead and cannot be
+replayed, even against a copy of the old secret.**
 
-1. Generate a new secret: `node -e "console.log(require('crypto').randomBytes(48).toString('base64url'))"`.
-2. Update `JWT_SECRET` in Vercel (Production + Preview) and redeploy.
-3. All users are signed out and log in again. No migration, no data change.
+Rotating `JWT_SECRET` alone is *not* sufficient — a token signed with the old
+secret still verifies for anyone who also kept the old secret. The
+`token_version` bump is what makes old tokens un-replayable regardless of which
+secret is used to verify them. Do both, **in this order**:
 
-If you additionally want to be certain no pre-rotation token can ever be
-replayed even against a mistakenly-kept old secret, bump every user's token
-version:
+**Step 1 — rotate `JWT_SECRET` first.**
 
-```sql
-UPDATE users SET token_version = token_version + 1;
+```bash
+node -e "console.log(require('crypto').randomBytes(48).toString('base64url'))"
 ```
+
+Put the new value in Vercel → Settings → Environment Variables for
+**Production and Preview**, then redeploy. From this moment new tokens are
+signed with the new secret and any token signed with the old one fails
+signature verification.
+
+**Step 2 — then bump every user's `token_version`.** Against the production DB
+(Supabase Session pooler string):
+
+```bash
+psql "$DATABASE_URL" -c "UPDATE users SET token_version = token_version + 1;"
+```
+
+`requireAuth` embeds `token_version` into each token as the `tv` claim and
+rejects any request whose `tv` no longer matches the row. After this bump every
+token minted before now — including pre-Phase-24 tokens that carry no `tv` claim
+(treated as `tv = 0`) — mismatches and is refused with
+`401 "This session has been signed out."` on its next request, on every
+serverless instance (the check is a fresh DB read, no per-instance cache).
+
+Do Step 1 before Step 2 so that during the brief window between them, a
+compromised token is at least limited to the old secret; doing Step 2 first
+would still leave that window fully open.
+
+**Step 3 — verify.** Every user must now be logged out. Check with the same
+probe the Phase 24 gate uses:
+
+```bash
+# an OLD cookie value (one captured before the incident, or the attacker's):
+curl -s https://<deployed-url>/api/auth/me -H "Cookie: ascenddv_token=<old-jwt>"
+#   expect:  {"ok":true,"authenticated":false}
+
+# a FRESH login must still work:
+curl -s -c /tmp/j -X POST https://<deployed-url>/api/auth/login \
+  -H 'Content-Type: application/json' \
+  -d '{"email":"you@example.org","password":"..."}'
+curl -s -b /tmp/j https://<deployed-url>/api/auth/me
+#   expect:  {"ok":true,"authenticated":true, ...}
+```
+
+Also confirm in `SELECT min(token_version), max(token_version) FROM users;` that
+every row advanced (no user was skipped by a partial `UPDATE`).
+
+**Step 4 — if the leak vector was a password (e.g. a shared DB dump with
+`password_hash` plus a weak password):** additionally force affected users
+through password reset. A reset also bumps `token_version` per user, so it is
+consistent with the above.
+
+### Rotate `JWT_SECRET` (routine, not an incident)
+
+For a scheduled/hygiene rotation with no suspected compromise, Step 1 alone is
+enough — changing the secret invalidates every existing session because all
+tokens fail signature verification. `token_version` does not need to be touched;
+that column is for *selective* revocation (logout-all, password reset). Users
+are signed out and log in again. No migration, no data change.
 
 ### Restore from a Supabase backup
 

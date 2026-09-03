@@ -105,6 +105,19 @@ test('requireAuth: 401 on an invalid token', async () => {
   assert.equal(res.statusCode, 401);
 });
 
+test('requireAuth: 401 on an expired token (exp in the past)', async () => {
+  const jwt = require('jsonwebtoken');
+  dbUser = { id: 42, org_id: 5, email: 'x@y.com', role: 'owner', token_version: 0, email_verified_at: null };
+  // negative expiresIn -> exp already elapsed; jwt.verify throws TokenExpiredError
+  const expired = jwt.sign({ userId: 42, orgId: 5, email: 'x@y.com', tv: 0 }, process.env.JWT_SECRET, { expiresIn: -10 });
+  const res = mockRes();
+  let nexted = false;
+  await requireAuth({ cookies: { [COOKIE_NAME]: expired } }, res, () => (nexted = true));
+  assert.equal(nexted, false);
+  assert.equal(res.statusCode, 401);
+  assert.match(res.body.error, /invalid or expired/i);
+});
+
 test('requireAuth: attaches req.auth from a valid token when tv matches', async () => {
   dbUser = { id: 42, org_id: 5, email: 'x@y.com', role: 'owner', token_version: 3, email_verified_at: '2026-01-01T00:00:00Z' };
   const token = signToken({ userId: 42, orgId: 5, email: 'x@y.com', tokenVersion: 3 });
