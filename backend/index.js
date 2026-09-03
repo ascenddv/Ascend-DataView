@@ -13,8 +13,9 @@ app
   .ready()
   .then(() => {
     app.listen(PORT, () => {
+      const redactedDb = String(DB_PATH).replace(/:\/\/[^@/]+@/, '://***@');
       console.log(`AscendDV backend listening on http://localhost:${PORT}`);
-      console.log(`Postgres: ${DB_PATH}`);
+      console.log(`Postgres: ${redactedDb}`);
     });
   })
   .catch((err) => {

@@ -4,17 +4,19 @@
 Ascend Dataview (AscendDV) is an analytics platform for organizations with messy or incomplete data. It ingests raw data, calculates only the metrics the data can support, and renders only the dashboard cards backed by sufficient data. **Graceful degradation is the core product principle** — sparse data (or an unavailable AI provider) should produce a smaller, still-coherent experience, never an error, an empty chart, or a fabricated number.
 
 ## Project status
-**Stages 1–3 are complete and verified**: single-tenant demo → multi-tenant Postgres product (auth, 8 health dimensions, Excel/manual ingestion, per-dimension views) → trust and comprehension features (recalibrated health bands, upload merge, confidence indicators, mapping confirmation, AI historical context, PDF export, onboarding). This is the regression baseline nothing in Stage 4 may break.
+**Stages 1–4 are complete and verified**: single-tenant demo → multi-tenant Postgres product → trust/comprehension features → **AscendAI** (tool-grounded conversational chat). Deployed on Vercel (static frontend + the Express backend as one `/api` serverless function) with Supabase Postgres. Serverless durability (rate limiter + pending uploads moved to Postgres so shared state holds across function instances) is done and cross-instance-verified. This is the regression baseline nothing in Stage 5 may break.
 
-**Stage 4 (this spec) adds AscendAI** — a conversational chatbot letting a user ask free-form questions about their own organization's data. See `SPEC_STAGE4.md`.
+**Stage 5 (in progress) is Production Hardening** — resolves a full production-readiness audit (security headers, migrations, rate limiting on every expensive endpoint, session revocation, transactional email + verification + password reset, team invites + owner/member roles, account/data deletion + export, AI kill-switches, observability, legal, CI, paid-infra cutover). See `SPEC_STAGE5.md`.
 
-**Rule that carries over unchanged: complete a phase, pass its test gate, show the user, stop. Do not begin a new phase until the current one is confirmed. Commit the finished phase before proceeding — this is now explicit after Stage 3 accumulated six uncommitted phases.**
+**Rule that carries over unchanged: complete a phase, pass its test gate, show the user, stop. Do not begin a new phase until the current one is confirmed. Commit the finished phase before proceeding — every phase report ends with that phase's commit hash.**
 
 ---
 
 ## AscendAI — provider and architecture
 
-**Provider: DeepSeek**, kept entirely separate from the Gemini key used by `generateInsight()`/`mapColumns()` — different provider, different prepaid balance, different failure domain, so one running low or erroring never affects the other.
+**Gemini** (`generateInsight()` / `mapColumns()`) runs on the **paid AI Studio tier** as of Stage 5 — commercial-licensed, inputs are not used to train Google's models. `GEMINI_API_KEY` must be a billing-enabled key. Vertex AI is the future option if a customer needs region pinning or a Google DPA.
+
+**Provider: DeepSeek** for AscendAI, kept entirely separate from the Gemini key — different provider, different prepaid balance, different failure domain, so one running low or erroring never affects the other.
 - Base URL: `https://api.deepseek.com` (OpenAI-compatible)
 - Model: `deepseek-chat` (not `deepseek-reasoner` — the reasoning model doesn't support function/tool calling the way this feature needs)
 - Env: `DEEPSEEK_API_KEY`
@@ -44,4 +46,4 @@ Ascend Dataview (AscendDV) is an analytics platform for organizations with messy
 Standardized schema, health scoring formula and recalibrated display bands, card eligibility thresholds, risk/opportunity rules, upload merge behavior, confidence tiers, mapping confirmation scope, `metricDefinitions.js`, PDF export, onboarding, auth conventions, and coding conventions all carry forward exactly as documented at the end of Stage 3. Stage 4 does not modify any of them — it adds a new, separately-scoped conversational feature alongside them.
 
 ## Reference
-See `SPEC_STAGE4.md` for the phased build plan. Each phase has a test gate — do not begin a new phase until the current phase's gate has visibly passed and been shown to the user, and commit the completed phase before moving on.
+`SPEC_STAGE4.md` — AscendAI build plan (done). `SPEC_STAGE5.md` — Production Hardening, Phases 21–31 (in progress). Each phase has a test gate — do not begin a new phase until the current phase's gate has visibly passed and been shown to the user, and commit the completed phase (with its hash in the report) before moving on.

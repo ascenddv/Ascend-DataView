@@ -35,9 +35,13 @@ const router = express.Router();
 const XLSX_EXT = /\.xlsx$/i;
 const XLSX_MIME = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 
+// 4 MB — Vercel caps a serverless request body at ~4.5 MB, so anything larger
+// is rejected at the platform edge with an opaque error before this code runs.
+const MAX_UPLOAD_BYTES = 4 * 1024 * 1024;
+
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 5 * 1024 * 1024 },
+  limits: { fileSize: MAX_UPLOAD_BYTES },
   fileFilter: (_req, file, cb) => {
     const isXlsx = XLSX_EXT.test(file.originalname) || file.mimetype === XLSX_MIME;
     const isCsv =

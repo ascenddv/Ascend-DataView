@@ -33,6 +33,16 @@ const router = express.Router();
 const MAX_MESSAGE_CHARS = 4000;
 const GET_LIMIT = 200;
 
+// The `trace` (system prompt, every tool call + result, token counts) is a
+// debugging aid — never expose it to end users. It is included in the chat
+// response only outside production, or when explicitly opted in, so the phase
+// gates can still inspect it.
+const EXPOSE_TRACE =
+  process.env.ASCENDAI_EXPOSE_TRACE === '1' ||
+  (process.env.ASCENDAI_EXPOSE_TRACE !== '0' &&
+    process.env.NODE_ENV !== 'production' &&
+    !process.env.VERCEL);
+
 const RATE_LIMIT_REPLY =
   "You've reached today's AscendAI message limit for your organization. It resets at 00:00 UTC — please try again then.";
 
@@ -107,7 +117,7 @@ router.post('/ascendai/chat', async (req, res, next) => {
       status: result.status,
       reply: result.reply,
       reason: result.reason || null,
-      trace: result.trace, // Phase 19 verification only; Phase 20 drops it
+      ...(EXPOSE_TRACE ? { trace: result.trace } : {}),
     });
   } catch (err) {
     next(err);

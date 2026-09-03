@@ -9,6 +9,7 @@
  */
 
 const express = require('express');
+const helmet = require('helmet');
 const cors = require('cors');
 const cookieParser = require('cookie-parser');
 
@@ -39,6 +40,31 @@ const ALLOWED_ORIGINS = (process.env.CORS_ORIGINS
 
 const app = express();
 app.set('trust proxy', 1); // behind Vercel's proxy — needed for rate-limit + secure cookies
+
+// Security headers. This is a JSON API (no inline scripts/styles served from
+// here — the SPA is static, served by Vercel), so the CSP is deliberately tight.
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      useDefaults: false,
+      directives: {
+        'default-src': ["'none'"],
+        'frame-ancestors': ["'none'"],
+        'base-uri': ["'none'"],
+        'form-action': ["'none'"],
+      },
+    },
+    crossOriginResourcePolicy: { policy: 'same-site' },
+    referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
+    // HSTS is set by Vercel's edge; leave it to the platform.
+    hsts: false,
+  })
+);
+app.use((_req, res, next) => {
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), payment=()');
+  next();
+});
 
 app.use(
   cors({
@@ -82,10 +108,20 @@ app.use('/api', insightRoutes);
 app.use('/api', pdfRoutes);
 app.use('/api', ascendaiRoutes);
 
-// Centralised error handler — clean JSON, not stack dumps.
+// Centralised error handler — clean JSON, not stack dumps. For 5xx the real
+// error is logged server-side; the client gets a generic message so DB errors,
+// stack fragments and connection details never leak.
 app.use((err, _req, res, _next) => {
-  const status = err.statusCode || (err.code === 'LIMIT_FILE_SIZE' ? 413 : 500);
-  if (status >= 500) console.error(err);
+  if (err.code === 'LIMIT_FILE_SIZE') {
+    return res
+      .status(413)
+      .json({ ok: false, error: 'That file is too large — the maximum upload size is 4 MB.' });
+  }
+  const status = err.statusCode || 500;
+  if (status >= 500) {
+    console.error(err);
+    return res.status(status).json({ ok: false, error: 'Something went wrong. Please try again.' });
+  }
   res.status(status).json({ ok: false, error: err.message });
 });
 
