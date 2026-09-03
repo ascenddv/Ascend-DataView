@@ -54,6 +54,25 @@ const PENDING_UPLOAD_MAX_BYTES = 3 * 1024 * 1024;
 const CHAT_MESSAGE_RETENTION_DAYS = 90;
 const ASCENDAI_USAGE_RETENTION_DAYS = 400;
 
+// --- Rate limiting on the expensive endpoints (Stage 5, Phase 23) ---
+// Every LLM / CPU / parse endpoint gets its own DB-backed limiter (shared
+// across serverless instances via PgRateStore), keyed per org + user rather
+// than per IP so a shared office NAT can't let one tenant exhaust another's
+// budget. These are burst/abuse ceilings set well above any real interactive
+// use; the AscendAI per-org DAILY cap above is a separate, coarser control.
+const INSIGHT_RATE_LIMIT = 20;
+const INSIGHT_RATE_WINDOW_MS = 10 * 60 * 1000;
+// AscendAI chat burst: a short-window ceiling on top of the daily cap. A hit
+// here is NOT a 429 — the chat route returns the same friendly
+// { status: 'rate_limited' } shape the daily cap uses.
+const ASCENDAI_CHAT_BURST_LIMIT = 8;
+const ASCENDAI_CHAT_BURST_WINDOW_MS = 60 * 1000;
+const PDF_RATE_LIMIT = 10;
+const PDF_RATE_WINDOW_MS = 10 * 60 * 1000;
+// Covers POST /api/upload and POST /api/upload/confirm together.
+const UPLOAD_RATE_LIMIT = 30;
+const UPLOAD_RATE_WINDOW_MS = 10 * 60 * 1000;
+
 // --- Ingestion: revenue subcategory reconciliation ---
 // The revenue_* fields are an *optional, possibly partial* breakdown. The
 // sum-to-revenue check only runs when ALL four subcategory fields are present
@@ -79,5 +98,13 @@ module.exports = {
   PENDING_UPLOAD_MAX_BYTES,
   CHAT_MESSAGE_RETENTION_DAYS,
   ASCENDAI_USAGE_RETENTION_DAYS,
+  INSIGHT_RATE_LIMIT,
+  INSIGHT_RATE_WINDOW_MS,
+  ASCENDAI_CHAT_BURST_LIMIT,
+  ASCENDAI_CHAT_BURST_WINDOW_MS,
+  PDF_RATE_LIMIT,
+  PDF_RATE_WINDOW_MS,
+  UPLOAD_RATE_LIMIT,
+  UPLOAD_RATE_WINDOW_MS,
   REVENUE_RECONCILE_TOLERANCE_PCT,
 };

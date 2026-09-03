@@ -27,6 +27,7 @@ const {
   ASCENDAI_HISTORY_WINDOW_MESSAGES,
   ASCENDAI_DAILY_MESSAGE_LIMIT_PER_ORG,
 } = require('../config/thresholds');
+const { chatBurstLimiter } = require('../middleware/rateLimit');
 
 const router = express.Router();
 
@@ -62,7 +63,7 @@ function sumUsage(trace) {
   return acc;
 }
 
-router.post('/ascendai/chat', async (req, res, next) => {
+router.post('/ascendai/chat', chatBurstLimiter, async (req, res, next) => {
   try {
     const { orgId, userId } = req.auth;
     const message =

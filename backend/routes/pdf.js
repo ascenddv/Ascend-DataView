@@ -14,10 +14,11 @@ const { getStandardizedData, getOrganizationById } = require('../db');
 const { buildMetrics } = require('../services/buildMetrics');
 const { generateInsight } = require('../services/generateInsight');
 const { buildOverviewPdf } = require('../services/pdfReport');
+const { pdfLimiter } = require('../middleware/rateLimit');
 
 const router = express.Router();
 
-router.get('/report.pdf', async (req, res, next) => {
+router.get('/report.pdf', pdfLimiter, async (req, res, next) => {
   try {
     const orgId = req.auth.orgId;
     const [rows, org] = await Promise.all([

@@ -11,10 +11,11 @@ const express = require('express');
 const { getStandardizedData } = require('../db');
 const { buildMetrics } = require('../services/buildMetrics');
 const { generateInsight } = require('../services/generateInsight');
+const { insightLimiter } = require('../middleware/rateLimit');
 
 const router = express.Router();
 
-router.get('/insight', async (req, res, next) => {
+router.get('/insight', insightLimiter, async (req, res, next) => {
   try {
     const rows = await getStandardizedData(req.auth.orgId);
     const metrics = buildMetrics(rows);

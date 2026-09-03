@@ -55,6 +55,11 @@ require.cache[dbId] = {
       calls.deleteChatMessages.push([orgId, userId]);
       return state.deleteReturns;
     },
+    // Only the chat-burst rate limiter's PgRateStore touches this; a constant
+    // low count keeps the limiter a no-op so these tests stay about route logic.
+    getDb: () => ({
+      query: async () => ({ rows: [{ hits: 1, expires_at: new Date(Date.now() + 60000) }] }),
+    }),
   },
 };
 require.cache[chatId] = {

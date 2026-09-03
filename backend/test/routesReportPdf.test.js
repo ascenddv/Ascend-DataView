@@ -28,6 +28,11 @@ require.cache[dbId] = {
       return rowsFor[orgId] || [];
     },
     getOrganizationById: async (orgId) => ({ id: orgId, name: `Org ${orgId}` }),
+    // Only the PDF rate limiter's PgRateStore reads this; a constant low count
+    // keeps the limiter a no-op so these tests stay about route logic.
+    getDb: () => ({
+      query: async () => ({ rows: [{ hits: 1, expires_at: new Date(Date.now() + 60000) }] }),
+    }),
   },
 };
 require.cache[insightId] = {
