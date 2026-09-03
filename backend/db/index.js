@@ -183,7 +183,7 @@ async function createUser({ orgId, email, passwordHash, role = 'owner' }) {
   const { rows } = await conn.query(
     `INSERT INTO users (org_id, email, password_hash, role)
      VALUES ($1, $2, $3, $4)
-     RETURNING id, org_id, email, role, created_at`,
+     RETURNING id, org_id, email, role, token_version, created_at`,
     [orgId, email.toLowerCase(), passwordHash, role]
   );
   return rows[0];
@@ -193,7 +193,7 @@ async function createUser({ orgId, email, passwordHash, role = 'owner' }) {
 async function getUserByEmail(email) {
   const conn = getDb();
   const { rows } = await conn.query(
-    'SELECT id, org_id, email, password_hash, role, created_at FROM users WHERE email = $1',
+    'SELECT id, org_id, email, password_hash, role, token_version, created_at FROM users WHERE email = $1',
     [String(email || '').toLowerCase()]
   );
   return rows[0] || null;
@@ -202,10 +202,25 @@ async function getUserByEmail(email) {
 async function getUserById(id) {
   const conn = getDb();
   const { rows } = await conn.query(
-    'SELECT id, org_id, email, role, created_at FROM users WHERE id = $1',
+    'SELECT id, org_id, email, role, token_version, created_at FROM users WHERE id = $1',
     [id]
   );
   return rows[0] || null;
+}
+
+/**
+ * Invalidate every outstanding session for a user by bumping token_version —
+ * requireAuth then rejects any JWT minted at the old value. Used by
+ * POST /api/auth/logout-all and (Phase 25) password reset. Returns the new
+ * version, or null if the user no longer exists.
+ */
+async function bumpTokenVersion(userId) {
+  assertUserId(userId, 'bumpTokenVersion');
+  const { rows } = await getDb().query(
+    'UPDATE users SET token_version = token_version + 1 WHERE id = $1 RETURNING token_version',
+    [userId]
+  );
+  return rows[0] ? rows[0].token_version : null;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -483,6 +498,7 @@ module.exports = {
   createUser,
   getUserByEmail,
   getUserById,
+  bumpTokenVersion,
   mergeStandardizedData,
   upsertStandardizedRow,
   deleteStandardizedData,

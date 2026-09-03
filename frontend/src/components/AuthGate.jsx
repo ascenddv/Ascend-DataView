@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { getMe, logout as apiLogout } from '../lib/api.js';
+import { getMe, logout as apiLogout, logoutAll as apiLogoutAll } from '../lib/api.js';
 import AuthPage from './AuthPage.jsx';
 
 /**
@@ -30,6 +30,14 @@ export default function AuthGate({ children }) {
     }
   }
 
+  async function onLogoutAll() {
+    try {
+      await apiLogoutAll();
+    } finally {
+      setState({ status: 'anon' });
+    }
+  }
+
   if (state.status === 'loading') {
     return (
       <div className="flex min-h-screen items-center justify-center" style={{ background: 'var(--page)' }}>
@@ -44,5 +52,5 @@ export default function AuthGate({ children }) {
     return <AuthPage onAuthed={(r) => setState({ status: 'authed', ...r })} />;
   }
 
-  return children({ user: state.user, org: state.org, onLogout });
+  return children({ user: state.user, org: state.org, onLogout, onLogoutAll });
 }

@@ -7,7 +7,11 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 
 const BCRYPT_ROUNDS = 12;
-const TOKEN_TTL = '7d';
+// Sessions are independently revocable via users.token_version (Phase 24), so
+// the token itself no longer needs a long life. 2 days keeps a normal user
+// logged in across a working session without a fresh login every visit.
+const TOKEN_TTL = '2d';
+const TOKEN_TTL_MS = 2 * 24 * 60 * 60 * 1000;
 const COOKIE_NAME = 'ascenddv_token';
 
 function jwtSecret() {
@@ -25,9 +29,13 @@ async function verifyPassword(plain, hash) {
   return bcrypt.compare(plain, hash);
 }
 
-/** Sign a session token. `orgId` is the isolation claim; keep the payload minimal. */
-function signToken({ userId, orgId, email }) {
-  return jwt.sign({ userId, orgId, email }, jwtSecret(), { expiresIn: TOKEN_TTL });
+/**
+ * Sign a session token. `orgId` is the isolation claim; `tv` is the user's
+ * token_version at mint time, checked by requireAuth so a bump revokes the
+ * session. Keep the payload minimal.
+ */
+function signToken({ userId, orgId, email, tokenVersion = 0 }) {
+  return jwt.sign({ userId, orgId, email, tv: tokenVersion }, jwtSecret(), { expiresIn: TOKEN_TTL });
 }
 
 /** Verify a token; returns the payload or throws. */
@@ -41,7 +49,7 @@ function cookieOptions() {
     httpOnly: true,
     sameSite: 'lax',
     secure: process.env.NODE_ENV === 'production',
-    maxAge: 7 * 24 * 60 * 60 * 1000,
+    maxAge: TOKEN_TTL_MS,
     path: '/',
   };
 }
@@ -63,4 +71,6 @@ module.exports = {
   cookieOptions,
   validateCredentials,
   COOKIE_NAME,
+  TOKEN_TTL,
+  TOKEN_TTL_MS,
 };

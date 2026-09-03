@@ -156,3 +156,7 @@ export async function signup({ email, password, orgName }) {
 export async function logout() {
   return asJson(await fetch('/api/auth/logout', opts({ method: 'POST' })), 'logout');
 }
+
+export async function logoutAll() {
+  return asJson(await fetch('/api/auth/logout-all', opts({ method: 'POST' })), 'logout-all');
+}

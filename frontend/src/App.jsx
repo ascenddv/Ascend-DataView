@@ -11,7 +11,7 @@ import OnboardingWizard from './components/OnboardingWizard.jsx';
 import AscendAiPanel from './components/AscendAiPanel.jsx';
 import { completeOnboarding } from './lib/api.js';
 
-function Workspace({ user, org, onLogout }) {
+function Workspace({ user, org, onLogout, onLogoutAll }) {
   const [report, setReport] = useState(null);
   const [pendingMapping, setPendingMapping] = useState(null);
   const [uploadError, setUploadError] = useState(null);
@@ -66,14 +66,24 @@ function Workspace({ user, org, onLogout }) {
               {org.name} · {user.email}
             </p>
           </div>
-          <button
-            type="button"
-            onClick={onLogout}
-            className="rounded-lg border px-3 py-1.5 text-sm"
-            style={{ borderColor: 'var(--border)', color: 'var(--text-secondary)' }}
-          >
-            Sign out
-          </button>
+          <div className="flex flex-col items-end gap-1">
+            <button
+              type="button"
+              onClick={onLogout}
+              className="rounded-lg border px-3 py-1.5 text-sm"
+              style={{ borderColor: 'var(--border)', color: 'var(--text-secondary)' }}
+            >
+              Sign out
+            </button>
+            <button
+              type="button"
+              onClick={onLogoutAll}
+              className="text-xs underline"
+              style={{ color: 'var(--text-muted)' }}
+            >
+              Sign out of all devices
+            </button>
+          </div>
         </header>
 
         {!onboarded ? (

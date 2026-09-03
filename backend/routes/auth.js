@@ -1,8 +1,9 @@
 /**
- * POST /api/auth/signup  — create an organization + its first user, log them in
- * POST /api/auth/login   — verify credentials, issue a session cookie
- * POST /api/auth/logout  — clear the session cookie
- * GET  /api/auth/me      — current session's user + org (401 if not logged in)
+ * POST /api/auth/signup      — create an organization + its first user, log them in
+ * POST /api/auth/login       — verify credentials, issue a session cookie
+ * POST /api/auth/logout      — clear the session cookie (this browser only)
+ * POST /api/auth/logout-all  — revoke every session for the current user
+ * GET  /api/auth/me          — current session's user + org (401 if not logged in)
  */
 
 const express = require('express');
@@ -22,13 +23,20 @@ const {
   getUserByEmail,
   getUserById,
   getOrganizationById,
+  bumpTokenVersion,
 } = require('../db');
 const { authLimiter } = require('../middleware/rateLimit');
+const { requireAuth } = require('../middleware/requireAuth');
 
 const router = express.Router();
 
 function setSession(res, user) {
-  const token = signToken({ userId: user.id, orgId: user.org_id, email: user.email });
+  const token = signToken({
+    userId: user.id,
+    orgId: user.org_id,
+    email: user.email,
+    tokenVersion: user.token_version || 0,
+  });
   res.cookie(COOKIE_NAME, token, cookieOptions());
 }
 
@@ -89,6 +97,18 @@ router.post('/logout', (_req, res) => {
   res.json({ ok: true });
 });
 
+// Sign out everywhere: bump the user's token_version so every JWT minted at the
+// old value (this browser and any other) fails requireAuth on its next request.
+router.post('/logout-all', requireAuth, async (req, res, next) => {
+  try {
+    await bumpTokenVersion(req.auth.userId);
+    res.clearCookie(COOKIE_NAME, { ...cookieOptions(), maxAge: undefined });
+    res.json({ ok: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // Session-status probe for the client to decide login-vs-app. Always 200:
 // `authenticated: false` for no/invalid session rather than a 401 (which would
 // show up as a console error on every anonymous page load).
@@ -106,6 +126,8 @@ router.get('/me', async (req, res, next) => {
 
     const user = await getUserById(payload.userId);
     if (!user) return res.json({ ok: true, authenticated: false });
+    const tokenTv = Number.isInteger(payload.tv) ? payload.tv : 0;
+    if (tokenTv !== user.token_version) return res.json({ ok: true, authenticated: false });
     const org = await getOrganizationById(user.org_id);
 
     res.json({
