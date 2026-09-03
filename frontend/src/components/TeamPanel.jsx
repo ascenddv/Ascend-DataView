@@ -5,6 +5,7 @@ import {
   createInvitation,
   revokeInvitation,
   removeMember,
+  setOrgAscendaiEnabled,
 } from '../lib/api.js';
 
 /**
@@ -22,6 +23,21 @@ export default function TeamPanel({ org, currentUser }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
   const [notice, setNotice] = useState(null);
+  const [aiEnabled, setAiEnabled] = useState(org.ascendaiEnabled !== false);
+  const [aiBusy, setAiBusy] = useState(false);
+
+  async function toggleAscendai(next) {
+    setAiBusy(true);
+    setError(null);
+    try {
+      const res = await setOrgAscendaiEnabled(org.id, next);
+      setAiEnabled(res.ascendaiEnabled);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setAiBusy(false);
+    }
+  }
 
   const refresh = useCallback(async () => {
     setError(null);
@@ -130,6 +146,28 @@ export default function TeamPanel({ org, currentUser }) {
 
           {isOwner && (
             <>
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <h3 className="text-xs font-medium uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>
+                    AscendAI for this organization
+                  </h3>
+                  <p className="mt-1 text-xs" style={{ color: 'var(--text-secondary)' }}>
+                    {aiEnabled
+                      ? 'Members can ask AscendAI about this org’s data.'
+                      : 'AscendAI is turned off for everyone in this organization.'}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => toggleAscendai(!aiEnabled)}
+                  disabled={aiBusy}
+                  className="rounded-lg border px-3 py-1.5 text-xs font-medium disabled:opacity-50"
+                  style={{ borderColor: 'var(--border)', color: 'var(--text-secondary)' }}
+                >
+                  {aiBusy ? '…' : aiEnabled ? 'Turn off' : 'Turn on'}
+                </button>
+              </div>
+
               <form onSubmit={invite} className="space-y-2">
                 <h3 className="text-xs font-medium uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>
                   Invite someone

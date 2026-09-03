@@ -31,6 +31,7 @@ const state = {
   deleteReturns: 0,
   askResult: null,
   askInput: null,
+  orgAscendaiEnabled: true,
 };
 
 require.cache[dbId] = {
@@ -54,6 +55,12 @@ require.cache[dbId] = {
     async deleteChatMessages(orgId, userId) {
       calls.deleteChatMessages.push([orgId, userId]);
       return state.deleteReturns;
+    },
+    async getOrganizationById(id) {
+      return { id, name: `Org ${id}`, ascendai_enabled: state.orgAscendaiEnabled };
+    },
+    async sumAscendaiUsageSince() {
+      return { count: state.usedToday, prompt_tokens: 10, completion_tokens: 20, total_tokens: 30 };
     },
     // Only the chat-burst rate limiter's PgRateStore touches this; a constant
     // low count keeps the limiter a no-op so these tests stay about route logic.
@@ -93,6 +100,8 @@ const reset = () => {
   state.usedToday = 0;
   state.recent = [];
   state.deleteReturns = 0;
+  state.orgAscendaiEnabled = true;
+  delete process.env.ASCENDAI_ENABLED;
   state.askResult = { status: 'ok', reply: 'the answer', reason: null, trace: { iterations: 2, usage: [{ prompt_tokens: 100, completion_tokens: 20, total_tokens: 120 }, { prompt_tokens: 130, completion_tokens: 25, total_tokens: 155 }] } };
   state.askInput = null;
 };
@@ -189,4 +198,43 @@ test('DELETE clears only this (org,user)\'s conversation', async () => {
   const j = await (await fetch(`${base}/api/ascendai/chat?as=999&u=111`, { method: 'DELETE' })).json();
   assert.deepEqual(j, { ok: true, cleared: 5 });
   assert.deepEqual(calls.deleteChatMessages[0], [999, 111]);
+});
+
+/* -- Phase 28: kill-switches + usage --------------------------------------- */
+
+test('the global ASCENDAI_ENABLED=false flag -> 200 { status: "unavailable" }, provider not called', async () => {
+  reset();
+  process.env.ASCENDAI_ENABLED = 'false';
+  const r = await post('/api/ascendai/chat', { message: 'hi' });
+  const j = await r.json();
+  assert.equal(r.status, 200);
+  assert.equal(j.status, 'unavailable');
+  assert.match(j.reason, /turned off for this deployment/i);
+  assert.equal(state.askInput, null); // askAscendAI never ran
+  assert.equal(calls.recordAscendaiUsage.length, 0);
+});
+
+test('the per-org toggle off -> 200 { status: "unavailable" }, provider not called', async () => {
+  reset();
+  state.orgAscendaiEnabled = false;
+  const r = await post('/api/ascendai/chat', { message: 'hi' });
+  const j = await r.json();
+  assert.equal(r.status, 200);
+  assert.equal(j.status, 'unavailable');
+  assert.match(j.reason, /turned off for your organization/i);
+  assert.equal(state.askInput, null);
+});
+
+test('GET /api/ascendai/usage reports today\'s count, the limit, tokens and enabled', async () => {
+  reset();
+  state.usedToday = 7;
+  const j = await (await fetch(`${base}/api/ascendai/usage`)).json();
+  assert.equal(j.enabled, true);
+  assert.equal(j.today.count, 7);
+  assert.ok(j.today.limit > 0);
+  assert.deepEqual(j.tokens, { prompt: 10, completion: 20, total: 30 });
+
+  state.orgAscendaiEnabled = false;
+  const j2 = await (await fetch(`${base}/api/ascendai/usage`)).json();
+  assert.equal(j2.enabled, false);
 });

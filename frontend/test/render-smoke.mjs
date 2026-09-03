@@ -74,8 +74,10 @@ const probeSource = `
   export function renderTour(metrics) {
     return renderToStaticMarkup(<DashboardTour metrics={metrics} onClose={() => {}} />);
   }
-  export function renderAscendAi(open, messages) {
-    return renderToStaticMarkup(<AscendAiPanel initialOpen={open} initialMessages={messages} />);
+  export function renderAscendAi(open, messages, usage) {
+    return renderToStaticMarkup(
+      <AscendAiPanel initialOpen={open} initialMessages={messages} initialUsage={usage ?? null} />
+    );
   }
 `;
 
@@ -280,6 +282,17 @@ test('AscendAI: the open panel renders user + assistant bubbles and the clear co
   assert.ok(html.includes('Cash covers about 1.4 months.'));
   assert.ok(html.includes('Clear'));
   assertClean(html, 'ascendai-open');
+});
+
+test('AscendAI: a disabled feature renders nothing at all — not even the launcher', () => {
+  assert.equal(renderAscendAi(false, null, { enabled: false }), '');
+  assert.equal(renderAscendAi(true, [], { enabled: false }), '');
+});
+
+test('AscendAI: when enabled, the header shows today’s message count', () => {
+  const html = renderAscendAi(true, [], { enabled: true, today: { count: 3, limit: 50 } });
+  assert.ok(html.includes('3 of 50 messages today'));
+  assertClean(html, 'ascendai-usage');
 });
 
 test('AscendAI: the degraded server states render as friendly inline notices, from server copy', () => {

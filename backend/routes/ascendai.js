@@ -22,6 +22,8 @@ const {
   deleteChatMessages,
   recordAscendaiUsage,
   countAscendaiUsageSince,
+  sumAscendaiUsageSince,
+  getOrganizationById,
 } = require('../db');
 const {
   ASCENDAI_HISTORY_WINDOW_MESSAGES,
@@ -29,6 +31,7 @@ const {
 } = require('../config/thresholds');
 const { chatBurstLimiter } = require('../middleware/rateLimit');
 const { requireVerified } = require('../middleware/requireVerified');
+const { ascendaiEnabled } = require('../config/aiFlags');
 
 const router = express.Router();
 
@@ -77,6 +80,25 @@ router.post('/ascendai/chat', requireVerified, chatBurstLimiter, async (req, res
       return res
         .status(400)
         .json({ ok: false, error: `Message is too long (max ${MAX_MESSAGE_CHARS} characters).` });
+    }
+
+    // --- kill-switches: global env flag, then the per-org toggle -------------
+    if (!ascendaiEnabled()) {
+      return res.json({
+        ok: true,
+        status: 'unavailable',
+        reply: null,
+        reason: 'AscendAI is turned off for this deployment.',
+      });
+    }
+    const org = await getOrganizationById(orgId);
+    if (org && org.ascendai_enabled === false) {
+      return res.json({
+        ok: true,
+        status: 'unavailable',
+        reply: null,
+        reason: 'AscendAI has been turned off for your organization by an owner.',
+      });
     }
 
     // --- per-org daily rate limit (defense in depth for the prepaid balance) --
@@ -144,6 +166,30 @@ router.delete('/ascendai/chat', async (req, res, next) => {
     const { orgId, userId } = req.auth;
     const cleared = await deleteChatMessages(orgId, userId);
     res.json({ ok: true, cleared });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Today's AscendAI usage for the org + whether the feature is on (global flag
+// AND the org toggle). Drives the "N of 50 today" line and the panel's
+// visibility in the frontend.
+router.get('/ascendai/usage', async (req, res, next) => {
+  try {
+    const { orgId } = req.auth;
+    const org = await getOrganizationById(orgId);
+    const enabled = ascendaiEnabled() && !(org && org.ascendai_enabled === false);
+    const u = await sumAscendaiUsageSince(orgId, startOfUtcDayIso());
+    res.json({
+      ok: true,
+      enabled,
+      today: { count: u.count, limit: ASCENDAI_DAILY_MESSAGE_LIMIT_PER_ORG },
+      tokens: {
+        prompt: u.prompt_tokens,
+        completion: u.completion_tokens,
+        total: u.total_tokens,
+      },
+    });
   } catch (err) {
     next(err);
   }

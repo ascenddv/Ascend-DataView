@@ -48,6 +48,10 @@ export async function fetchChatHistory() {
   return asJson(await fetch('/api/ascendai/chat', opts()), 'GET /api/ascendai/chat');
 }
 
+export async function fetchAscendaiUsage() {
+  return asJson(await fetch('/api/ascendai/usage', opts()), 'GET /api/ascendai/usage');
+}
+
 /**
  * Send one chat turn. Resolves to { status, reply, reason } where status is
  * 'ok' | 'unavailable' | 'rate_limited' — the degraded statuses are a normal
@@ -258,6 +262,17 @@ export async function exportAccount() {
   const cd = res.headers.get('Content-Disposition') || '';
   const m = /filename="([^"]+)"/.exec(cd);
   return { blob, filename: m ? m[1] : 'ascenddv-export.json' };
+}
+
+export async function setOrgAscendaiEnabled(orgId, ascendaiEnabled) {
+  return asJson(
+    await fetch(`/api/organizations/${orgId}`, opts({
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ascendaiEnabled }),
+    })),
+    'update org settings'
+  );
 }
 
 export async function deleteOrganization(orgId, confirm) {

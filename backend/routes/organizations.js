@@ -27,6 +27,7 @@ const {
   listPendingInvitations,
   deleteInvitation,
   deleteOrganization,
+  setOrgAscendaiEnabled,
 } = require('../db');
 const { requireRole } = require('../middleware/requireRole');
 const { requireVerified } = require('../middleware/requireVerified');
@@ -102,6 +103,23 @@ router.delete('/organizations/:id', sameOrg, requireRole('owner'), requireVerifi
     await deleteOrganization(orgId);
     res.clearCookie(COOKIE_NAME, { ...cookieOptions(), maxAge: undefined });
     res.json({ ok: true, deleted: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * Owner-only org settings. Currently just the per-org AscendAI switch
+ * (Phase 28). PATCH with { ascendaiEnabled: boolean }.
+ */
+router.patch('/organizations/:id', sameOrg, requireRole('owner'), async (req, res, next) => {
+  try {
+    const { ascendaiEnabled } = req.body || {};
+    if (typeof ascendaiEnabled !== 'boolean') {
+      return res.status(400).json({ ok: false, error: 'ascendaiEnabled (boolean) is required.' });
+    }
+    const value = await setOrgAscendaiEnabled(req.auth.orgId, ascendaiEnabled);
+    res.json({ ok: true, ascendaiEnabled: value === true });
   } catch (err) {
     next(err);
   }

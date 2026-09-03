@@ -178,10 +178,20 @@ async function createOrganization({ name, orgType = 'small_nonprofit' }) {
 async function getOrganizationById(id) {
   const conn = getDb();
   const { rows } = await conn.query(
-    'SELECT id, name, org_type, onboarding_completed, created_at FROM organizations WHERE id = $1',
+    'SELECT id, name, org_type, onboarding_completed, ascendai_enabled, created_at FROM organizations WHERE id = $1',
     [id]
   );
   return rows[0] || null;
+}
+
+/** Phase 28: an owner's per-org AscendAI switch. Returns the new value. */
+async function setOrgAscendaiEnabled(orgId, enabled) {
+  assertOrgId(orgId, 'setOrgAscendaiEnabled');
+  const { rows } = await getDb().query(
+    'UPDATE organizations SET ascendai_enabled = $2 WHERE id = $1 RETURNING ascendai_enabled',
+    [orgId, enabled === true]
+  );
+  return rows[0] ? rows[0].ascendai_enabled : null;
 }
 
 /** Phase 17: mark (or unmark) an org's first-run onboarding as done. */
@@ -719,6 +729,21 @@ async function countAscendaiUsageSince(orgId, sinceIso) {
   return rows[0].n;
 }
 
+/** Turn count + token totals for this org since `sinceIso` (Phase 28 usage view). */
+async function sumAscendaiUsageSince(orgId, sinceIso) {
+  assertOrgId(orgId, 'sumAscendaiUsageSince');
+  const { rows } = await getDb().query(
+    `SELECT count(*)::int AS count,
+            COALESCE(sum(prompt_tokens), 0)::int      AS prompt_tokens,
+            COALESCE(sum(completion_tokens), 0)::int  AS completion_tokens,
+            COALESCE(sum(total_tokens), 0)::int       AS total_tokens
+       FROM ascendai_usage
+      WHERE org_id = $1 AND created_at >= $2`,
+    [orgId, sinceIso]
+  );
+  return rows[0];
+}
+
 /* -------------------------------------------------------------------------- */
 /* pending_uploads — Phase 14b stash, DB-backed so it survives across          */
 /* serverless instances. Single-use + TTL + org scope enforced in one query.  */
@@ -806,4 +831,6 @@ module.exports = {
   deleteChatMessages,
   recordAscendaiUsage,
   countAscendaiUsageSince,
+  sumAscendaiUsageSince,
+  setOrgAscendaiEnabled,
 };

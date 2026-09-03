@@ -67,7 +67,12 @@ function publicUser(user) {
   return { email: user.email, role: user.role, emailVerified: Boolean(user.email_verified_at) };
 }
 function publicOrg(org) {
-  return { id: org.id, name: org.name, onboardingCompleted: org.onboarding_completed === true };
+  return {
+    id: org.id,
+    name: org.name,
+    onboardingCompleted: org.onboarding_completed === true,
+    ascendaiEnabled: org.ascendai_enabled !== false,
+  };
 }
 
 /** Best-effort: mint + store a verification token and email it. Never throws. */

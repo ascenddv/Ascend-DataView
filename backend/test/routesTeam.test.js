@@ -15,7 +15,7 @@ const dbId = require.resolve('../db');
 const emailId = require.resolve('../services/email');
 
 const ORG = 42;
-const state = { members: [], invites: [], accounts: new Set(), created: [], removed: [], deletedOrgs: [] };
+const state = { members: [], invites: [], accounts: new Set(), created: [], removed: [], deletedOrgs: [], aiToggles: [] };
 const sent = [];
 
 function seed() {
@@ -28,6 +28,7 @@ function seed() {
   state.created = [];
   state.removed = [];
   state.deletedOrgs = [];
+  state.aiToggles = [];
   sent.length = 0;
 }
 
@@ -52,6 +53,7 @@ require.cache[dbId] = {
     deleteInvitation: async (orgId, token) =>
       orgId === ORG && state.invites.some((i) => i.token === token) ? token : null,
     deleteOrganization: async (orgId) => { state.deletedOrgs.push(orgId); return orgId; },
+    setOrgAscendaiEnabled: async (orgId, enabled) => { state.aiToggles.push([orgId, enabled]); return enabled; },
   },
 };
 require.cache[emailId] = {
@@ -203,4 +205,20 @@ test('DELETE /organizations/:id — an unverified owner -> 403 needsVerification
   const r = await call('DELETE', `/api/organizations/${ORG}`, { unverified: true, body: { confirm: `Org ${ORG}` } });
   assert.equal(r.status, 403);
   assert.equal((await r.json()).needsVerification, true);
+});
+
+/* -- PATCH org settings (Phase 28 AscendAI toggle) --------------------- */
+
+test('PATCH /organizations/:id — owner toggles ascendaiEnabled', async () => {
+  const off = await call('PATCH', `/api/organizations/${ORG}`, { body: { ascendaiEnabled: false } });
+  assert.equal(off.status, 200);
+  assert.equal((await off.json()).ascendaiEnabled, false);
+  assert.deepEqual(state.aiToggles.at(-1), [ORG, false]);
+});
+
+test('PATCH /organizations/:id — a member -> 403; a non-boolean body -> 400; another org -> 403', async () => {
+  assert.equal((await call('PATCH', `/api/organizations/${ORG}`, { role: 'member', body: { ascendaiEnabled: false } })).status, 403);
+  assert.equal((await call('PATCH', `/api/organizations/${ORG}`, { body: { ascendaiEnabled: 'nope' } })).status, 400);
+  assert.equal((await call('PATCH', `/api/organizations/999`, { body: { ascendaiEnabled: true } })).status, 403);
+  assert.equal(state.aiToggles.length, 0);
 });

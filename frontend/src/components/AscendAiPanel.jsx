@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { fetchChatHistory, sendChatMessage, clearChat } from '../lib/api.js';
+import { fetchChatHistory, sendChatMessage, clearChat, fetchAscendaiUsage } from '../lib/api.js';
 
 /**
  * AscendAI — a slide-out chat panel available from every dashboard view.
@@ -13,15 +13,26 @@ import { fetchChatHistory, sendChatMessage, clearChat } from '../lib/api.js';
  * Visual language matches CardChrome / CardShell: --surface-1 panels, --border,
  * the --series-1 accent, rounded-xl, soft shadow — not a generic chat widget.
  */
-export default function AscendAiPanel({ initialOpen = false, initialMessages = null }) {
+export default function AscendAiPanel({ initialOpen = false, initialMessages = null, initialUsage = null }) {
   const [open, setOpen] = useState(initialOpen);
   const [messages, setMessages] = useState(initialMessages || []);
   const [loadedHistory, setLoadedHistory] = useState(Boolean(initialMessages));
   const [input, setInput] = useState('');
   const [pending, setPending] = useState(false);
   const [confirmClear, setConfirmClear] = useState(false);
+  const [usage, setUsage] = useState(initialUsage);
   const listRef = useRef(null);
   const inputRef = useRef(null);
+
+  // Feature state + today's count. If it comes back disabled the panel renders
+  // nothing at all (no launcher).
+  useEffect(() => {
+    let cancelled = false;
+    fetchAscendaiUsage()
+      .then((u) => { if (!cancelled) setUsage(u); })
+      .catch(() => { /* leave usage null -> panel behaves as before */ });
+    return () => { cancelled = true; };
+  }, []);
 
   useEffect(() => {
     if (!open || loadedHistory) return undefined;
@@ -95,6 +106,9 @@ export default function AscendAiPanel({ initialOpen = false, initialMessages = n
     }
   }
 
+  // Disabled deployment-wide or by an owner for this org — no affordance at all.
+  if (usage && usage.enabled === false) return null;
+
   if (!open) {
     return (
       <button
@@ -133,6 +147,11 @@ export default function AscendAiPanel({ initialOpen = false, initialMessages = n
           <p className="mt-0.5 text-xs" style={{ color: 'var(--text-muted)' }}>
             Answers from this organization&rsquo;s dashboard data
           </p>
+          {usage && usage.today && (
+            <p className="mt-0.5 text-xs" style={{ color: 'var(--text-muted)' }}>
+              {usage.today.count} of {usage.today.limit} messages today
+            </p>
+          )}
         </div>
         <div className="flex items-center gap-2">
           <button

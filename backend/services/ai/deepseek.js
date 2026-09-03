@@ -13,8 +13,12 @@
  * Billing: prepaid, no auto-recharge. The balance itself is the spend ceiling.
  */
 
+// Endpoint + model are env-driven so the provider can be repointed without a
+// code change (ASCENDAI_MODEL is an alias kept next to the other ASCENDAI_* env
+// names; DEEPSEEK_MODEL still works).
 const DEEPSEEK_BASE_URL = process.env.DEEPSEEK_BASE_URL || 'https://api.deepseek.com';
-const DEEPSEEK_MODEL = process.env.DEEPSEEK_MODEL || 'deepseek-chat';
+const DEEPSEEK_MODEL =
+  process.env.ASCENDAI_MODEL || process.env.DEEPSEEK_MODEL || 'deepseek-chat';
 
 const RETRYABLE_STATUS = new Set([429, 500, 502, 503, 504]);
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
