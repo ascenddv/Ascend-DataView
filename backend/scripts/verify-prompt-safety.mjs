@@ -33,7 +33,7 @@ async function req(method, path, { body, form } = {}) {
   return { status: res.status, text: await res.text() };
 }
 
-await req('POST', '/api/auth/signup', { body: { email, password: 'password123', orgName } });
+await req('POST', '/api/auth/signup', { body: { email, password: 'ascend-gate-K7m2Qp-Zx9', orgName } });
 
 const fd = new FormData();
 const buf = readFileSync('C:/Ascend-DataView/data/fixture_rich.csv');

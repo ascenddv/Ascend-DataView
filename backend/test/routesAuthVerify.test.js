@@ -1,0 +1,237 @@
+/**
+ * routes/auth.js — the Phase 25 flows (verify-email, resend, forgot/reset
+ * password) at the route level, with ../db, ../services/email and
+ * ../services/passwordCheck stubbed. No live Postgres, no network, no real mail.
+ *
+ * What this locks in:
+ *   - signup emails a verification link and the account starts unverified
+ *   - a valid token verifies once; reuse / garbage / unknown -> 400
+ *   - forgot-password is always 200 (no user enumeration) and only emails a
+ *     real user
+ *   - reset-password validates the NEW password BEFORE burning the token,
+ *     rejects breached passwords, and on success bumps token_version + clears
+ *     the cookie
+ *   - a breached password is refused at signup
+ */
+
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const express = require('express');
+
+process.env.JWT_SECRET = process.env.JWT_SECRET || 'test-secret';
+
+/* ---- stubs, installed before the router is required -------------------- */
+const dbId = require.resolve('../db');
+const emailId = require.resolve('../services/email');
+const pwId = require.resolve('../services/passwordCheck');
+
+const store = {
+  users: new Map(), // id -> user row
+  byEmail: new Map(), // email -> id
+  verifications: new Map(), // token -> { userId, used, expired }
+  resets: new Map(), // token -> { userId, used, expired }
+  nextId: 1,
+};
+const sent = []; // captured emails
+let breached = new Set(); // passwords the fake HIBP flags
+
+function resetStore() {
+  store.users.clear();
+  store.byEmail.clear();
+  store.verifications.clear();
+  store.resets.clear();
+  store.nextId = 1;
+  sent.length = 0;
+  breached = new Set();
+}
+
+require.cache[dbId] = {
+  id: dbId, filename: dbId, loaded: true, children: [], paths: [],
+  exports: {
+    getDb: () => ({
+      // only the rate limiter's PgRateStore calls this; keep it a no-op
+      query: async () => ({ rows: [{ hits: 1, expires_at: new Date(Date.now() + 60000) }] }),
+    }),
+    createOrganization: async ({ name }) => ({ id: 100 + store.nextId, name, onboarding_completed: false }),
+    createUser: async ({ orgId, email, passwordHash, role }) => {
+      const id = store.nextId++;
+      const row = { id, org_id: orgId, email: email.toLowerCase(), password_hash: passwordHash, role, token_version: 0, email_verified_at: null };
+      store.users.set(id, row);
+      store.byEmail.set(row.email, id);
+      return { ...row };
+    },
+    getUserByEmail: async (email) => {
+      const id = store.byEmail.get(String(email || '').toLowerCase());
+      return id ? { ...store.users.get(id) } : null;
+    },
+    getUserById: async (id) => (store.users.get(id) ? { ...store.users.get(id) } : null),
+    getOrganizationById: async (id) => ({ id, name: `Org ${id}`, onboarding_completed: false }),
+    bumpTokenVersion: async (userId) => {
+      const u = store.users.get(userId);
+      if (!u) return null;
+      u.token_version += 1;
+      return u.token_version;
+    },
+    updateUserPassword: async (userId, hash) => {
+      const u = store.users.get(userId);
+      if (!u) return false;
+      u.password_hash = hash;
+      return true;
+    },
+    createEmailVerification: async (userId, token) => {
+      store.verifications.set(token, { userId, used: false, expired: false });
+    },
+    consumeEmailVerification: async (token) => {
+      const row = store.verifications.get(token);
+      if (!row || row.used || row.expired) return null;
+      row.used = true;
+      const u = store.users.get(row.userId);
+      if (u && !u.email_verified_at) u.email_verified_at = new Date().toISOString();
+      return { userId: row.userId };
+    },
+    createPasswordReset: async (userId, token) => {
+      store.resets.set(token, { userId, used: false, expired: false });
+    },
+    consumePasswordReset: async (token) => {
+      const row = store.resets.get(token);
+      if (!row || row.used || row.expired) return null;
+      row.used = true;
+      return { userId: row.userId };
+    },
+  },
+};
+require.cache[emailId] = {
+  id: emailId, filename: emailId, loaded: true, children: [], paths: [],
+  exports: {
+    sendEmail: async (msg) => { sent.push(msg); return { ok: true, dev: true }; },
+    verificationEmail: (to, token) => ({ to, subject: 'Verify your email', kind: 'verify', token, text: `link ${token}` }),
+    passwordResetEmail: (to, token) => ({ to, subject: 'Reset your password', kind: 'reset', token, text: `link ${token}` }),
+  },
+};
+require.cache[pwId] = {
+  id: pwId, filename: pwId, loaded: true, children: [], paths: [],
+  exports: { isBreachedPassword: async (pw) => breached.has(pw) },
+};
+
+const authRouter = require('../routes/auth');
+
+const app = express();
+app.use(require('cookie-parser')());
+app.use(express.json());
+app.use('/api/auth', authRouter);
+app.use((err, _req, res, _next) => res.status(err.statusCode || 500).json({ ok: false, error: err.message }));
+
+const server = app.listen(0);
+const base = `http://127.0.0.1:${server.address().port}`;
+test.after(() => server.close());
+test.beforeEach(resetStore);
+
+const post = (path, body, headers = {}) =>
+  fetch(base + path, { method: 'POST', headers: { 'Content-Type': 'application/json', ...headers }, body: JSON.stringify(body) });
+
+const GOOD_PW = 'a-strong-unique-passphrase-7712';
+
+async function signup(email = 'owner@org.co') {
+  const r = await post('/api/auth/signup', { email, password: GOOD_PW, orgName: 'Org' });
+  const cookie = (r.headers.get('set-cookie') || '').split(';')[0];
+  return { status: r.status, body: await r.json(), cookie };
+}
+
+test('signup: account starts unverified and a verification email goes out', async () => {
+  const { status, body } = await signup();
+  assert.equal(status, 201);
+  assert.equal(body.user.emailVerified, false);
+  assert.equal(sent.length, 1);
+  assert.equal(sent[0].kind, 'verify');
+  assert.equal(store.verifications.size, 1);
+});
+
+test('signup: a breached password is refused', async () => {
+  breached = new Set([GOOD_PW]);
+  const r = await post('/api/auth/signup', { email: 'x@y.co', password: GOOD_PW, orgName: 'Org' });
+  assert.equal(r.status, 400);
+  assert.match((await r.json()).error, /data breach/i);
+  assert.equal(store.users.size, 0);
+});
+
+test('verify-email: a valid token verifies once; reuse and garbage 400', async () => {
+  await signup();
+  const token = [...store.verifications.keys()][0];
+
+  const ok = await post('/api/auth/verify-email', { token });
+  assert.equal(ok.status, 200);
+  assert.equal((await ok.json()).emailVerified, true);
+  assert.ok(store.users.get(1).email_verified_at);
+
+  const reuse = await post('/api/auth/verify-email', { token });
+  assert.equal(reuse.status, 400);
+
+  const garbage = await post('/api/auth/verify-email', { token: 'nope' });
+  assert.equal(garbage.status, 400);
+});
+
+test('resend-verification: authed + unverified -> new token + email; already verified -> no-op', async () => {
+  const { cookie } = await signup();
+  const first = await post('/api/auth/resend-verification', {}, { Cookie: cookie });
+  assert.equal(first.status, 200);
+  assert.equal((await first.json()).sent, true);
+  assert.equal(store.verifications.size, 2);
+
+  store.users.get(1).email_verified_at = new Date().toISOString();
+  const after = await post('/api/auth/resend-verification', {}, { Cookie: cookie });
+  assert.equal((await after.json()).alreadyVerified, true);
+  assert.equal(store.verifications.size, 2); // unchanged
+});
+
+test('forgot-password: always 200, only emails a real account', async () => {
+  await signup('real@org.co');
+  sent.length = 0;
+
+  const unknown = await post('/api/auth/forgot-password', { email: 'nobody@nowhere.co' });
+  assert.equal(unknown.status, 200);
+  assert.equal(sent.length, 0);
+
+  const known = await post('/api/auth/forgot-password', { email: 'real@org.co' });
+  assert.equal(known.status, 200);
+  assert.equal(sent.length, 1);
+  assert.equal(sent[0].kind, 'reset');
+  assert.equal(store.resets.size, 1);
+});
+
+test('reset-password: weak new password is rejected and the token is NOT consumed', async () => {
+  await signup('u@org.co');
+  await post('/api/auth/forgot-password', { email: 'u@org.co' });
+  const token = [...store.resets.keys()][0];
+
+  const weak = await post('/api/auth/reset-password', { token, password: 'short' });
+  assert.equal(weak.status, 400);
+  assert.equal(store.resets.get(token).used, false);
+});
+
+test('reset-password: a breached new password is rejected', async () => {
+  await signup('u@org.co');
+  await post('/api/auth/forgot-password', { email: 'u@org.co' });
+  const token = [...store.resets.keys()][0];
+  breached = new Set(['another-breached-one-99']);
+
+  const r = await post('/api/auth/reset-password', { token, password: 'another-breached-one-99' });
+  assert.equal(r.status, 400);
+  assert.match((await r.json()).error, /data breach/i);
+  assert.equal(store.resets.get(token).used, false);
+});
+
+test('reset-password: success updates the hash, bumps token_version, clears the cookie, token is single-use', async () => {
+  await signup('u@org.co');
+  const beforeHash = store.users.get(1).password_hash;
+  await post('/api/auth/forgot-password', { email: 'u@org.co' });
+  const token = [...store.resets.keys()][0];
+
+  const ok = await post('/api/auth/reset-password', { token, password: 'brand-new-strong-pass-4410' });
+  assert.equal(ok.status, 200);
+  assert.notEqual(store.users.get(1).password_hash, beforeHash);
+  assert.equal(store.users.get(1).token_version, 1);
+  assert.match(ok.headers.get('set-cookie') || '', /ascenddv_token=;/); // cleared
+
+  const reuse = await post('/api/auth/reset-password', { token, password: 'yet-another-strong-pass-5521' });
+  assert.equal(reuse.status, 400);
+});

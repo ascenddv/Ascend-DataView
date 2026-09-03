@@ -160,3 +160,40 @@ export async function logout() {
 export async function logoutAll() {
   return asJson(await fetch('/api/auth/logout-all', opts({ method: 'POST' })), 'logout-all');
 }
+
+export async function verifyEmail(token) {
+  return asJson(
+    await fetch('/api/auth/verify-email', opts({
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token }),
+    })),
+    'verify email'
+  );
+}
+
+export async function resendVerification() {
+  return asJson(await fetch('/api/auth/resend-verification', opts({ method: 'POST' })), 'resend verification');
+}
+
+export async function forgotPassword(email) {
+  return asJson(
+    await fetch('/api/auth/forgot-password', opts({
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email }),
+    })),
+    'forgot password'
+  );
+}
+
+export async function resetPassword(token, password) {
+  return asJson(
+    await fetch('/api/auth/reset-password', opts({
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token, password }),
+    })),
+    'reset password'
+  );
+}

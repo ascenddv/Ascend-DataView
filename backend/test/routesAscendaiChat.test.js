@@ -79,7 +79,7 @@ const USER = 22;
 const app = express();
 app.use(express.json());
 app.use((req, _res, next) => {
-  req.auth = { orgId: Number(req.query.as) || ORG, userId: Number(req.query.u) || USER, email: 't@t' };
+  req.auth = { orgId: Number(req.query.as) || ORG, userId: Number(req.query.u) || USER, email: 't@t', emailVerified: true };
   next();
 });
 app.use('/api', ascendaiRouter);

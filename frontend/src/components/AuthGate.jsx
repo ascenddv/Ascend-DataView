@@ -1,10 +1,14 @@
 import { useCallback, useEffect, useState } from 'react';
 import { getMe, logout as apiLogout, logoutAll as apiLogoutAll } from '../lib/api.js';
 import AuthPage from './AuthPage.jsx';
+import { VerifyEmailPage, ResetPasswordPage } from './AuthTokenPages.jsx';
 
 /**
- * Wraps the app: resolves the current session once, shows <AuthPage> if there
- * isn't one, otherwise renders children with { user, org, onLogout }.
+ * Wraps the app: first handles the two token landing pages (/verify-email and
+ * /reset-password, reached from email links — the app has no router, so we read
+ * location directly), then resolves the current session once and shows
+ * <AuthPage> if there isn't one, otherwise renders children with
+ * { user, org, onLogout, onLogoutAll }.
  */
 export default function AuthGate({ children }) {
   const [state, setState] = useState({ status: 'loading' });
@@ -37,6 +41,15 @@ export default function AuthGate({ children }) {
       setState({ status: 'anon' });
     }
   }
+
+  // Email-link landing pages, shown regardless of session state.
+  const path = typeof window !== 'undefined' ? window.location.pathname : '/';
+  const token =
+    typeof window !== 'undefined'
+      ? new URLSearchParams(window.location.search).get('token')
+      : null;
+  if (path === '/verify-email') return <VerifyEmailPage token={token} />;
+  if (path === '/reset-password') return <ResetPasswordPage token={token} />;
 
   if (state.status === 'loading') {
     return (

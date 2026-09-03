@@ -21,6 +21,7 @@ const {
   PENDING_UPLOAD_MAX_BYTES,
   CHAT_MESSAGE_RETENTION_DAYS,
   ASCENDAI_USAGE_RETENTION_DAYS,
+  AUTH_TOKEN_RETENTION_DAYS,
 } = require('../config/thresholds');
 
 /**
@@ -127,10 +128,20 @@ async function pruneOldRows() {
   const pending = await conn.query(
     `DELETE FROM pending_uploads WHERE created_at < now() - interval '${PENDING_UPLOAD_TTL}'`
   );
+  const verifications = await conn.query(
+    `DELETE FROM email_verifications WHERE created_at < now() - ($1 || ' days')::interval`,
+    [AUTH_TOKEN_RETENTION_DAYS]
+  );
+  const resets = await conn.query(
+    `DELETE FROM password_resets WHERE created_at < now() - ($1 || ' days')::interval`,
+    [AUTH_TOKEN_RETENTION_DAYS]
+  );
   return {
     chatMessages: chat.rowCount,
     ascendaiUsage: usage.rowCount,
     pendingUploads: pending.rowCount,
+    emailVerifications: verifications.rowCount,
+    passwordResets: resets.rowCount,
   };
 }
 
@@ -193,7 +204,7 @@ async function createUser({ orgId, email, passwordHash, role = 'owner' }) {
 async function getUserByEmail(email) {
   const conn = getDb();
   const { rows } = await conn.query(
-    'SELECT id, org_id, email, password_hash, role, token_version, created_at FROM users WHERE email = $1',
+    'SELECT id, org_id, email, password_hash, role, token_version, email_verified_at, created_at FROM users WHERE email = $1',
     [String(email || '').toLowerCase()]
   );
   return rows[0] || null;
@@ -202,7 +213,7 @@ async function getUserByEmail(email) {
 async function getUserById(id) {
   const conn = getDb();
   const { rows } = await conn.query(
-    'SELECT id, org_id, email, role, token_version, created_at FROM users WHERE id = $1',
+    'SELECT id, org_id, email, role, token_version, email_verified_at, created_at FROM users WHERE id = $1',
     [id]
   );
   return rows[0] || null;
@@ -221,6 +232,84 @@ async function bumpTokenVersion(userId) {
     [userId]
   );
   return rows[0] ? rows[0].token_version : null;
+}
+
+async function updateUserPassword(userId, passwordHash) {
+  assertUserId(userId, 'updateUserPassword');
+  const { rowCount } = await getDb().query(
+    'UPDATE users SET password_hash = $2 WHERE id = $1',
+    [userId, passwordHash]
+  );
+  return rowCount > 0;
+}
+
+/* -------------------------------------------------------------------------- */
+/* email verification + password reset — single-use, time-boxed tokens        */
+/* -------------------------------------------------------------------------- */
+
+async function createEmailVerification(userId, token, ttlHours) {
+  assertUserId(userId, 'createEmailVerification');
+  await getDb().query(
+    `INSERT INTO email_verifications (token, user_id, expires_at)
+     VALUES ($1, $2, now() + ($3 || ' hours')::interval)`,
+    [token, userId, ttlHours]
+  );
+}
+
+/**
+ * Consume a verification token: if it is unused and unexpired, mark it used and
+ * stamp users.email_verified_at (idempotent — a second valid token is a no-op
+ * on an already-verified user). Returns { userId } on success, null otherwise.
+ */
+async function consumeEmailVerification(token) {
+  if (typeof token !== 'string' || !token) return null;
+  const client = await getDb().connect();
+  try {
+    await client.query('BEGIN');
+    const { rows } = await client.query(
+      `UPDATE email_verifications SET used_at = now()
+       WHERE token = $1 AND used_at IS NULL AND expires_at > now()
+       RETURNING user_id`,
+      [token]
+    );
+    if (!rows[0]) {
+      await client.query('ROLLBACK');
+      return null;
+    }
+    const userId = rows[0].user_id;
+    await client.query(
+      'UPDATE users SET email_verified_at = COALESCE(email_verified_at, now()) WHERE id = $1',
+      [userId]
+    );
+    await client.query('COMMIT');
+    return { userId };
+  } catch (err) {
+    await client.query('ROLLBACK').catch(() => {});
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
+async function createPasswordReset(userId, token, ttlHours) {
+  assertUserId(userId, 'createPasswordReset');
+  await getDb().query(
+    `INSERT INTO password_resets (token, user_id, expires_at)
+     VALUES ($1, $2, now() + ($3 || ' hours')::interval)`,
+    [token, userId, ttlHours]
+  );
+}
+
+/** Claim a reset token (mark used) if valid. Returns { userId } or null. */
+async function consumePasswordReset(token) {
+  if (typeof token !== 'string' || !token) return null;
+  const { rows } = await getDb().query(
+    `UPDATE password_resets SET used_at = now()
+     WHERE token = $1 AND used_at IS NULL AND expires_at > now()
+     RETURNING user_id`,
+    [token]
+  );
+  return rows[0] ? { userId: rows[0].user_id } : null;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -499,6 +588,11 @@ module.exports = {
   getUserByEmail,
   getUserById,
   bumpTokenVersion,
+  updateUserPassword,
+  createEmailVerification,
+  consumeEmailVerification,
+  createPasswordReset,
+  consumePasswordReset,
   mergeStandardizedData,
   upsertStandardizedRow,
   deleteStandardizedData,

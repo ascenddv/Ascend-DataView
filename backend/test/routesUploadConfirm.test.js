@@ -58,7 +58,7 @@ const OTHER = 6;
 const app = express();
 app.use(express.json());
 app.use((req, _res, next) => {
-  req.auth = { orgId: Number(req.query.as) || ORG, userId: 1, email: 't@t' };
+  req.auth = { orgId: Number(req.query.as) || ORG, userId: 1, email: 't@t', emailVerified: true };
   next();
 });
 app.use('/api', uploadRouter);

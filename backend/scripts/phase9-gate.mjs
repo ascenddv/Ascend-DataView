@@ -40,7 +40,7 @@ async function uploadAndGetMetrics(label, fixtureFile) {
   const stamp = Date.now() + Math.floor(Math.random() * 1000);
   const req = makeClient();
   await req('POST', '/api/auth/signup', {
-    body: { email: `p9_${label}_${stamp}@test.com`, password: 'password123', orgName: `P9 ${label} ${stamp}` },
+    body: { email: `p9_${label}_${stamp}@test.com`, password: 'ascend-gate-K7m2Qp-Zx9', orgName: `P9 ${label} ${stamp}` },
   });
   const up = await req('POST', '/api/upload', { form: fixtureForm(fixtureFile) });
   const m = await req('GET', '/api/metrics');

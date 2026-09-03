@@ -9,6 +9,7 @@ import Overview from './components/Overview.jsx';
 import DangerZone from './components/DangerZone.jsx';
 import OnboardingWizard from './components/OnboardingWizard.jsx';
 import AscendAiPanel from './components/AscendAiPanel.jsx';
+import VerifyEmailBanner from './components/VerifyEmailBanner.jsx';
 import { completeOnboarding } from './lib/api.js';
 
 function Workspace({ user, org, onLogout, onLogoutAll }) {
@@ -85,6 +86,8 @@ function Workspace({ user, org, onLogout, onLogoutAll }) {
             </button>
           </div>
         </header>
+
+        {user.emailVerified === false && <VerifyEmailBanner email={user.email} />}
 
         {!onboarded ? (
           <OnboardingWizard onComplete={handleWizardComplete} onSkip={markOnboardingDone} />

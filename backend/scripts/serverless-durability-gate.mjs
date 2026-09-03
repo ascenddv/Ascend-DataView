@@ -47,7 +47,7 @@ async function waitHealth(base, tries = 80) {
 function startBackend(port, extraEnv = {}) {
   return spawn(process.execPath, ['index.js'], {
     cwd: `${ROOT}/backend`,
-    env: { ...process.env, PORT: String(port), DATABASE_URL: LOCAL_PG, ...extraEnv },
+    env: { ...process.env, PORT: String(port), DATABASE_URL: LOCAL_PG, HIBP_CHECK_ENABLED: '0', ...extraEnv },
     stdio: 'ignore',
   });
 }
@@ -82,9 +82,13 @@ const fileForm = (f) => {
 async function signup(client, label) {
   const s = Date.now() + Math.floor(Math.random() * 1e5);
   const r = await client.req('POST', '/api/auth/signup', {
-    body: { email: `sd_${label}_${s}@t.co`, password: 'password123', orgName: `SD ${label} ${s}` },
+    body: { email: `sd_${label}_${s}@t.co`, password: 'ascend-gate-K7m2Qp-Zx9', orgName: `SD ${label} ${s}` },
   });
-  return { org: (await r.json()).org, status: r.status };
+  const org = (await r.json()).org;
+  // Phase 25: upload / chat require a verified email — this gate is about
+  // cross-instance shared state, not verification, so mark it verified.
+  await db.getDb().query('UPDATE users SET email_verified_at = now() WHERE org_id = $1', [org.id]);
+  return { org, status: r.status };
 }
 const userIdForOrg = async (orgId) => {
   const { rows } = await db.getDb().query('SELECT id FROM users WHERE org_id = $1 ORDER BY id LIMIT 1', [orgId]);
@@ -117,7 +121,7 @@ try {
     const client = i % 2 === 0 ? ca : cb; // alternate A / B
     const s = Date.now() + i;
     const r = await client.req('POST', '/api/auth/signup', {
-      body: { email: `rl_${s}_${i}@t.co`, password: 'password123', orgName: `RL ${s} ${i}` },
+      body: { email: `rl_${s}_${i}@t.co`, password: 'ascend-gate-K7m2Qp-Zx9', orgName: `RL ${s} ${i}` },
     });
     results.push({ i, instance: i % 2 === 0 ? 'A' : 'B', status: r.status });
   }

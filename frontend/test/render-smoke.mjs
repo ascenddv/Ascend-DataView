@@ -31,6 +31,18 @@ const probeSource = `
   import OnboardingWizard from '../src/components/OnboardingWizard.jsx';
   import DashboardTour from '../src/components/DashboardTour.jsx';
   import AscendAiPanel from '../src/components/AscendAiPanel.jsx';
+  import AuthPage from '../src/components/AuthPage.jsx';
+  import VerifyEmailBanner from '../src/components/VerifyEmailBanner.jsx';
+  import { ResetPasswordPage } from '../src/components/AuthTokenPages.jsx';
+  export function renderAuthPage() {
+    return renderToStaticMarkup(<AuthPage onAuthed={() => {}} />);
+  }
+  export function renderVerifyBanner() {
+    return renderToStaticMarkup(<VerifyEmailBanner email="owner@org.co" />);
+  }
+  export function renderResetPage(token) {
+    return renderToStaticMarkup(<ResetPasswordPage token={token} />);
+  }
   export function render(metrics, insightState, initialView) {
     return renderToStaticMarkup(
       <Dashboard metrics={metrics} insightState={insightState} initialView={initialView} />
@@ -65,6 +77,9 @@ let renderMappingConfirmation;
 let renderWizard;
 let renderTour;
 let renderAscendAi;
+let renderAuthPage;
+let renderVerifyBanner;
+let renderResetPage;
 
 test.before(async () => {
   const out = here('./.render-smoke.bundle.cjs');
@@ -77,7 +92,10 @@ test.before(async () => {
     jsx: 'automatic',
     logLevel: 'silent',
   });
-  ({ render, renderSummary, renderDangerZone, renderMappingConfirmation, renderWizard, renderTour, renderAscendAi } = require(out));
+  ({
+    render, renderSummary, renderDangerZone, renderMappingConfirmation, renderWizard, renderTour,
+    renderAscendAi, renderAuthPage, renderVerifyBanner, renderResetPage,
+  } = require(out));
 });
 
 const FORBIDDEN = ['N/A', 'NaN', 'undefined', 'Infinity'];
@@ -336,6 +354,34 @@ test('MappingConfirmation lists each flagged header with a schema-field selector
   assert.ok(html.includes('e.g. 12,400 · 13,150'), 'sample values not shown');
   assert.ok(html.includes('volunteers_active'), 'schema fields not offered as correction options');
   assert.ok(html.includes('nothing from this file is stored until you confirm'));
+});
+
+/* ------------------- Phase 25: email verification + reset ------------- */
+
+test('AuthPage offers a "Forgot password?" affordance on the sign-in view', () => {
+  const html = renderAuthPage();
+  assertClean(html, 'auth-page');
+  assert.ok(html.includes('Forgot password?'), 'sign-in view must offer password recovery');
+  assert.ok(html.includes('Sign in'));
+});
+
+test('the verify-email banner explains the block and offers a resend', () => {
+  const html = renderVerifyBanner();
+  assertClean(html, 'verify-banner');
+  assert.ok(html.includes('Verify your email'));
+  assert.ok(html.includes('owner@org.co'));
+  assert.ok(html.includes('Resend verification email'));
+});
+
+test('the reset-password page shows the form for a token and an error without one', () => {
+  const withToken = renderResetPage('abc123');
+  assertClean(withToken, 'reset-with-token');
+  assert.ok(withToken.includes('New password'));
+  assert.ok(withToken.includes('At least 10 characters'));
+
+  const noToken = renderResetPage(null);
+  assert.ok(noToken.includes('missing its token'), 'a tokenless reset link must not show the form');
+  assert.ok(!noToken.includes('New password'));
 });
 
 test('DangerZone: collapsed by default, and the reset button is disabled until the org name is typed', () => {

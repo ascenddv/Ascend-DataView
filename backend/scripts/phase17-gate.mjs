@@ -39,9 +39,9 @@ async function signup(req, label) {
   const s = Date.now() + Math.floor(Math.random() * 1e5);
   const email = `p17_${label}_${s}@t.co`;
   const r = await req('POST', '/api/auth/signup', {
-    body: { email, password: 'password123', orgName: `P17 ${label} ${s}` },
+    body: { email, password: 'ascend-gate-K7m2Qp-Zx9', orgName: `P17 ${label} ${s}` },
   });
-  return { org: r.json.org, email, password: 'password123' };
+  return { org: r.json.org, email, password: 'ascend-gate-K7m2Qp-Zx9' };
 }
 
 /* ---- a fresh org starts un-onboarded ------------------------------- */

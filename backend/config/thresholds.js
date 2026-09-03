@@ -73,6 +73,19 @@ const PDF_RATE_WINDOW_MS = 10 * 60 * 1000;
 const UPLOAD_RATE_LIMIT = 30;
 const UPLOAD_RATE_WINDOW_MS = 10 * 60 * 1000;
 
+// --- Auth: email verification & password reset (Stage 5, Phase 25) ---
+// Minimum password length, checked in validateCredentials. Bumped from 8: a
+// commercial launch wants a real floor, and a separate HIBP breach check
+// (services/passwordCheck.js) rejects known-compromised passwords on top of it.
+const PASSWORD_MIN_LENGTH = 10;
+// Single-use token lifetimes. Verification is generous (people check email
+// late); a reset link is short-lived because it can set a new password.
+const EMAIL_VERIFICATION_TTL_HOURS = 24;
+const PASSWORD_RESET_TTL_HOURS = 1;
+// Consumed / expired verification + reset rows are deleted by the prune job
+// this many days after creation (they carry no lasting value).
+const AUTH_TOKEN_RETENTION_DAYS = 7;
+
 // --- Ingestion: revenue subcategory reconciliation ---
 // The revenue_* fields are an *optional, possibly partial* breakdown. The
 // sum-to-revenue check only runs when ALL four subcategory fields are present
@@ -98,6 +111,10 @@ module.exports = {
   PENDING_UPLOAD_MAX_BYTES,
   CHAT_MESSAGE_RETENTION_DAYS,
   ASCENDAI_USAGE_RETENTION_DAYS,
+  PASSWORD_MIN_LENGTH,
+  EMAIL_VERIFICATION_TTL_HOURS,
+  PASSWORD_RESET_TTL_HOURS,
+  AUTH_TOKEN_RETENTION_DAYS,
   INSIGHT_RATE_LIMIT,
   INSIGHT_RATE_WINDOW_MS,
   ASCENDAI_CHAT_BURST_LIMIT,

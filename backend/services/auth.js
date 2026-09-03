@@ -6,6 +6,8 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 
+const { PASSWORD_MIN_LENGTH } = require('../config/thresholds');
+
 const BCRYPT_ROUNDS = 12;
 // Sessions are independently revocable via users.token_version (Phase 24), so
 // the token itself no longer needs a long life. 2 days keeps a normal user
@@ -59,7 +61,9 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 function validateCredentials({ email, password }) {
   const errors = [];
   if (!email || !EMAIL_RE.test(String(email))) errors.push('A valid email is required.');
-  if (!password || String(password).length < 8) errors.push('Password must be at least 8 characters.');
+  if (!password || String(password).length < PASSWORD_MIN_LENGTH) {
+    errors.push(`Password must be at least ${PASSWORD_MIN_LENGTH} characters.`);
+  }
   return errors;
 }
 

@@ -1,12 +1,17 @@
 /**
- * POST /api/auth/signup      — create an organization + its first user, log them in
- * POST /api/auth/login       — verify credentials, issue a session cookie
- * POST /api/auth/logout      — clear the session cookie (this browser only)
- * POST /api/auth/logout-all  — revoke every session for the current user
- * GET  /api/auth/me          — current session's user + org (401 if not logged in)
+ * POST /api/auth/signup               — create an org + its first user, log them in, email a verify link
+ * POST /api/auth/login                — verify credentials, issue a session cookie
+ * POST /api/auth/logout               — clear the session cookie (this browser only)
+ * POST /api/auth/logout-all           — revoke every session for the current user
+ * POST /api/auth/verify-email         — consume a verification token
+ * POST /api/auth/resend-verification  — email a fresh verification link (auth'd)
+ * POST /api/auth/forgot-password      — email a reset link (always 200, no enumeration)
+ * POST /api/auth/reset-password       — consume a reset token, set a new password, kill sessions
+ * GET  /api/auth/me                   — current session's user + org (authenticated:false if none)
  */
 
 const express = require('express');
+const crypto = require('crypto');
 
 const {
   hashPassword,
@@ -24,11 +29,27 @@ const {
   getUserById,
   getOrganizationById,
   bumpTokenVersion,
+  updateUserPassword,
+  createEmailVerification,
+  consumeEmailVerification,
+  createPasswordReset,
+  consumePasswordReset,
 } = require('../db');
+const { isBreachedPassword } = require('../services/passwordCheck');
+const { sendEmail, verificationEmail, passwordResetEmail } = require('../services/email');
+const {
+  PASSWORD_MIN_LENGTH,
+  EMAIL_VERIFICATION_TTL_HOURS,
+  PASSWORD_RESET_TTL_HOURS,
+} = require('../config/thresholds');
 const { authLimiter } = require('../middleware/rateLimit');
 const { requireAuth } = require('../middleware/requireAuth');
 
 const router = express.Router();
+
+const BREACHED_MSG =
+  'That password has appeared in a known data breach. Please choose a different one.';
+const newToken = () => crypto.randomBytes(32).toString('hex');
 
 function setSession(res, user) {
   const token = signToken({
@@ -40,6 +61,24 @@ function setSession(res, user) {
   res.cookie(COOKIE_NAME, token, cookieOptions());
 }
 
+function publicUser(user) {
+  return { email: user.email, role: user.role, emailVerified: Boolean(user.email_verified_at) };
+}
+function publicOrg(org) {
+  return { id: org.id, name: org.name, onboardingCompleted: org.onboarding_completed === true };
+}
+
+/** Best-effort: mint + store a verification token and email it. Never throws. */
+async function issueVerification(user) {
+  try {
+    const token = newToken();
+    await createEmailVerification(user.id, token, EMAIL_VERIFICATION_TTL_HOURS);
+    await sendEmail(verificationEmail(user.email, token));
+  } catch (err) {
+    console.error(`verification email failed for user ${user.id}: ${err.message}`);
+  }
+}
+
 router.post('/signup', authLimiter, async (req, res, next) => {
   try {
     const { email, password, orgName } = req.body || {};
@@ -48,6 +87,9 @@ router.post('/signup', authLimiter, async (req, res, next) => {
     if (!orgName || !String(orgName).trim()) errors.push('An organization name is required.');
     if (errors.length) {
       return res.status(400).json({ ok: false, error: errors.join(' ') });
+    }
+    if (await isBreachedPassword(String(password))) {
+      return res.status(400).json({ ok: false, error: BREACHED_MSG });
     }
 
     if (await getUserByEmail(email)) {
@@ -58,12 +100,9 @@ router.post('/signup', authLimiter, async (req, res, next) => {
     const passwordHash = await hashPassword(String(password));
     const user = await createUser({ orgId: org.id, email, passwordHash, role: 'owner' });
 
+    await issueVerification(user);
     setSession(res, user);
-    res.status(201).json({
-      ok: true,
-      user: { email: user.email, role: user.role },
-      org: { id: org.id, name: org.name, onboardingCompleted: org.onboarding_completed === true },
-    });
+    res.status(201).json({ ok: true, user: publicUser(user), org: publicOrg(org) });
   } catch (err) {
     next(err);
   }
@@ -82,11 +121,7 @@ router.post('/login', authLimiter, async (req, res, next) => {
 
     const org = await getOrganizationById(user.org_id);
     setSession(res, user);
-    res.json({
-      ok: true,
-      user: { email: user.email, role: user.role },
-      org: { id: org.id, name: org.name, onboardingCompleted: org.onboarding_completed === true },
-    });
+    res.json({ ok: true, user: publicUser(user), org: publicOrg(org) });
   } catch (err) {
     next(err);
   }
@@ -102,6 +137,89 @@ router.post('/logout', (_req, res) => {
 router.post('/logout-all', requireAuth, async (req, res, next) => {
   try {
     await bumpTokenVersion(req.auth.userId);
+    res.clearCookie(COOKIE_NAME, { ...cookieOptions(), maxAge: undefined });
+    res.json({ ok: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// The token in the body is the credential here — no session required (people
+// click the link from an email client, not necessarily the logged-in browser).
+router.post('/verify-email', authLimiter, async (req, res, next) => {
+  try {
+    const { token } = req.body || {};
+    const result = await consumeEmailVerification(String(token || ''));
+    if (!result) {
+      return res.status(400).json({
+        ok: false,
+        error: 'That verification link is invalid or has expired. Request a new one from your account.',
+      });
+    }
+    res.json({ ok: true, emailVerified: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post('/resend-verification', authLimiter, requireAuth, async (req, res, next) => {
+  try {
+    const user = await getUserById(req.auth.userId);
+    if (!user) return res.status(401).json({ ok: false, error: 'Authentication required.' });
+    if (user.email_verified_at) return res.json({ ok: true, alreadyVerified: true });
+    await issueVerification(user);
+    res.json({ ok: true, sent: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Always 200 with the same body, whether or not the email maps to an account —
+// the response must not tell an attacker which addresses are registered.
+router.post('/forgot-password', authLimiter, async (req, res, next) => {
+  try {
+    const { email } = req.body || {};
+    const user = email ? await getUserByEmail(email) : null;
+    if (user) {
+      try {
+        const token = newToken();
+        await createPasswordReset(user.id, token, PASSWORD_RESET_TTL_HOURS);
+        await sendEmail(passwordResetEmail(user.email, token));
+      } catch (err) {
+        console.error(`password reset email failed for user ${user.id}: ${err.message}`);
+      }
+    }
+    res.json({ ok: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post('/reset-password', authLimiter, async (req, res, next) => {
+  try {
+    const { token, password } = req.body || {};
+
+    // Validate the NEW password before consuming the token, so a weak choice
+    // doesn't burn a one-time link.
+    if (!password || String(password).length < PASSWORD_MIN_LENGTH) {
+      return res
+        .status(400)
+        .json({ ok: false, error: `Password must be at least ${PASSWORD_MIN_LENGTH} characters.` });
+    }
+    if (await isBreachedPassword(String(password))) {
+      return res.status(400).json({ ok: false, error: BREACHED_MSG });
+    }
+
+    const claim = await consumePasswordReset(String(token || ''));
+    if (!claim) {
+      return res.status(400).json({
+        ok: false,
+        error: 'That reset link is invalid or has expired. Request a new one.',
+      });
+    }
+
+    await updateUserPassword(claim.userId, await hashPassword(String(password)));
+    await bumpTokenVersion(claim.userId); // every existing session is now dead
     res.clearCookie(COOKIE_NAME, { ...cookieOptions(), maxAge: undefined });
     res.json({ ok: true });
   } catch (err) {
@@ -130,12 +248,7 @@ router.get('/me', async (req, res, next) => {
     if (tokenTv !== user.token_version) return res.json({ ok: true, authenticated: false });
     const org = await getOrganizationById(user.org_id);
 
-    res.json({
-      ok: true,
-      authenticated: true,
-      user: { email: user.email, role: user.role },
-      org: { id: org.id, name: org.name, onboardingCompleted: org.onboarding_completed === true },
-    });
+    res.json({ ok: true, authenticated: true, user: publicUser(user), org: publicOrg(org) });
   } catch (err) {
     next(err);
   }

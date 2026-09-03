@@ -18,7 +18,7 @@ const {
 
 // requireAuth now does one primary-key user lookup per request (revocable
 // sessions, Phase 24). Stub it: `dbUser` is what getUserById returns.
-let dbUser = { id: 42, org_id: 5, email: 'x@y.com', role: 'owner', token_version: 0 };
+let dbUser = { id: 42, org_id: 5, email: 'x@y.com', role: 'owner', token_version: 0, email_verified_at: null };
 const dbId = require.resolve('../db');
 require.cache[dbId] = {
   id: dbId, filename: dbId, loaded: true, children: [], paths: [],
@@ -106,14 +106,23 @@ test('requireAuth: 401 on an invalid token', async () => {
 });
 
 test('requireAuth: attaches req.auth from a valid token when tv matches', async () => {
-  dbUser = { id: 42, org_id: 5, email: 'x@y.com', role: 'owner', token_version: 3 };
+  dbUser = { id: 42, org_id: 5, email: 'x@y.com', role: 'owner', token_version: 3, email_verified_at: '2026-01-01T00:00:00Z' };
   const token = signToken({ userId: 42, orgId: 5, email: 'x@y.com', tokenVersion: 3 });
   const req = { cookies: { [COOKIE_NAME]: token } };
   const res = mockRes();
   let nexted = false;
   await requireAuth(req, res, () => (nexted = true));
   assert.equal(nexted, true);
-  assert.deepEqual(req.auth, { userId: 42, orgId: 5, email: 'x@y.com' });
+  assert.deepEqual(req.auth, { userId: 42, orgId: 5, email: 'x@y.com', emailVerified: true });
+});
+
+test('requireAuth: req.auth.emailVerified is false when the user has not verified', async () => {
+  dbUser = { id: 42, org_id: 5, email: 'x@y.com', role: 'owner', token_version: 0, email_verified_at: null };
+  const token = signToken({ userId: 42, orgId: 5, email: 'x@y.com', tokenVersion: 0 });
+  const req = { cookies: { [COOKIE_NAME]: token } };
+  const res = mockRes();
+  await requireAuth(req, res, () => {});
+  assert.equal(req.auth.emailVerified, false);
 });
 
 test('requireAuth: 401 when the token tv is stale (logged out everywhere)', async () => {

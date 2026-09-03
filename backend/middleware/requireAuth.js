@@ -44,7 +44,12 @@ async function requireAuth(req, res, next) {
     if (tokenTv !== user.token_version) {
       return res.status(401).json({ ok: false, error: 'This session has been signed out.' });
     }
-    req.auth = { userId: user.id, orgId: payload.orgId, email: payload.email };
+    req.auth = {
+      userId: user.id,
+      orgId: payload.orgId,
+      email: payload.email,
+      emailVerified: Boolean(user.email_verified_at),
+    };
     next();
   } catch (err) {
     next(err);

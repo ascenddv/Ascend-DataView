@@ -39,7 +39,7 @@ async function waitHealth(base, tries = 80) {
 function startBackend(port, extraEnv = {}) {
   return spawn(process.execPath, ['index.js'], {
     cwd: `${ROOT}/backend`,
-    env: { ...process.env, PORT: String(port), DATABASE_URL: LOCAL_PG, ...extraEnv },
+    env: { ...process.env, PORT: String(port), DATABASE_URL: LOCAL_PG, HIBP_CHECK_ENABLED: '0', ...extraEnv },
     stdio: 'ignore',
   });
 }
@@ -64,7 +64,7 @@ function makeClient(base) {
 async function signup(client, label) {
   const s = Date.now() + Math.floor(Math.random() * 1e5);
   const email = `p24_${label}_${s}@t.co`;
-  const password = 'password123';
+  const password = 'ascend-gate-K7m2Qp-Zx9';
   const r = await client.req('POST', '/api/auth/signup', {
     body: { email, password, orgName: `P24 ${label} ${s}` },
   });

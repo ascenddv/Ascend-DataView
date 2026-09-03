@@ -43,7 +43,7 @@ async function signupAndUpload(label, file, mime) {
   const stamp = Date.now() + Math.floor(Math.random() * 1e4);
   const req = client();
   await req('POST', '/api/auth/signup', {
-    body: { email: `p10_${label}_${stamp}@test.com`, password: 'password123', orgName: `P10 ${label} ${stamp}` },
+    body: { email: `p10_${label}_${stamp}@test.com`, password: 'ascend-gate-K7m2Qp-Zx9', orgName: `P10 ${label} ${stamp}` },
   });
   const up = await req('POST', '/api/upload', { form: fileForm(file, mime) });
   const metrics = await req('GET', '/api/metrics');

@@ -61,6 +61,7 @@ function startBackend(port, extraEnv = {}) {
       DATABASE_URL: LOCAL_PG,
       GEMINI_API_KEY: '',
       DEEPSEEK_API_KEY: '',
+      HIBP_CHECK_ENABLED: '0', // keep signups offline / fast
       ...extraEnv,
     },
     stdio: 'ignore',
@@ -98,9 +99,13 @@ function makeClient(base) {
 async function signup(client, label) {
   const s = Date.now() + Math.floor(Math.random() * 1e5);
   const r = await client.req('POST', '/api/auth/signup', {
-    body: { email: `p23_${label}_${s}@t.co`, password: 'password123', orgName: `P23 ${label} ${s}` },
+    body: { email: `p23_${label}_${s}@t.co`, password: 'ascend-gate-K7m2Qp-Zx9', orgName: `P23 ${label} ${s}` },
   });
-  return (await r.json()).org;
+  const org = (await r.json()).org;
+  // Phase 25: upload / chat now require a verified email — mark it verified so
+  // this gate stays about rate limiting.
+  await db.getDb().query('UPDATE users SET email_verified_at = now() WHERE org_id = $1', [org.id]);
+  return org;
 }
 const startOfUtcDayIso = () => {
   const d = new Date();

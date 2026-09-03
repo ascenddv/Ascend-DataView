@@ -7,10 +7,19 @@
  */
 
 import { spawnSync } from 'node:child_process';
+import { readdirSync } from 'node:fs';
 import { createRequire } from 'node:module';
 
 const require = createRequire(import.meta.url);
 const { Client } = require('pg');
+
+// The set of migrations on disk, in order — the gate checks the ledger against
+// this rather than a hardcoded list, so later phases that add migrations don't
+// break it.
+const EXPECTED_MIGRATIONS = readdirSync('C:/Ascend-DataView/backend/db/migrations')
+  .filter((f) => /^\d+.*\.sql$/.test(f))
+  .sort()
+  .map((f) => f.replace(/\.sql$/, ''));
 
 const BASE = process.argv[2] || 'http://localhost:3001';
 const ADMIN = 'postgresql://postgres@127.0.0.1:5433/postgres';
@@ -40,7 +49,9 @@ try {
   console.log('\n== migrate from empty ==');
   const first = runMigrate();
   check('first migrate exits 0', first.status === 0, first.stderr.trim());
-  check('applied 001_init and 002_cascades', /applied 001_init/.test(first.stdout) && /applied 002_cascades/.test(first.stdout));
+  check('applied every migration on disk',
+    EXPECTED_MIGRATIONS.every((v) => new RegExp(`applied ${v}`).test(first.stdout)),
+    EXPECTED_MIGRATIONS.join(', '));
 
   db = new Client({ connectionString: TESTDB_URL });
   await db.connect();
@@ -66,7 +77,8 @@ try {
   check('standardized_data_org_period_uq exists', conNames.includes('standardized_data_org_period_uq'));
 
   const { rows: sm } = await db.query(`SELECT version FROM schema_migrations ORDER BY version`);
-  check('schema_migrations records both versions', sm.map((r) => r.version).join(',') === '001_init,002_cascades',
+  check('schema_migrations records exactly the on-disk migrations',
+    sm.map((r) => r.version).join(',') === EXPECTED_MIGRATIONS.join(','),
     sm.map((r) => r.version).join(','));
 
   const { rows: fks } = await db.query(`
@@ -82,7 +94,8 @@ try {
   check('second migrate exits 0 and applies nothing',
     second.status === 0 && /up to date \(0 applied\)/.test(second.stdout));
   const { rows: sm2 } = await db.query(`SELECT count(*)::int n FROM schema_migrations`);
-  check('schema_migrations still has exactly 2 rows', sm2[0].n === 2, `n=${sm2[0].n}`);
+  check('schema_migrations row count is unchanged after a re-run',
+    sm2[0].n === EXPECTED_MIGRATIONS.length, `n=${sm2[0].n}`);
 
   /* ---- 3. cascade delete ---------------------------------------- */
   console.log('\n== deleting an organization cascades away all its data ==');

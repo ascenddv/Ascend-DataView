@@ -30,6 +30,7 @@ const {
 } = require('../db');
 const pendingUploads = require('../services/pendingUploads');
 const { uploadLimiter } = require('../middleware/rateLimit');
+const { requireVerified } = require('../middleware/requireVerified');
 
 const router = express.Router();
 
@@ -86,7 +87,7 @@ function mergeResponse(res, report, periodsAdded, periodsUpdated, extra = {}) {
   });
 }
 
-router.post('/upload', uploadLimiter, upload.single('file'), async (req, res, next) => {
+router.post('/upload', requireVerified, uploadLimiter, upload.single('file'), async (req, res, next) => {
   try {
     if (!req.file) {
       res.status(400).json({ error: 'No file received. Send a CSV or .xlsx as form field "file".' });
@@ -139,7 +140,7 @@ router.post('/upload', uploadLimiter, upload.single('file'), async (req, res, ne
   }
 });
 
-router.post('/upload/confirm', uploadLimiter, async (req, res, next) => {
+router.post('/upload/confirm', requireVerified, uploadLimiter, async (req, res, next) => {
   try {
     const orgId = req.auth.orgId;
     const { pendingId, corrections } = req.body || {};
