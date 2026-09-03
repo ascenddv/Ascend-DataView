@@ -3,9 +3,9 @@
  * (index.js, which calls app.listen) and the Vercel serverless entry
  * (../api/index.js, which exports this app directly).
  *
- * Schema bootstrap (initDb) is lazy: the first /api request per process waits
- * for it, so a cold serverless invocation converges the schema before serving.
- * initDb is idempotent, so re-running it on every cold start is safe.
+ * NO schema DDL at request time. The schema is applied by `npm run migrate`
+ * (backend/db/migrate.js) as a deploy step; the first /api request per process
+ * only checks the DB is reachable (SELECT 1).
  */
 
 const express = require('express');
@@ -23,7 +23,7 @@ const insightRoutes = require('./routes/insight');
 const pdfRoutes = require('./routes/pdf');
 const ascendaiRoutes = require('./routes/ascendai');
 const { requireAuth } = require('./middleware/requireAuth');
-const { initDb } = require('./db');
+const { getDb } = require('./db');
 
 // Explicit CORS allowlist. On a same-origin deployment (frontend + /api served
 // from one domain, e.g. Vercel) CORS is not exercised at all; this only matters
@@ -75,14 +75,16 @@ app.use(
 app.use(express.json());
 app.use(cookieParser());
 
-// --- lazy schema bootstrap ------------------------------------------------
+// --- DB reachability check (no DDL) --------------------------------------
 let dbReadyPromise = null;
 function ready() {
   if (!dbReadyPromise) {
-    dbReadyPromise = initDb().catch((err) => {
-      dbReadyPromise = null; // allow the next request to retry
-      throw err;
-    });
+    dbReadyPromise = getDb()
+      .query('SELECT 1')
+      .catch((err) => {
+        dbReadyPromise = null; // let the next request retry
+        throw err;
+      });
   }
   return dbReadyPromise;
 }
@@ -91,7 +93,7 @@ app.ready = ready;
 // --- open routes (no DB needed) ----------------------------------------
 app.use('/api', healthRoutes); // /api/health — liveness check, works with no DB
 
-// Everything past here needs the schema converged.
+// Everything past here needs a reachable database.
 app.use('/api', (_req, res, next) => {
   ready().then(() => next()).catch(next);
 });

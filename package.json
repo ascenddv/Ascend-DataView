@@ -10,6 +10,8 @@
     "build": "npm --prefix frontend install --no-audit --no-fund && npm --prefix frontend run build",
     "dev:backend": "npm --prefix backend run dev",
     "dev:frontend": "npm --prefix frontend run dev",
+    "migrate": "npm --prefix backend run migrate",
+    "prune": "npm --prefix backend run prune",
     "test": "npm --prefix backend test && npm --prefix frontend test"
   },
   "dependencies": {

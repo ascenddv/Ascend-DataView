@@ -41,6 +41,19 @@ const ASCENDAI_HISTORY_WINDOW_MESSAGES = 12;
 // provider counts whether it succeeds or fails.
 const ASCENDAI_DAILY_MESSAGE_LIMIT_PER_ORG = 50;
 
+// --- Storage guards & retention (Stage 5, Phase 22) ---
+// A stored chat message is truncated to this many characters before it goes in
+// chat_messages. The user always saw the full reply in the UI; the stored copy
+// only feeds future-turn context, and DeepSeek replies are ~1-2 KB.
+const CHAT_MESSAGE_STORED_MAX_CHARS = 8000;
+// A paused-upload payload (parsed rows + mapping) larger than this is refused —
+// too many rows to hold in the pending_uploads row for a confirmation step.
+const PENDING_UPLOAD_MAX_BYTES = 3 * 1024 * 1024;
+// Retention windows for the prune job (backend/db pruneOldRows, wired to cron in
+// Phase 31). ascendai_usage is kept longer for year-over-year cost visibility.
+const CHAT_MESSAGE_RETENTION_DAYS = 90;
+const ASCENDAI_USAGE_RETENTION_DAYS = 400;
+
 // --- Ingestion: revenue subcategory reconciliation ---
 // The revenue_* fields are an *optional, possibly partial* breakdown. The
 // sum-to-revenue check only runs when ALL four subcategory fields are present
@@ -62,5 +75,9 @@ module.exports = {
   ASCENDAI_MAX_TOOL_ITERATIONS,
   ASCENDAI_HISTORY_WINDOW_MESSAGES,
   ASCENDAI_DAILY_MESSAGE_LIMIT_PER_ORG,
+  CHAT_MESSAGE_STORED_MAX_CHARS,
+  PENDING_UPLOAD_MAX_BYTES,
+  CHAT_MESSAGE_RETENTION_DAYS,
+  ASCENDAI_USAGE_RETENTION_DAYS,
   REVENUE_RECONCILE_TOLERANCE_PCT,
 };

@@ -15,7 +15,13 @@
 const crypto = require('crypto');
 const { Pool } = require('pg');
 
-const { FIELDS, FIELD_NAMES, TYPE } = require('../config/schema');
+const { FIELD_NAMES } = require('../config/schema');
+const {
+  CHAT_MESSAGE_STORED_MAX_CHARS,
+  PENDING_UPLOAD_MAX_BYTES,
+  CHAT_MESSAGE_RETENTION_DAYS,
+  ASCENDAI_USAGE_RETENTION_DAYS,
+} = require('../config/thresholds');
 
 /**
  * Normalise a connection string pasted into an env var: drop a stray `psql `
@@ -38,109 +44,8 @@ const CONNECTION_STRING =
 
 const DB_PATH = CONNECTION_STRING; // kept as an export for backwards compat
 
-const DEMO_ORG_NAME = 'Demo Nonprofit';
-
-function sqlColumnType(field) {
-  // period_date stays TEXT ('YYYY-MM-DD'); everything else DOUBLE PRECISION
-  // (8-byte IEEE float, matching SQLite's REAL exactly).
-  return field.type === TYPE.DATE ? 'TEXT' : 'DOUBLE PRECISION';
-}
-
-function buildStandardizedDataDDL() {
-  const columns = FIELDS.map((f) => `  ${f.name} ${sqlColumnType(f)}`);
-  return [
-    'CREATE TABLE IF NOT EXISTS standardized_data (',
-    '  id SERIAL PRIMARY KEY,',
-    '  org_id INTEGER REFERENCES organizations(id),',
-    columns.join(',\n') + ',',
-    '  source_meta TEXT,',
-    '  created_at TIMESTAMPTZ NOT NULL DEFAULT now()',
-    ');',
-  ].join('\n');
-}
-
-const ORGANIZATIONS_DDL = `
-CREATE TABLE IF NOT EXISTS organizations (
-  id SERIAL PRIMARY KEY,
-  name TEXT NOT NULL,
-  org_type TEXT NOT NULL DEFAULT 'small_nonprofit',
-  onboarding_completed BOOLEAN NOT NULL DEFAULT false,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-`;
-
-const USERS_DDL = `
-CREATE TABLE IF NOT EXISTS users (
-  id SERIAL PRIMARY KEY,
-  org_id INTEGER NOT NULL REFERENCES organizations(id),
-  email TEXT NOT NULL UNIQUE,
-  password_hash TEXT NOT NULL,
-  role TEXT NOT NULL DEFAULT 'owner',
-  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-`;
-
-const MAPPING_CACHE_DDL = `
-CREATE TABLE IF NOT EXISTS mapping_cache (
-  org_id INTEGER REFERENCES organizations(id),
-  header_hash TEXT NOT NULL,
-  mapping_json TEXT NOT NULL,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-`;
-
-// Stage 4 (Phase 19): AscendAI conversation history, scoped by (org_id, user_id)
-// exactly like every other tenant table.
-const CHAT_MESSAGES_DDL = `
-CREATE TABLE IF NOT EXISTS chat_messages (
-  id SERIAL PRIMARY KEY,
-  org_id INTEGER NOT NULL REFERENCES organizations(id),
-  user_id INTEGER NOT NULL REFERENCES users(id),
-  role TEXT NOT NULL,
-  content TEXT NOT NULL,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-`;
-
-// Serverless durability (post-Stage-4): both of these replace an in-memory Map
-// that isn't shared across function instances on Vercel.
-//   rate_limits    — the express-rate-limit auth limiter, fixed window per key.
-//   pending_uploads — Phase 14b's paused mapping-confirmation stash, with the
-//                     same 15-min TTL / single-use / org-scoped semantics.
-const RATE_LIMITS_DDL = `
-CREATE TABLE IF NOT EXISTS rate_limits (
-  key TEXT PRIMARY KEY,
-  hits INTEGER NOT NULL,
-  expires_at TIMESTAMPTZ NOT NULL
-);
-`;
-const PENDING_UPLOADS_DDL = `
-CREATE TABLE IF NOT EXISTS pending_uploads (
-  id UUID PRIMARY KEY,
-  org_id INTEGER NOT NULL REFERENCES organizations(id),
-  payload JSONB NOT NULL,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-`;
-const PENDING_UPLOAD_TTL = '15 minutes'; // mirrors services/pendingUploads.js TTL_MS
-
-// Stage 4 (Phase 19): one row per attempted AscendAI chat turn — token totals
-// for cost visibility, and the source of truth for the per-org daily rate limit.
-// Deliberately NOT cleared by DELETE /api/ascendai/chat: clearing a conversation
-// must not reset the day's usage or bypass the limit.
-const ASCENDAI_USAGE_DDL = `
-CREATE TABLE IF NOT EXISTS ascendai_usage (
-  id SERIAL PRIMARY KEY,
-  org_id INTEGER NOT NULL REFERENCES organizations(id),
-  user_id INTEGER NOT NULL REFERENCES users(id),
-  status TEXT NOT NULL,
-  prompt_tokens INTEGER NOT NULL DEFAULT 0,
-  completion_tokens INTEGER NOT NULL DEFAULT 0,
-  total_tokens INTEGER NOT NULL DEFAULT 0,
-  iterations INTEGER NOT NULL DEFAULT 0,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-`;
+// mirrors services/pendingUploads.js TTL_MS and the interval in 001_init.sql
+const PENDING_UPLOAD_TTL = '15 minutes';
 
 let pool;
 
@@ -195,92 +100,38 @@ async function closeDb() {
 }
 
 /**
- * Converge the schema to the current shape, whether starting from an empty DB
- * or from a Phase 7 (pre-tenancy) database. Every statement is idempotent.
+ * Apply any pending SQL migrations (backend/db/migrations). Kept under the old
+ * name so existing callers (backend/index.js, the gate scripts) are unchanged.
+ * NOT run at request time — see backend/app.js. `require` is lazy to avoid a
+ * circular dependency with ./migrate.
  */
-async function initDb() {
+async function initDb(opts) {
+  // eslint-disable-next-line global-require
+  return require('./migrate').migrate(opts);
+}
+
+/**
+ * Retention prune (wired to a cron in Phase 31). Also opportunistically clears
+ * expired pending uploads. Returns the row counts removed.
+ */
+async function pruneOldRows() {
   const conn = getDb();
-
-  await conn.query(ORGANIZATIONS_DDL);
-  await conn.query(USERS_DDL);
-  await conn.query(buildStandardizedDataDDL());
-  await conn.query(MAPPING_CACHE_DDL);
-  await conn.query(CHAT_MESSAGES_DDL);
-  await conn.query(ASCENDAI_USAGE_DDL);
-  await conn.query(RATE_LIMITS_DDL);
-  await conn.query(PENDING_UPLOADS_DDL);
-  await conn.query('CREATE INDEX IF NOT EXISTS chat_messages_org_user_idx ON chat_messages (org_id, user_id, created_at)');
-  await conn.query('CREATE INDEX IF NOT EXISTS ascendai_usage_org_time_idx ON ascendai_usage (org_id, created_at)');
-  await conn.query('CREATE INDEX IF NOT EXISTS rate_limits_expires_idx ON rate_limits (expires_at)');
-  await conn.query('CREATE INDEX IF NOT EXISTS pending_uploads_created_idx ON pending_uploads (created_at)');
-
-  // Phase 17: onboarding flag on pre-existing organizations tables.
-  await conn.query(
-    "ALTER TABLE organizations ADD COLUMN IF NOT EXISTS onboarding_completed BOOLEAN NOT NULL DEFAULT false"
+  const chat = await conn.query(
+    `DELETE FROM chat_messages WHERE created_at < now() - ($1 || ' days')::interval`,
+    [CHAT_MESSAGE_RETENTION_DAYS]
   );
-
-  // Add any schema fields introduced since the table was created (CREATE TABLE
-  // IF NOT EXISTS won't add columns to an existing table). Idempotent.
-  for (const f of FIELDS) {
-    await conn.query(
-      `ALTER TABLE standardized_data ADD COLUMN IF NOT EXISTS ${f.name} ${sqlColumnType(f)}`
-    );
-  }
-
-  // --- add org_id to pre-tenancy tables (no-op on a fresh DB) ---------------
-  await conn.query('ALTER TABLE standardized_data ADD COLUMN IF NOT EXISTS org_id INTEGER REFERENCES organizations(id)');
-  await conn.query('ALTER TABLE mapping_cache ADD COLUMN IF NOT EXISTS org_id INTEGER REFERENCES organizations(id)');
-
-  // --- backfill any rows left without an org onto the Demo Nonprofit org ----
-  const orphanData = await conn.query('SELECT 1 FROM standardized_data WHERE org_id IS NULL LIMIT 1');
-  const orphanCache = await conn.query('SELECT 1 FROM mapping_cache WHERE org_id IS NULL LIMIT 1');
-  if (orphanData.rowCount > 0 || orphanCache.rowCount > 0) {
-    let { rows } = await conn.query('SELECT id FROM organizations WHERE name = $1', [DEMO_ORG_NAME]);
-    if (rows.length === 0) {
-      rows = (await conn.query('INSERT INTO organizations (name, org_type) VALUES ($1, $2) RETURNING id', [
-        DEMO_ORG_NAME,
-        'small_nonprofit',
-      ])).rows;
-    }
-    const demoOrgId = rows[0].id;
-    await conn.query('UPDATE standardized_data SET org_id = $1 WHERE org_id IS NULL', [demoOrgId]);
-    await conn.query('UPDATE mapping_cache SET org_id = $1 WHERE org_id IS NULL', [demoOrgId]);
-    console.log(`initDb: backfilled Stage 1 data onto "${DEMO_ORG_NAME}" (org ${demoOrgId})`);
-  }
-
-  // --- enforce NOT NULL once nothing is orphaned ---------------------------
-  await conn.query('ALTER TABLE standardized_data ALTER COLUMN org_id SET NOT NULL');
-  await conn.query('ALTER TABLE mapping_cache ALTER COLUMN org_id SET NOT NULL');
-
-  // --- mapping_cache: composite (org_id, header_hash) primary key ----------
-  // Two orgs with coincidentally identical header shapes must stay separate
-  // cache entries (CLAUDE.md).
-  await conn.query('ALTER TABLE mapping_cache DROP CONSTRAINT IF EXISTS mapping_cache_pkey');
-  await conn.query(`
-    DO $$ BEGIN
-      IF NOT EXISTS (
-        SELECT 1 FROM pg_constraint WHERE conname = 'mapping_cache_org_header_pk'
-      ) THEN
-        ALTER TABLE mapping_cache ADD CONSTRAINT mapping_cache_org_header_pk PRIMARY KEY (org_id, header_hash);
-      END IF;
-    END $$;
-  `);
-
-  // --- standardized_data: one row per (org, period) ----------------------
-  // Lets manual single-period entry upsert cleanly; the CSV/xlsx path already
-  // de-dupes before storing so this never rejects a file import.
-  await conn.query(`
-    DO $$ BEGIN
-      IF NOT EXISTS (
-        SELECT 1 FROM pg_constraint WHERE conname = 'standardized_data_org_period_uq'
-      ) THEN
-        ALTER TABLE standardized_data
-          ADD CONSTRAINT standardized_data_org_period_uq UNIQUE (org_id, period_date);
-      END IF;
-    END $$;
-  `);
-
-  return conn;
+  const usage = await conn.query(
+    `DELETE FROM ascendai_usage WHERE created_at < now() - ($1 || ' days')::interval`,
+    [ASCENDAI_USAGE_RETENTION_DAYS]
+  );
+  const pending = await conn.query(
+    `DELETE FROM pending_uploads WHERE created_at < now() - interval '${PENDING_UPLOAD_TTL}'`
+  );
+  return {
+    chatMessages: chat.rowCount,
+    ascendaiUsage: usage.rowCount,
+    pendingUploads: pending.rowCount,
+  };
 }
 
 /* -------------------------------------------------------------------------- */
@@ -500,14 +351,18 @@ function assertUserId(userId, fnName) {
   }
 }
 
+/** Cap a stored message — the user saw the full reply; this only feeds context. */
+const capStoredContent = (c) => String(c ?? '').slice(0, CHAT_MESSAGE_STORED_MAX_CHARS);
+
 async function insertChatMessage(orgId, userId, role, content) {
   assertOrgId(orgId, 'insertChatMessage');
   assertUserId(userId, 'insertChatMessage');
+  const stored = capStoredContent(content);
   const conn = getDb();
   const { rows } = await conn.query(
     `INSERT INTO chat_messages (org_id, user_id, role, content)
      VALUES ($1, $2, $3, $4) RETURNING id, role, content, created_at`,
-    [orgId, userId, role, content]
+    [orgId, userId, role, stored]
   );
   return rows[0];
 }
@@ -576,6 +431,16 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 
 async function putPendingUpload(orgId, payload) {
   assertOrgId(orgId, 'putPendingUpload');
+  const serialized = JSON.stringify(payload);
+  if (Buffer.byteLength(serialized) > PENDING_UPLOAD_MAX_BYTES) {
+    throw Object.assign(
+      new Error(
+        'This file has too much data to hold for the mapping-confirmation step. ' +
+          'Please split it into smaller uploads.'
+      ),
+      { statusCode: 413 }
+    );
+  }
   const conn = getDb();
   await conn.query(
     `DELETE FROM pending_uploads WHERE created_at < now() - interval '${PENDING_UPLOAD_TTL}'`
@@ -584,7 +449,7 @@ async function putPendingUpload(orgId, payload) {
   await conn.query('INSERT INTO pending_uploads (id, org_id, payload) VALUES ($1, $2, $3)', [
     id,
     orgId,
-    JSON.stringify(payload),
+    serialized,
   ]);
   return id;
 }
@@ -606,12 +471,12 @@ async function takePendingUpload(id, orgId) {
 module.exports = {
   getDb,
   initDb,
+  pruneOldRows,
   closeDb,
   DB_PATH,
+  capStoredContent,
   putPendingUpload,
   takePendingUpload,
-  DEMO_ORG_NAME,
-  buildStandardizedDataDDL,
   createOrganization,
   getOrganizationById,
   setOnboardingCompleted,

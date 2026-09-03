@@ -98,7 +98,7 @@ const startOfUtcDayIso = () => {
 
 const procs = [];
 try {
-  await db.initDb(); // converge the schema up front; both backends' lazy init is then a no-op
+  await db.initDb(); // apply pending migrations up front (each spawned backend also migrates on boot)
   await db.getDb().query("DELETE FROM rate_limits WHERE key LIKE 'auth:%'");
 
   procs.push(startBackend(3101));
