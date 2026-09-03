@@ -25,6 +25,7 @@ const ascendaiRoutes = require('./routes/ascendai');
 const accountRoutes = require('./routes/account');
 const { requireAuth } = require('./middleware/requireAuth');
 const { getDb } = require('./db');
+const { requestLog, captureError } = require('./services/observability');
 
 // Explicit CORS allowlist. On a same-origin deployment (frontend + /api served
 // from one domain, e.g. Vercel) CORS is not exercised at all; this only matters
@@ -76,6 +77,25 @@ app.use(
 app.use(express.json());
 app.use(cookieParser());
 
+// One structured line per request (method, path, status, ms, orgId). The
+// observability layer redacts secrets; nothing here logs a body or a header.
+app.use((req, res, next) => {
+  const start = Date.now();
+  // Capture the path now — by the time 'finish' fires, sub-router dispatch has
+  // rewritten req.url. req.originalUrl is stable; drop the query string.
+  const path = (req.originalUrl || req.url || '').split('?')[0];
+  res.on('finish', () => {
+    requestLog({
+      method: req.method,
+      path,
+      status: res.statusCode,
+      ms: Date.now() - start,
+      orgId: req.auth && req.auth.orgId,
+    });
+  });
+  next();
+});
+
 // --- DB reachability check (no DDL) --------------------------------------
 let dbReadyPromise = null;
 function ready() {
@@ -123,7 +143,13 @@ app.use((err, _req, res, _next) => {
   }
   const status = err.statusCode || 500;
   if (status >= 500) {
-    console.error(err);
+    captureError(err, {
+      code: 'ROUTE_5XX',
+      cause: err.code || null,
+      method: _req.method,
+      path: (_req.originalUrl || _req.url || '').split('?')[0],
+      orgId: _req.auth && _req.auth.orgId,
+    });
     return res.status(status).json({ ok: false, error: 'Something went wrong. Please try again.' });
   }
   res.status(status).json({ ok: false, error: err.message });

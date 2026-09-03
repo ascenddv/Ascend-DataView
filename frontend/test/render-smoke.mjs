@@ -35,6 +35,17 @@ const probeSource = `
   import VerifyEmailBanner from '../src/components/VerifyEmailBanner.jsx';
   import { ResetPasswordPage, AcceptInvitePage } from '../src/components/AuthTokenPages.jsx';
   import TeamPanel from '../src/components/TeamPanel.jsx';
+  import ErrorBoundary from '../src/components/ErrorBoundary.jsx';
+  export function renderErrorBoundaryOk() {
+    return renderToStaticMarkup(<ErrorBoundary><p>all good</p></ErrorBoundary>);
+  }
+  export function renderErrorBoundaryFallback() {
+    // renderToStaticMarkup (legacy SSR) does not run error boundaries, so drive
+    // the same code path directly: derive the error state, then render.
+    const eb = new ErrorBoundary({ children: null });
+    eb.state = ErrorBoundary.getDerivedStateFromError(new Error('kaboom'));
+    return renderToStaticMarkup(eb.render());
+  }
   export function renderAuthPage() {
     return renderToStaticMarkup(<AuthPage onAuthed={() => {}} />);
   }
@@ -93,6 +104,8 @@ let renderVerifyBanner;
 let renderResetPage;
 let renderAcceptInvite;
 let renderTeamPanel;
+let renderErrorBoundaryOk;
+let renderErrorBoundaryFallback;
 
 test.before(async () => {
   const out = here('./.render-smoke.bundle.cjs');
@@ -108,6 +121,7 @@ test.before(async () => {
   ({
     render, renderSummary, renderDangerZone, renderMappingConfirmation, renderWizard, renderTour,
     renderAscendAi, renderAuthPage, renderVerifyBanner, renderResetPage, renderAcceptInvite, renderTeamPanel,
+    renderErrorBoundaryOk, renderErrorBoundaryFallback,
   } = require(out));
 });
 
@@ -415,6 +429,16 @@ test('the accept-invite page shows a password form for a token, an error without
   assert.ok(withToken.includes('Choose a password'));
 
   assert.ok(renderAcceptInvite(null).includes('missing its token'));
+});
+
+test('ErrorBoundary: passes children through, and shows a recovery card once an error is caught', () => {
+  const ok = renderErrorBoundaryOk();
+  assert.ok(ok.includes('all good'));
+
+  const crashed = renderErrorBoundaryFallback();
+  assert.ok(crashed.includes('Something went wrong'), 'boundary must show its fallback');
+  assert.ok(crashed.includes('Reload'));
+  assert.ok(!crashed.includes('all good'));
 });
 
 test('TeamPanel: owners get invite controls, members do not', () => {

@@ -15,6 +15,7 @@ const { buildMetrics } = require('../services/buildMetrics');
 const { generateInsight } = require('../services/generateInsight');
 const { buildOverviewPdf } = require('../services/pdfReport');
 const { pdfLimiter } = require('../middleware/rateLimit');
+const { captureError } = require('../services/observability');
 
 const router = express.Router();
 
@@ -33,7 +34,7 @@ router.get('/report.pdf', pdfLimiter, async (req, res, next) => {
       try {
         insight = await generateInsight(metrics);
       } catch (llmErr) {
-        console.warn(`/api/report.pdf: insight generation failed — ${llmErr.message}`);
+        captureError(llmErr, { code: 'GEMINI_FAILURE', path: '/api/report.pdf', orgId: req.auth.orgId });
         insight = null;
       }
     }

@@ -18,6 +18,7 @@ const deepseek = require('../ai/deepseek');
 const { sanitizeForPrompt } = require('../generateInsight');
 const { TOOL_SCHEMAS, runTool: defaultRunTool } = require('./tools');
 const { ASCENDAI_MAX_TOOL_ITERATIONS } = require('../../config/thresholds');
+const { captureError, captureMessage } = require('../observability');
 
 const SYSTEM_PROMPT = `You are AscendAI, the assistant built into the AscendDV dashboard for one specific organization.
 
@@ -131,7 +132,13 @@ async function askAscendAI({ message, orgId, history = [], deps = {} }) {
 
     return unavailable(trace, 'The assistant took too many steps without finishing.');
   } catch (err) {
-    console.warn(`AscendAI: chat turn failed — ${err.message}`);
+    // A 402 / "Insufficient Balance" from DeepSeek is the prepaid balance running
+    // out — a distinct, alertable signal from a generic provider error.
+    if (/\b402\b|insufficient balance/i.test(err.message || '')) {
+      captureMessage('DEEPSEEK_BALANCE_LOW', { orgId, detail: err.message });
+    } else {
+      captureError(err, { code: 'DEEPSEEK_FAILURE', orgId });
+    }
     return unavailable(trace, 'AscendAI is temporarily unavailable. Please try again in a moment.');
   }
 }

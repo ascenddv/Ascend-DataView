@@ -13,6 +13,7 @@ const { buildMetrics } = require('../services/buildMetrics');
 const { generateInsight } = require('../services/generateInsight');
 const { insightLimiter } = require('../middleware/rateLimit');
 const { insightEnabled } = require('../config/aiFlags');
+const { captureError } = require('../services/observability');
 
 const router = express.Router();
 
@@ -40,7 +41,7 @@ router.get('/insight', insightLimiter, async (req, res, next) => {
       // The narrative is optional — the dashboard renders fine without it. A
       // provider failure (quota, timeout, outage) is a soft "unavailable", not
       // a 500, so the client degrades cleanly with no console error.
-      console.warn(`/api/insight: generation failed — ${llmErr.message}`);
+      captureError(llmErr, { code: 'GEMINI_FAILURE', path: '/api/insight', orgId: req.auth.orgId });
       insight = {
         status: 'unavailable',
         why: null,
