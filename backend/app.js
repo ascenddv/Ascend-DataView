@@ -22,6 +22,7 @@ const metricsRoutes = require('./routes/metrics');
 const insightRoutes = require('./routes/insight');
 const pdfRoutes = require('./routes/pdf');
 const ascendaiRoutes = require('./routes/ascendai');
+const accountRoutes = require('./routes/account');
 const { requireAuth } = require('./middleware/requireAuth');
 const { getDb } = require('./db');
 
@@ -109,6 +110,7 @@ app.use('/api', metricsRoutes);
 app.use('/api', insightRoutes);
 app.use('/api', pdfRoutes);
 app.use('/api', ascendaiRoutes);
+app.use('/api', accountRoutes);
 
 // Centralised error handler — clean JSON, not stack dumps. For 5xx the real
 // error is logged server-side; the client gets a generic message so DB errors,

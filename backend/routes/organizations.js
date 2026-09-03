@@ -26,12 +26,13 @@ const {
   createInvitation,
   listPendingInvitations,
   deleteInvitation,
+  deleteOrganization,
 } = require('../db');
 const { requireRole } = require('../middleware/requireRole');
 const { requireVerified } = require('../middleware/requireVerified');
 const { inviteLimiter } = require('../middleware/rateLimit');
-const { validateCredentials } = require('../services/auth');
 const { sendEmail, invitationEmail } = require('../services/email');
+const { cookieOptions, COOKIE_NAME } = require('../services/auth');
 const { INVITATION_TTL_HOURS } = require('../config/thresholds');
 
 const router = express.Router();
@@ -73,6 +74,34 @@ router.delete('/organizations/:id/data', sameOrg, requireRole('owner'), async (r
 
     const deleted = await deleteStandardizedData(orgId);
     res.json({ ok: true, deleted });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * Permanently delete the whole organization — every user, dataset, chat, usage
+ * row and invitation, via the cascade FKs. Owner + verified, typed-name
+ * confirmation, and the session cookie is cleared on the way out (all of the
+ * org's sessions are dead the moment its users are gone).
+ */
+router.delete('/organizations/:id', sameOrg, requireRole('owner'), requireVerified, async (req, res, next) => {
+  try {
+    const orgId = req.auth.orgId;
+    const org = await getOrganizationById(orgId);
+    if (!org) return res.status(404).json({ ok: false, error: 'Organization not found.' });
+
+    const confirm = String((req.body && req.body.confirm) || '').trim();
+    if (confirm !== org.name) {
+      return res.status(400).json({
+        ok: false,
+        error: 'Confirmation text did not match the organization name. Nothing was deleted.',
+      });
+    }
+
+    await deleteOrganization(orgId);
+    res.clearCookie(COOKIE_NAME, { ...cookieOptions(), maxAge: undefined });
+    res.json({ ok: true, deleted: true });
   } catch (err) {
     next(err);
   }

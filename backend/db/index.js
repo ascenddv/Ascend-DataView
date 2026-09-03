@@ -439,6 +439,73 @@ async function removeOrgMember(orgId, userId) {
 }
 
 /* -------------------------------------------------------------------------- */
+/* account lifecycle — full delete + export (Phase 27)                        */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Delete an organization and — via the ON DELETE CASCADE foreign keys added in
+ * migrations 002 / 004 / 005 — every row that belongs to it: users,
+ * standardized_data, mapping_cache, chat_messages, ascendai_usage,
+ * pending_uploads, invitations, and (through users) email_verifications and
+ * password_resets. One statement, atomic. Returns the id, or null if unknown.
+ */
+async function deleteOrganization(orgId) {
+  assertOrgId(orgId, 'deleteOrganization');
+  const { rows } = await getDb().query(
+    'DELETE FROM organizations WHERE id = $1 RETURNING id',
+    [orgId]
+  );
+  return rows[0] ? rows[0].id : null;
+}
+
+/**
+ * Everything the acting org owns, for a data-portability export. No password
+ * hashes, no other org's rows (every query is scoped by $1).
+ */
+async function exportOrganizationData(orgId) {
+  assertOrgId(orgId, 'exportOrganizationData');
+  const conn = getDb();
+  const [org, members, standardizedData, chatMessages, ascendaiUsage, invitations] = await Promise.all([
+    conn.query(
+      'SELECT id, name, org_type, onboarding_completed, created_at FROM organizations WHERE id = $1',
+      [orgId]
+    ),
+    conn.query(
+      'SELECT id, email, role, email_verified_at, created_at FROM users WHERE org_id = $1 ORDER BY created_at ASC',
+      [orgId]
+    ),
+    conn.query(
+      `SELECT ${FIELD_NAMES.join(', ')}, source_meta, created_at
+         FROM standardized_data WHERE org_id = $1 ORDER BY period_date ASC`,
+      [orgId]
+    ),
+    conn.query(
+      'SELECT user_id, role, content, created_at FROM chat_messages WHERE org_id = $1 ORDER BY created_at ASC',
+      [orgId]
+    ),
+    conn.query(
+      `SELECT user_id, status, prompt_tokens, completion_tokens, total_tokens, iterations, created_at
+         FROM ascendai_usage WHERE org_id = $1 ORDER BY created_at ASC`,
+      [orgId]
+    ),
+    conn.query(
+      `SELECT email, role, invited_by_user_id, expires_at, accepted_at, created_at
+         FROM invitations WHERE org_id = $1 ORDER BY created_at ASC`,
+      [orgId]
+    ),
+  ]);
+  return {
+    exportedAt: new Date().toISOString(),
+    organization: org.rows[0] || null,
+    members: members.rows,
+    standardizedData: standardizedData.rows,
+    chatMessages: chatMessages.rows,
+    ascendaiUsage: ascendaiUsage.rows,
+    invitations: invitations.rows,
+  };
+}
+
+/* -------------------------------------------------------------------------- */
 /* standardized_data — org-scoped                                             */
 /* -------------------------------------------------------------------------- */
 
@@ -726,6 +793,8 @@ module.exports = {
   acceptInvitation,
   listOrgMembers,
   removeOrgMember,
+  deleteOrganization,
+  exportOrganizationData,
   mergeStandardizedData,
   upsertStandardizedRow,
   deleteStandardizedData,

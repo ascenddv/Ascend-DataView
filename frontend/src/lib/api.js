@@ -243,3 +243,30 @@ export async function revokeInvitation(orgId, token) {
     'revoke invitation'
   );
 }
+
+/* --- account lifecycle (Phase 27) ----------------------------------- */
+
+/** Full JSON export of the org's data as a downloadable blob. */
+export async function exportAccount() {
+  const res = await fetch('/api/account/export', opts());
+  if (!res.ok) {
+    const err = new Error(`Export failed: HTTP ${res.status}`);
+    err.status = res.status;
+    throw err;
+  }
+  const blob = await res.blob();
+  const cd = res.headers.get('Content-Disposition') || '';
+  const m = /filename="([^"]+)"/.exec(cd);
+  return { blob, filename: m ? m[1] : 'ascenddv-export.json' };
+}
+
+export async function deleteOrganization(orgId, confirm) {
+  return asJson(
+    await fetch(`/api/organizations/${orgId}`, opts({
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ confirm }),
+    })),
+    'delete organization'
+  );
+}

@@ -15,7 +15,7 @@ const dbId = require.resolve('../db');
 const emailId = require.resolve('../services/email');
 
 const ORG = 42;
-const state = { members: [], invites: [], accounts: new Set(), created: [], removed: [] };
+const state = { members: [], invites: [], accounts: new Set(), created: [], removed: [], deletedOrgs: [] };
 const sent = [];
 
 function seed() {
@@ -27,6 +27,7 @@ function seed() {
   state.accounts = new Set(['owner@org.co', 'member@org.co', 'taken@x.co']);
   state.created = [];
   state.removed = [];
+  state.deletedOrgs = [];
   sent.length = 0;
 }
 
@@ -50,6 +51,7 @@ require.cache[dbId] = {
     listPendingInvitations: async (orgId) => (orgId === ORG ? state.invites.slice() : []),
     deleteInvitation: async (orgId, token) =>
       orgId === ORG && state.invites.some((i) => i.token === token) ? token : null,
+    deleteOrganization: async (orgId) => { state.deletedOrgs.push(orgId); return orgId; },
   },
 };
 require.cache[emailId] = {
@@ -172,4 +174,33 @@ test('owner cannot remove an owner, cannot remove self, can remove a member', as
 
   const gone = await call('DELETE', `/api/organizations/${ORG}/members/123`, { user: 1 });
   assert.equal(gone.status, 404);
+});
+
+/* -- delete organization ---------------------------------------------- */
+
+test('DELETE /organizations/:id — owner + matching name -> 200, cascade helper called, cookie cleared', async () => {
+  const r = await call('DELETE', `/api/organizations/${ORG}`, { body: { confirm: `Org ${ORG}` } });
+  assert.equal(r.status, 200);
+  assert.deepEqual(state.deletedOrgs, [ORG]);
+  assert.match(r.headers.get('set-cookie') || '', /ascenddv_token=;/);
+});
+
+test('DELETE /organizations/:id — wrong confirmation text -> 400, nothing deleted', async () => {
+  const r = await call('DELETE', `/api/organizations/${ORG}`, { body: { confirm: 'not the name' } });
+  assert.equal(r.status, 400);
+  assert.equal(state.deletedOrgs.length, 0);
+});
+
+test('DELETE /organizations/:id — a member -> 403; another org id -> 403', async () => {
+  const asMember = await call('DELETE', `/api/organizations/${ORG}`, { role: 'member', body: { confirm: `Org ${ORG}` } });
+  assert.equal(asMember.status, 403);
+  const otherOrg = await call('DELETE', `/api/organizations/999`, { body: { confirm: 'Org 999' } });
+  assert.equal(otherOrg.status, 403);
+  assert.equal(state.deletedOrgs.length, 0);
+});
+
+test('DELETE /organizations/:id — an unverified owner -> 403 needsVerification', async () => {
+  const r = await call('DELETE', `/api/organizations/${ORG}`, { unverified: true, body: { confirm: `Org ${ORG}` } });
+  assert.equal(r.status, 403);
+  assert.equal((await r.json()).needsVerification, true);
 });
