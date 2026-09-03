@@ -66,7 +66,7 @@ async function signup(client, label) {
   const email = `p24_${label}_${s}@t.co`;
   const password = 'ascend-gate-K7m2Qp-Zx9';
   const r = await client.req('POST', '/api/auth/signup', {
-    body: { email, password, orgName: `P24 ${label} ${s}` },
+    body: { email, password, orgName: `P24 ${label} ${s}`, acceptTos: true },
   });
   return { email, password, org: (await r.json()).org, status: r.status };
 }

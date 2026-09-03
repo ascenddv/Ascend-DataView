@@ -54,7 +54,7 @@ const fileForm = (f) => {
 async function signup(c, label) {
   const s = Date.now() + Math.floor(Math.random() * 1e5);
   const r = await c.req('POST', '/api/auth/signup', {
-    body: { email: `p19_${label}_${s}@t.co`, password: 'ascend-gate-K7m2Qp-Zx9', orgName: `P19 ${label} ${s}` },
+    body: { email: `p19_${label}_${s}@t.co`, password: 'ascend-gate-K7m2Qp-Zx9', orgName: `P19 ${label} ${s}`, acceptTos: true },
   });
   return r.json.org;
 }

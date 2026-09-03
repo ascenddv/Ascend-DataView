@@ -205,12 +205,12 @@ async function setOnboardingCompleted(orgId, value = true) {
   return rows[0] ? rows[0].onboarding_completed : null;
 }
 
-async function createUser({ orgId, email, passwordHash, role = 'owner' }) {
+async function createUser({ orgId, email, passwordHash, role = 'owner', tosAccepted = false }) {
   assertOrgId(orgId, 'createUser');
   const conn = getDb();
   const { rows } = await conn.query(
-    `INSERT INTO users (org_id, email, password_hash, role)
-     VALUES ($1, $2, $3, $4)
+    `INSERT INTO users (org_id, email, password_hash, role, tos_accepted_at)
+     VALUES ($1, $2, $3, $4, ${tosAccepted ? 'now()' : 'NULL'})
      RETURNING id, org_id, email, role, token_version, created_at`,
     [orgId, email.toLowerCase(), passwordHash, role]
   );
@@ -410,8 +410,8 @@ async function acceptInvitation({ token, email, passwordHash }) {
       return null;
     }
     const { rows: userRows } = await client.query(
-      `INSERT INTO users (org_id, email, password_hash, role, email_verified_at)
-       VALUES ($1, $2, $3, $4, now())
+      `INSERT INTO users (org_id, email, password_hash, role, email_verified_at, tos_accepted_at)
+       VALUES ($1, $2, $3, $4, now(), now())
        RETURNING id, org_id, email, role, token_version, email_verified_at, created_at`,
       [inv.org_id, String(email).toLowerCase(), passwordHash, inv.role]
     );

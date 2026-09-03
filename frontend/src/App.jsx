@@ -128,6 +128,12 @@ function Workspace({ user, org, onLogout, onLogoutAll }) {
             )}
           </>
         )}
+
+        <footer className="pt-6 text-center text-xs" style={{ color: 'var(--text-muted)' }}>
+          <a href="/legal/terms" style={{ textDecoration: 'underline' }}>Terms</a>
+          {' · '}
+          <a href="/legal/privacy" style={{ textDecoration: 'underline' }}>Privacy</a>
+        </footer>
       </div>
 
       {/* AscendAI — available from every dashboard view once past onboarding */}

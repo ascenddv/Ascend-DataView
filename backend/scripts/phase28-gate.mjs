@@ -76,7 +76,7 @@ async function signupVerified(base, label) {
   const c = makeClient(base);
   const s = Date.now() + Math.floor(Math.random() * 1e5);
   const email = `p28_${label}_${s}@t.co`;
-  const r = await c.req('POST', '/api/auth/signup', { body: { email, password: PW, orgName: `P28 ${label} ${s}` } });
+  const r = await c.req('POST', '/api/auth/signup', { body: { email, password: PW, orgName: `P28 ${label} ${s}`, acceptTos: true } });
   const org = (await r.json()).org;
   await db.getDb().query('UPDATE users SET email_verified_at = now() WHERE org_id = $1', [org.id]);
   await c.req('POST', '/api/auth/login', { body: { email, password: PW } });

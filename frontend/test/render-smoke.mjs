@@ -36,6 +36,10 @@ const probeSource = `
   import { ResetPasswordPage, AcceptInvitePage } from '../src/components/AuthTokenPages.jsx';
   import TeamPanel from '../src/components/TeamPanel.jsx';
   import ErrorBoundary from '../src/components/ErrorBoundary.jsx';
+  import { TermsPage, PrivacyPage } from '../src/components/LegalPages.jsx';
+  export function renderLegal(kind) {
+    return renderToStaticMarkup(kind === 'terms' ? <TermsPage /> : <PrivacyPage />);
+  }
   export function renderErrorBoundaryOk() {
     return renderToStaticMarkup(<ErrorBoundary><p>all good</p></ErrorBoundary>);
   }
@@ -106,6 +110,7 @@ let renderAcceptInvite;
 let renderTeamPanel;
 let renderErrorBoundaryOk;
 let renderErrorBoundaryFallback;
+let renderLegal;
 
 test.before(async () => {
   const out = here('./.render-smoke.bundle.cjs');
@@ -121,7 +126,7 @@ test.before(async () => {
   ({
     render, renderSummary, renderDangerZone, renderMappingConfirmation, renderWizard, renderTour,
     renderAscendAi, renderAuthPage, renderVerifyBanner, renderResetPage, renderAcceptInvite, renderTeamPanel,
-    renderErrorBoundaryOk, renderErrorBoundaryFallback,
+    renderErrorBoundaryOk, renderErrorBoundaryFallback, renderLegal,
   } = require(out));
 });
 
@@ -396,11 +401,29 @@ test('MappingConfirmation lists each flagged header with a schema-field selector
 
 /* ------------------- Phase 25: email verification + reset ------------- */
 
-test('AuthPage offers a "Forgot password?" affordance on the sign-in view', () => {
+test('AuthPage offers a "Forgot password?" affordance and links to the legal pages', () => {
   const html = renderAuthPage();
   assertClean(html, 'auth-page');
   assert.ok(html.includes('Forgot password?'), 'sign-in view must offer password recovery');
   assert.ok(html.includes('Sign in'));
+  assert.ok(html.includes('/legal/terms') && html.includes('/legal/privacy'), 'footer must link to Terms + Privacy');
+});
+
+test('the legal pages carry the DRAFT banner and the required disclosures', () => {
+  const terms = renderLegal('terms');
+  assertClean(terms, 'terms');
+  assert.ok(terms.includes('Terms of Service'));
+  assert.ok(/DRAFT .* needs review by counsel/i.test(terms), 'terms must be marked a draft');
+
+  const privacy = renderLegal('privacy');
+  assertClean(privacy, 'privacy');
+  assert.ok(/DRAFT .* needs review by counsel/i.test(privacy), 'privacy must be marked a draft');
+  // sub-processor list
+  for (const name of ['Google', 'DeepSeek', 'Supabase', 'Vercel', 'Resend', 'Sentry']) {
+    assert.ok(privacy.includes(name), `sub-processor "${name}" missing from the privacy page`);
+  }
+  assert.ok(privacy.includes('ascenddv_token'), 'cookie notice missing');
+  assert.ok(privacy.toLowerCase().includes('export') && privacy.toLowerCase().includes('deletion'), 'rights section missing');
 });
 
 test('the verify-email banner explains the block and offers a resend', () => {

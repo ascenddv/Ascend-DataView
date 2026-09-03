@@ -146,12 +146,12 @@ export async function login({ email, password }) {
   );
 }
 
-export async function signup({ email, password, orgName }) {
+export async function signup({ email, password, orgName, acceptTos }) {
   return asJson(
     await fetch('/api/auth/signup', opts({
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password, orgName }),
+      body: JSON.stringify({ email, password, orgName, acceptTos }),
     })),
     'signup'
   );

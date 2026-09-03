@@ -73,7 +73,7 @@ const clearLimits = () => db.getDb().query('DELETE FROM rate_limits');
 async function signupVerified(client, label) {
   const s = Date.now() + Math.floor(Math.random() * 1e5);
   const email = `p26_${label}_${s}@t.co`;
-  const r = await client.req('POST', '/api/auth/signup', { body: { email, password: PW, orgName: `P26 ${label} ${s}` } });
+  const r = await client.req('POST', '/api/auth/signup', { body: { email, password: PW, orgName: `P26 ${label} ${s}`, acceptTos: true } });
   const org = (await r.json()).org;
   await db.getDb().query('UPDATE users SET email_verified_at = now() WHERE org_id = $1', [org.id]);
   // re-login so the session cookie reflects the verified state

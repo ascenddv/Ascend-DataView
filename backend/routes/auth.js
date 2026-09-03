@@ -88,10 +88,13 @@ async function issueVerification(user) {
 
 router.post('/signup', authLimiter, async (req, res, next) => {
   try {
-    const { email, password, orgName } = req.body || {};
+    const { email, password, orgName, acceptTos } = req.body || {};
 
     const errors = validateCredentials({ email, password });
     if (!orgName || !String(orgName).trim()) errors.push('An organization name is required.');
+    if (acceptTos !== true) {
+      errors.push('You must agree to the Terms of Service and Privacy Policy.');
+    }
     if (errors.length) {
       return res.status(400).json({ ok: false, error: errors.join(' ') });
     }
@@ -105,7 +108,7 @@ router.post('/signup', authLimiter, async (req, res, next) => {
 
     const org = await createOrganization({ name: String(orgName).trim() });
     const passwordHash = await hashPassword(String(password));
-    const user = await createUser({ orgId: org.id, email, passwordHash, role: 'owner' });
+    const user = await createUser({ orgId: org.id, email, passwordHash, role: 'owner', tosAccepted: true });
 
     await issueVerification(user);
     setSession(res, user);

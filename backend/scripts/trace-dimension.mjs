@@ -29,7 +29,7 @@ async function req(method, p, { body, form } = {}) {
 
 const stamp = Date.now();
 await req('POST', '/api/auth/signup', {
-  body: { email: `trace_${stamp}@test.com`, password: 'ascend-gate-K7m2Qp-Zx9', orgName: `Trace ${stamp}` },
+  body: { email: `trace_${stamp}@test.com`, password: 'ascend-gate-K7m2Qp-Zx9', orgName: `Trace ${stamp}`, acceptTos: true },
 });
 const fd = new FormData();
 fd.append(

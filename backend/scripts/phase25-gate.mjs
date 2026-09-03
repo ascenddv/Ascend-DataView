@@ -107,7 +107,7 @@ try {
   /* ============================================================ */
   console.log('\n== 1. signup issues a verification email; the account starts unverified ==');
   const su = await c.req('POST', '/api/auth/signup', {
-    body: { email, password: STRONG_PW, orgName: `P25 ${Date.now()}` },
+    body: { email, password: STRONG_PW, orgName: `P25 ${Date.now()}`, acceptTos: true },
   });
   const suBody = await su.json();
   check('signup -> 201', su.status === 201, `-> ${su.status}`);
@@ -200,7 +200,7 @@ try {
   check('HIBP flags "password123" as breached', (await isBreachedPassword(BREACHED_PW)) === true);
   check('HIBP does NOT flag the strong gate password', (await isBreachedPassword(STRONG_PW)) === false);
   const breachedSignup = await c.req('POST', '/api/auth/signup', {
-    body: { email: `p25b_${Date.now()}@t.co`, password: BREACHED_PW, orgName: 'P25 breached' },
+    body: { email: `p25b_${Date.now()}@t.co`, password: BREACHED_PW, orgName: 'P25 breached', acceptTos: true },
   });
   check('signup with a breached password -> 400 (mentions the breach)',
     breachedSignup.status === 400 && /breach/i.test((await breachedSignup.json())?.error || ''),

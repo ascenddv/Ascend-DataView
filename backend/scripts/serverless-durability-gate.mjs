@@ -82,7 +82,7 @@ const fileForm = (f) => {
 async function signup(client, label) {
   const s = Date.now() + Math.floor(Math.random() * 1e5);
   const r = await client.req('POST', '/api/auth/signup', {
-    body: { email: `sd_${label}_${s}@t.co`, password: 'ascend-gate-K7m2Qp-Zx9', orgName: `SD ${label} ${s}` },
+    body: { email: `sd_${label}_${s}@t.co`, password: 'ascend-gate-K7m2Qp-Zx9', orgName: `SD ${label} ${s}`, acceptTos: true },
   });
   const org = (await r.json()).org;
   // Phase 25: upload / chat require a verified email — this gate is about
@@ -121,7 +121,7 @@ try {
     const client = i % 2 === 0 ? ca : cb; // alternate A / B
     const s = Date.now() + i;
     const r = await client.req('POST', '/api/auth/signup', {
-      body: { email: `rl_${s}_${i}@t.co`, password: 'ascend-gate-K7m2Qp-Zx9', orgName: `RL ${s} ${i}` },
+      body: { email: `rl_${s}_${i}@t.co`, password: 'ascend-gate-K7m2Qp-Zx9', orgName: `RL ${s} ${i}`, acceptTos: true },
     });
     results.push({ i, instance: i % 2 === 0 ? 'A' : 'B', status: r.status });
   }

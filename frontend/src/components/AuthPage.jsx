@@ -10,6 +10,7 @@ export default function AuthPage({ onAuthed }) {
   const [error, setError] = useState(null);
   const [busy, setBusy] = useState(false);
   const [forgotSent, setForgotSent] = useState(false);
+  const [acceptTos, setAcceptTos] = useState(false);
 
   function switchMode(next) {
     setMode(next);
@@ -29,7 +30,7 @@ export default function AuthPage({ onAuthed }) {
         const result =
           mode === 'login'
             ? await login({ email, password })
-            : await signup({ email, password, orgName });
+            : await signup({ email, password, orgName, acceptTos });
         onAuthed(result);
       }
     } catch (err) {
@@ -133,6 +134,29 @@ export default function AuthPage({ onAuthed }) {
             </button>
           )}
 
+          {mode === 'signup' && (
+            <label className="flex items-start gap-2 text-xs" style={{ color: 'var(--text-secondary)' }}>
+              <input
+                type="checkbox"
+                required
+                checked={acceptTos}
+                onChange={(e) => setAcceptTos(e.target.checked)}
+                className="mt-0.5"
+              />
+              <span>
+                I agree to the{' '}
+                <a href="/legal/terms" target="_blank" rel="noreferrer" style={{ textDecoration: 'underline' }}>
+                  Terms of Service
+                </a>{' '}
+                and{' '}
+                <a href="/legal/privacy" target="_blank" rel="noreferrer" style={{ textDecoration: 'underline' }}>
+                  Privacy Policy
+                </a>
+                . We use one first-party session cookie to keep you signed in.
+              </span>
+            </label>
+          )}
+
           {error && (
             <p role="alert" className="text-sm" style={{ color: 'var(--status-critical)' }}>
               {error}
@@ -168,6 +192,12 @@ export default function AuthPage({ onAuthed }) {
               : 'Already have an account? Sign in'}
           </button>
         )}
+
+        <p className="mt-6 border-t pt-3 text-center text-xs" style={{ borderColor: 'var(--border)', color: 'var(--text-muted)' }}>
+          <a href="/legal/terms" style={{ textDecoration: 'underline' }}>Terms</a>
+          {' · '}
+          <a href="/legal/privacy" style={{ textDecoration: 'underline' }}>Privacy</a>
+        </p>
       </div>
     </div>
   );

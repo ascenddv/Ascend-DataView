@@ -150,7 +150,7 @@ const post = (path, body, headers = {}) =>
 const GOOD_PW = 'a-strong-unique-passphrase-7712';
 
 async function signup(email = 'owner@org.co') {
-  const r = await post('/api/auth/signup', { email, password: GOOD_PW, orgName: 'Org' });
+  const r = await post('/api/auth/signup', { email, password: GOOD_PW, orgName: 'Org', acceptTos: true });
   const cookie = (r.headers.get('set-cookie') || '').split(';')[0];
   return { status: r.status, body: await r.json(), cookie };
 }
@@ -166,10 +166,20 @@ test('signup: account starts unverified and a verification email goes out', asyn
 
 test('signup: a breached password is refused', async () => {
   breached = new Set([GOOD_PW]);
-  const r = await post('/api/auth/signup', { email: 'x@y.co', password: GOOD_PW, orgName: 'Org' });
+  const r = await post('/api/auth/signup', { email: 'x@y.co', password: GOOD_PW, orgName: 'Org', acceptTos: true });
   assert.equal(r.status, 400);
   assert.match((await r.json()).error, /data breach/i);
   assert.equal(store.users.size, 0);
+});
+
+test('signup: without the ToS checkbox -> 400, nothing created', async () => {
+  const r = await post('/api/auth/signup', { email: 'x@y.co', password: GOOD_PW, orgName: 'Org' });
+  assert.equal(r.status, 400);
+  assert.match((await r.json()).error, /terms of service/i);
+  assert.equal(store.users.size, 0);
+
+  const withBox = await post('/api/auth/signup', { email: 'x@y.co', password: GOOD_PW, orgName: 'Org', acceptTos: true });
+  assert.equal(withBox.status, 201);
 });
 
 test('verify-email: a valid token verifies once; reuse and garbage 400', async () => {

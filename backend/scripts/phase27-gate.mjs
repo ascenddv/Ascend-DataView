@@ -76,7 +76,7 @@ const clearLimits = () => db.getDb().query('DELETE FROM rate_limits');
 async function signupVerified(client, label) {
   const s = Date.now() + Math.floor(Math.random() * 1e5);
   const email = `p27_${label}_${s}@t.co`;
-  const r = await client.req('POST', '/api/auth/signup', { body: { email, password: PW, orgName: `P27 ${label} ${s}` } });
+  const r = await client.req('POST', '/api/auth/signup', { body: { email, password: PW, orgName: `P27 ${label} ${s}`, acceptTos: true } });
   const org = (await r.json()).org;
   await db.getDb().query('UPDATE users SET email_verified_at = now() WHERE org_id = $1', [org.id]);
   await client.req('POST', '/api/auth/login', { body: { email, password: PW } });
@@ -183,7 +183,7 @@ try {
 
   const ownerC = makeClient();
   const s = Date.now();
-  await ownerC.req('POST', '/api/auth/signup', { body: { email: `p27_C_${s}@t.co`, password: PW, orgName: `P27 C ${s}` } });
+  await ownerC.req('POST', '/api/auth/signup', { body: { email: `p27_C_${s}@t.co`, password: PW, orgName: `P27 C ${s}`, acceptTos: true } });
   const cOrgId = (await db.getDb().query("SELECT id FROM organizations WHERE name = $1", [`P27 C ${s}`])).rows[0].id;
   await clearLimits();
   const unverifiedDelete = await ownerC.req('DELETE', `/api/organizations/${cOrgId}`, { body: { confirm: `P27 C ${s}` } });

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { getMe, logout as apiLogout, logoutAll as apiLogoutAll } from '../lib/api.js';
 import AuthPage from './AuthPage.jsx';
 import { VerifyEmailPage, ResetPasswordPage, AcceptInvitePage } from './AuthTokenPages.jsx';
+import { TermsPage, PrivacyPage } from './LegalPages.jsx';
 
 /**
  * Wraps the app: first handles the two token landing pages (/verify-email and
@@ -51,6 +52,8 @@ export default function AuthGate({ children }) {
   if (path === '/verify-email') return <VerifyEmailPage token={token} />;
   if (path === '/reset-password') return <ResetPasswordPage token={token} />;
   if (path === '/accept-invite') return <AcceptInvitePage token={token} />;
+  if (path === '/legal/terms') return <TermsPage />;
+  if (path === '/legal/privacy') return <PrivacyPage />;
 
   if (state.status === 'loading') {
     return (

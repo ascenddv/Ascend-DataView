@@ -99,7 +99,7 @@ function makeClient(base) {
 async function signup(client, label) {
   const s = Date.now() + Math.floor(Math.random() * 1e5);
   const r = await client.req('POST', '/api/auth/signup', {
-    body: { email: `p23_${label}_${s}@t.co`, password: 'ascend-gate-K7m2Qp-Zx9', orgName: `P23 ${label} ${s}` },
+    body: { email: `p23_${label}_${s}@t.co`, password: 'ascend-gate-K7m2Qp-Zx9', orgName: `P23 ${label} ${s}`, acceptTos: true },
   });
   const org = (await r.json()).org;
   // Phase 25: upload / chat now require a verified email — mark it verified so

@@ -26,6 +26,11 @@ const accountRoutes = require('./routes/account');
 const { requireAuth } = require('./middleware/requireAuth');
 const { getDb } = require('./db');
 const { requestLog, captureError } = require('./services/observability');
+const { checkProductionConfig } = require('./config/productionGuard');
+
+// Runs once per process on require. In a prod-like env a missing/weak secret
+// prints a loud banner + a CONFIG_GUARD signal; it never throws.
+checkProductionConfig();
 
 // Explicit CORS allowlist. On a same-origin deployment (frontend + /api served
 // from one domain, e.g. Vercel) CORS is not exercised at all; this only matters

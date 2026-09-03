@@ -103,7 +103,7 @@ try {
   console.log('\n== 1. structured request logging, no secrets in the logs ==');
   const c = makeClient(GOOD);
   const s = Date.now();
-  await c.req('POST', '/api/auth/signup', { body: { email: `p29_${s}@t.co`, password: PW, orgName: `P29 ${s}` } });
+  await c.req('POST', '/api/auth/signup', { body: { email: `p29_${s}@t.co`, password: PW, orgName: `P29 ${s}`, acceptTos: true } });
   const orgRow = await db.getDb().query('SELECT id FROM organizations WHERE name = $1', [`P29 ${s}`]);
   const orgId = orgRow.rows[0].id;
   await db.getDb().query('UPDATE users SET email_verified_at = now() WHERE org_id = $1', [orgId]);

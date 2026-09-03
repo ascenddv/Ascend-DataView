@@ -70,10 +70,10 @@ const A = makeClient();
 const B = makeClient();
 const stamp = Date.now();
 const su1 = await A.req('POST', '/api/auth/signup', {
-  body: { email: `a_${stamp}@test.com`, password: 'ascend-gate-K7m2Qp-Zx9', orgName: 'Org Alpha' },
+  body: { email: `a_${stamp}@test.com`, password: 'ascend-gate-K7m2Qp-Zx9', orgName: 'Org Alpha', acceptTos: true },
 });
 const su2 = await B.req('POST', '/api/auth/signup', {
-  body: { email: `b_${stamp}@test.com`, password: 'ascend-gate-K7m2Qp-Zx9', orgName: 'Org Beta' },
+  body: { email: `b_${stamp}@test.com`, password: 'ascend-gate-K7m2Qp-Zx9', orgName: 'Org Beta', acceptTos: true },
 });
 check('Org Alpha signup 201', su1.status === 201, `status ${su1.status}`);
 check('Org Beta signup 201', su2.status === 201, `status ${su2.status}`);
