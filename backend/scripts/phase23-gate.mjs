@@ -11,6 +11,8 @@
  *     instance that served only ~half of the attempts
  *   - the chat burst limit is a friendly { status:'rate_limited' }, not a 429,
  *     and a burst-limited turn never reaches the provider or the daily counter
+ *   - the fixed window actually RESETS: after windowMs elapses the counter goes
+ *     back to 1 and requests are allowed again (real HTTP -> real PgRateStore SQL)
  *
  * GEMINI_API_KEY / DEEPSEEK_API_KEY are blanked for the spawned backends so
  * /api/insight and /api/ascendai/chat degrade instantly with no external call
@@ -24,6 +26,9 @@ import { createRequire } from 'node:module';
 
 const require = createRequire(import.meta.url);
 const db = require('../db');
+const express = require('express');
+const rateLimit = require('express-rate-limit');
+const { PgRateStore } = require('../services/pgRateStore');
 const {
   INSIGHT_RATE_LIMIT,
   PDF_RATE_LIMIT,
@@ -237,6 +242,49 @@ try {
   const usedToday = await db.countAscendaiUsageSince(orgC.id, startOfUtcDayIso());
   check(`the burst-limited turn never reached the provider or the daily counter (usage = ${ASCENDAI_CHAT_BURST_LIMIT})`,
     usedToday === ASCENDAI_CHAT_BURST_LIMIT, `ascendai_usage rows today = ${usedToday}`);
+
+  /* ============================================================ */
+  console.log('\n== 5. the fixed window RESETS after windowMs (real HTTP -> real PgRateStore SQL) ==');
+  await db.getDb().query("DELETE FROM rate_limits WHERE key LIKE 'wintest:%'");
+  const WIN_MS = 2000;
+  const winApp = express();
+  const winLimiter = rateLimit({
+    windowMs: WIN_MS,
+    limit: 2,
+    standardHeaders: 'draft-7',
+    legacyHeaders: false,
+    keyGenerator: () => 'k',
+    validate: { keyGeneratorIpFallback: false },
+    store: new PgRateStore({ prefix: 'wintest:' }),
+    handler: (_req, res) => res.status(429).json({ ok: false }),
+  });
+  winApp.get('/probe', winLimiter, (_req, res) => res.json({ ok: true }));
+  const winServer = winApp.listen(3113);
+  const hitProbe = async () => (await fetch('http://localhost:3113/probe')).status;
+  try {
+    const s1 = await hitProbe();
+    const s2 = await hitProbe();
+    const s3 = await hitProbe();
+    check('within the 2s window: first 2 -> 200, 3rd -> 429', s1 === 200 && s2 === 200 && s3 === 429,
+      `${s1} ${s2} ${s3}`);
+    const rowMid = (await db.getDb().query("SELECT hits FROM rate_limits WHERE key = 'wintest:k'")).rows[0];
+    check('the shared row shows 3 hits mid-window', Number(rowMid.hits) === 3, `hits=${rowMid && rowMid.hits}`);
+
+    await sleep(WIN_MS + 300); // let expires_at pass now()
+
+    const s4 = await hitProbe();
+    check('after the window elapses: the next request is allowed again (200)', s4 === 200, `-> ${s4}`);
+    const rowAfter = (await db.getDb().query("SELECT hits FROM rate_limits WHERE key = 'wintest:k'")).rows[0];
+    check('the counter reset to 1 (CASE WHEN expires_at <= now() THEN 1 branch fired)',
+      Number(rowAfter.hits) === 1, `hits=${rowAfter && rowAfter.hits}`);
+    const s5 = await hitProbe();
+    const s6 = await hitProbe();
+    check('and the fresh window enforces the ceiling again (3rd of the new window -> 429)', s5 === 200 && s6 === 429,
+      `${s4} ${s5} ${s6}`);
+  } finally {
+    winServer.close();
+    await db.getDb().query("DELETE FROM rate_limits WHERE key LIKE 'wintest:%'").catch(() => {});
+  }
 
   console.log(`\n${fail === 0 ? 'ALL PHASE 23 CHECKS PASSED' : `${fail} CHECK(S) FAILED`}`);
 } finally {

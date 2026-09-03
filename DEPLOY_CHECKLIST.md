@@ -117,9 +117,26 @@ page errors are allowed at any point.
 - [ ] **Second org B** in another profile: sign up, upload different data.
       Confirm from org A you cannot see org B's data and the org-A invite link
       cannot add anyone to org B.
-- [ ] From two quick `POST /api/auth/login` attempts (curl) from one IP against
-      the deployed URL, confirm the DB-backed rate limit holds across lambdas
-      (2nd+ within the window → 429 once the threshold is hit).
+- [ ] **Auth limiter — IP keying can only be checked live.** `authLimiter`
+      (10 / 15 min on `POST /api/auth/login` + `/signup`) is keyed by `req.ip`,
+      which behind Vercel's proxy is derived from `X-Forwarded-For` via
+      `app.set('trust proxy', 1)`. Local/gate testing is structurally unable to
+      exercise per-IP isolation — every request is `127.0.0.1`, one bucket — so
+      the gates only prove the shared-count behavior. On the deployed URL:
+      1. from IP #1, hammer `POST /api/auth/login` (wrong password) ~12× →
+         expect a `429` once the 10th is exceeded;
+      2. immediately from a **different** IP (phone off wifi, or a second
+         network), one `POST /api/auth/login` → must be `200`/`401`, **not**
+         `429` (proves the bucket is per-IP, i.e. `X-Forwarded-For` is being
+         read, not a single shared/global bucket and not the proxy's own IP);
+      3. check a function log line for one of these requests shows the real
+         client IP, not a Vercel edge IP.
+      Do not trust `authLimiter` in production until 1–3 pass.
+- [ ] The four Phase-23 limiters (`insight` / `pdf` / `upload` / `chat-burst`)
+      are keyed per **org + user**, not IP, so they don't have this caveat —
+      but still confirm one fires on the deployed URL (e.g. 21 rapid
+      `GET /api/insight` → `429`) to prove the shared Postgres counter works
+      across real lambdas.
 - [ ] **Delete org A** (Danger zone, type-to-confirm) → signed out; sign back
       in is impossible (account gone); org B is untouched.
 - [ ] Kill-switch smoke: set `ASCENDAI_ENABLED=0` in Vercel, redeploy → the
