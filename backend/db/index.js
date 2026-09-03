@@ -136,12 +136,19 @@ async function pruneOldRows() {
     `DELETE FROM password_resets WHERE created_at < now() - ($1 || ' days')::interval`,
     [AUTH_TOKEN_RETENTION_DAYS]
   );
+  const invites = await conn.query(
+    `DELETE FROM invitations
+      WHERE accepted_at IS NOT NULL
+         OR expires_at < now() - ($1 || ' days')::interval`,
+    [AUTH_TOKEN_RETENTION_DAYS]
+  );
   return {
     chatMessages: chat.rowCount,
     ascendaiUsage: usage.rowCount,
     pendingUploads: pending.rowCount,
     emailVerifications: verifications.rowCount,
     passwordResets: resets.rowCount,
+    invitations: invites.rowCount,
   };
 }
 
@@ -310,6 +317,125 @@ async function consumePasswordReset(token) {
     [token]
   );
   return rows[0] ? { userId: rows[0].user_id } : null;
+}
+
+/* -------------------------------------------------------------------------- */
+/* team: invitations + member roster — org-scoped                             */
+/* -------------------------------------------------------------------------- */
+
+async function createInvitation({ orgId, email, role, invitedByUserId, token, ttlHours }) {
+  assertOrgId(orgId, 'createInvitation');
+  await getDb().query(
+    `INSERT INTO invitations (token, org_id, email, role, invited_by_user_id, expires_at)
+     VALUES ($1, $2, $3, $4, $5, now() + ($6 || ' hours')::interval)`,
+    [token, orgId, String(email).toLowerCase(), role, invitedByUserId, ttlHours]
+  );
+}
+
+/** Pending (unaccepted, unexpired) invitations for an org. */
+async function listPendingInvitations(orgId) {
+  assertOrgId(orgId, 'listPendingInvitations');
+  const { rows } = await getDb().query(
+    `SELECT token, email, role, created_at, expires_at
+       FROM invitations
+      WHERE org_id = $1 AND accepted_at IS NULL AND expires_at > now()
+      ORDER BY created_at DESC`,
+    [orgId]
+  );
+  return rows;
+}
+
+/**
+ * Look up an invitation by its token — NOT org-scoped, because the accept flow
+ * has no session yet. Returns the row only if it is still claimable.
+ */
+async function getInvitationByToken(token) {
+  if (typeof token !== 'string' || !token) return null;
+  const { rows } = await getDb().query(
+    `SELECT token, org_id, email, role
+       FROM invitations
+      WHERE token = $1 AND accepted_at IS NULL AND expires_at > now()`,
+    [token]
+  );
+  return rows[0] || null;
+}
+
+/** Revoke a pending invitation. org-scoped. Returns the token if one was removed. */
+async function deleteInvitation(orgId, token) {
+  assertOrgId(orgId, 'deleteInvitation');
+  const { rows } = await getDb().query(
+    'DELETE FROM invitations WHERE org_id = $1 AND token = $2 RETURNING token',
+    [orgId, String(token || '')]
+  );
+  return rows[0] ? rows[0].token : null;
+}
+
+/**
+ * Accept an invitation atomically: re-check it is claimable, create the user in
+ * the invitation's org with the invitation's role (email pre-verified — they
+ * proved control by receiving the link), and mark the invite accepted.
+ * Returns the new user row, or null if the invite was consumed/expired in the
+ * meantime or the email is already taken.
+ */
+async function acceptInvitation({ token, email, passwordHash }) {
+  const client = await getDb().connect();
+  try {
+    await client.query('BEGIN');
+    const { rows: invRows } = await client.query(
+      `SELECT org_id, email, role FROM invitations
+        WHERE token = $1 AND accepted_at IS NULL AND expires_at > now()
+        FOR UPDATE`,
+      [token]
+    );
+    if (!invRows[0]) {
+      await client.query('ROLLBACK');
+      return null;
+    }
+    const inv = invRows[0];
+    const { rows: existing } = await client.query('SELECT 1 FROM users WHERE email = $1', [
+      String(email).toLowerCase(),
+    ]);
+    if (existing[0]) {
+      await client.query('ROLLBACK');
+      return null;
+    }
+    const { rows: userRows } = await client.query(
+      `INSERT INTO users (org_id, email, password_hash, role, email_verified_at)
+       VALUES ($1, $2, $3, $4, now())
+       RETURNING id, org_id, email, role, token_version, email_verified_at, created_at`,
+      [inv.org_id, String(email).toLowerCase(), passwordHash, inv.role]
+    );
+    await client.query('UPDATE invitations SET accepted_at = now() WHERE token = $1', [token]);
+    await client.query('COMMIT');
+    return userRows[0];
+  } catch (err) {
+    await client.query('ROLLBACK').catch(() => {});
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
+/** Every user in an org (no password hashes). org-scoped. */
+async function listOrgMembers(orgId) {
+  assertOrgId(orgId, 'listOrgMembers');
+  const { rows } = await getDb().query(
+    `SELECT id, email, role, email_verified_at, created_at
+       FROM users WHERE org_id = $1 ORDER BY created_at ASC`,
+    [orgId]
+  );
+  return rows;
+}
+
+/** Remove a member from an org. org-scoped; refuses to remove an owner. */
+async function removeOrgMember(orgId, userId) {
+  assertOrgId(orgId, 'removeOrgMember');
+  assertUserId(userId, 'removeOrgMember');
+  const { rows } = await getDb().query(
+    "DELETE FROM users WHERE org_id = $1 AND id = $2 AND role <> 'owner' RETURNING id",
+    [orgId, userId]
+  );
+  return rows[0] ? rows[0].id : null;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -593,6 +719,13 @@ module.exports = {
   consumeEmailVerification,
   createPasswordReset,
   consumePasswordReset,
+  createInvitation,
+  listPendingInvitations,
+  getInvitationByToken,
+  deleteInvitation,
+  acceptInvitation,
+  listOrgMembers,
+  removeOrgMember,
   mergeStandardizedData,
   upsertStandardizedRow,
   deleteStandardizedData,

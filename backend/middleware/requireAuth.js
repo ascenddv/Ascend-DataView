@@ -48,6 +48,7 @@ async function requireAuth(req, res, next) {
       userId: user.id,
       orgId: payload.orgId,
       email: payload.email,
+      role: user.role,
       emailVerified: Boolean(user.email_verified_at),
     };
     next();

@@ -72,6 +72,12 @@ const PDF_RATE_WINDOW_MS = 10 * 60 * 1000;
 // Covers POST /api/upload and POST /api/upload/confirm together.
 const UPLOAD_RATE_LIMIT = 30;
 const UPLOAD_RATE_WINDOW_MS = 10 * 60 * 1000;
+// Team invitations send an email each — cap the rate an owner can fire them.
+const INVITE_RATE_LIMIT = 20;
+const INVITE_RATE_WINDOW_MS = 10 * 60 * 1000;
+
+// --- Team invitations (Stage 5, Phase 26) ---
+const INVITATION_TTL_HOURS = 72;
 
 // --- Auth: email verification & password reset (Stage 5, Phase 25) ---
 // Minimum password length, checked in validateCredentials. Bumped from 8: a
@@ -123,5 +129,8 @@ module.exports = {
   PDF_RATE_WINDOW_MS,
   UPLOAD_RATE_LIMIT,
   UPLOAD_RATE_WINDOW_MS,
+  INVITE_RATE_LIMIT,
+  INVITE_RATE_WINDOW_MS,
+  INVITATION_TTL_HOURS,
   REVENUE_RECONCILE_TOLERANCE_PCT,
 };

@@ -10,6 +10,7 @@ import DangerZone from './components/DangerZone.jsx';
 import OnboardingWizard from './components/OnboardingWizard.jsx';
 import AscendAiPanel from './components/AscendAiPanel.jsx';
 import VerifyEmailBanner from './components/VerifyEmailBanner.jsx';
+import TeamPanel from './components/TeamPanel.jsx';
 import { completeOnboarding } from './lib/api.js';
 
 function Workspace({ user, org, onLogout, onLogoutAll }) {
@@ -120,7 +121,11 @@ function Workspace({ user, org, onLogout, onLogoutAll }) {
               />
             </main>
 
-            <DangerZone org={org} onReset={() => setDataVersion((v) => v + 1)} />
+            <TeamPanel org={org} currentUser={user} />
+
+            {user.role === 'owner' && (
+              <DangerZone org={org} onReset={() => setDataVersion((v) => v + 1)} />
+            )}
           </>
         )}
       </div>

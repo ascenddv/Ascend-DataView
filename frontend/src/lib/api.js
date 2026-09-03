@@ -197,3 +197,49 @@ export async function resetPassword(token, password) {
     'reset password'
   );
 }
+
+export async function acceptInvite(token, password) {
+  return asJson(
+    await fetch('/api/auth/accept-invite', opts({
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token, password }),
+    })),
+    'accept invite'
+  );
+}
+
+/* --- team (Phase 26) --------------------------------------------------- */
+
+export async function listMembers(orgId) {
+  return asJson(await fetch(`/api/organizations/${orgId}/members`, opts()), 'list members');
+}
+
+export async function removeMember(orgId, userId) {
+  return asJson(
+    await fetch(`/api/organizations/${orgId}/members/${userId}`, opts({ method: 'DELETE' })),
+    'remove member'
+  );
+}
+
+export async function listInvitations(orgId) {
+  return asJson(await fetch(`/api/organizations/${orgId}/invitations`, opts()), 'list invitations');
+}
+
+export async function createInvitation(orgId, { email, role }) {
+  return asJson(
+    await fetch(`/api/organizations/${orgId}/invitations`, opts({
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, role }),
+    })),
+    'create invitation'
+  );
+}
+
+export async function revokeInvitation(orgId, token) {
+  return asJson(
+    await fetch(`/api/organizations/${orgId}/invitations/${token}`, opts({ method: 'DELETE' })),
+    'revoke invitation'
+  );
+}

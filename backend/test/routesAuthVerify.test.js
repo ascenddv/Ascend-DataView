@@ -30,6 +30,7 @@ const store = {
   byEmail: new Map(), // email -> id
   verifications: new Map(), // token -> { userId, used, expired }
   resets: new Map(), // token -> { userId, used, expired }
+  invitations: new Map(), // token -> { orgId, email, role, accepted }
   nextId: 1,
 };
 const sent = []; // captured emails
@@ -40,6 +41,7 @@ function resetStore() {
   store.byEmail.clear();
   store.verifications.clear();
   store.resets.clear();
+  store.invitations.clear();
   store.nextId = 1;
   sent.length = 0;
   breached = new Set();
@@ -97,6 +99,22 @@ require.cache[dbId] = {
       if (!row || row.used || row.expired) return null;
       row.used = true;
       return { userId: row.userId };
+    },
+    getInvitationByToken: async (token) => {
+      const row = store.invitations.get(token);
+      if (!row || row.accepted) return null;
+      return { token, org_id: row.orgId, email: row.email, role: row.role };
+    },
+    acceptInvitation: async ({ token, email, passwordHash }) => {
+      const row = store.invitations.get(token);
+      if (!row || row.accepted) return null;
+      if (store.byEmail.has(email.toLowerCase())) return null;
+      row.accepted = true;
+      const id = store.nextId++;
+      const user = { id, org_id: row.orgId, email: email.toLowerCase(), password_hash: passwordHash, role: row.role, token_version: 0, email_verified_at: new Date().toISOString() };
+      store.users.set(id, user);
+      store.byEmail.set(user.email, id);
+      return { ...user };
     },
   },
 };
@@ -218,6 +236,37 @@ test('reset-password: a breached new password is rejected', async () => {
   assert.equal(r.status, 400);
   assert.match((await r.json()).error, /data breach/i);
   assert.equal(store.resets.get(token).used, false);
+});
+
+test('accept-invite: a valid token creates a verified member in the invite’s org and logs them in', async () => {
+  store.invitations.set('inv-tok', { orgId: 777, email: 'newbie@team.co', role: 'member', accepted: false });
+  const r = await post('/api/auth/accept-invite', { token: 'inv-tok', password: 'a-fresh-strong-pass-8890' });
+  assert.equal(r.status, 201);
+  const body = await r.json();
+  assert.equal(body.user.role, 'member');
+  assert.equal(body.user.emailVerified, true);
+  assert.equal(body.org.id, 777);
+  assert.match(r.headers.get('set-cookie') || '', /ascenddv_token=/);
+  assert.equal(store.invitations.get('inv-tok').accepted, true);
+});
+
+test('accept-invite: invalid/revoked token -> 400; reused token -> 400; weak or breached password -> 400', async () => {
+  const bad = await post('/api/auth/accept-invite', { token: 'nope', password: 'a-fresh-strong-pass-8890' });
+  assert.equal(bad.status, 400);
+
+  store.invitations.set('t2', { orgId: 1, email: 'x@team.co', role: 'member', accepted: false });
+  const weak = await post('/api/auth/accept-invite', { token: 't2', password: 'short' });
+  assert.equal(weak.status, 400);
+  assert.equal(store.invitations.get('t2').accepted, false); // not consumed
+
+  breached = new Set(['breached-invite-pass-1']);
+  const brk = await post('/api/auth/accept-invite', { token: 't2', password: 'breached-invite-pass-1' });
+  assert.equal(brk.status, 400);
+
+  const ok = await post('/api/auth/accept-invite', { token: 't2', password: 'a-fresh-strong-pass-8890' });
+  assert.equal(ok.status, 201);
+  const reuse = await post('/api/auth/accept-invite', { token: 't2', password: 'another-strong-pass-2210' });
+  assert.equal(reuse.status, 400);
 });
 
 test('reset-password: success updates the hash, bumps token_version, clears the cookie, token is single-use', async () => {

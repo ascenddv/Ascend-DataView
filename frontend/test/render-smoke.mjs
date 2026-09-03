@@ -33,7 +33,8 @@ const probeSource = `
   import AscendAiPanel from '../src/components/AscendAiPanel.jsx';
   import AuthPage from '../src/components/AuthPage.jsx';
   import VerifyEmailBanner from '../src/components/VerifyEmailBanner.jsx';
-  import { ResetPasswordPage } from '../src/components/AuthTokenPages.jsx';
+  import { ResetPasswordPage, AcceptInvitePage } from '../src/components/AuthTokenPages.jsx';
+  import TeamPanel from '../src/components/TeamPanel.jsx';
   export function renderAuthPage() {
     return renderToStaticMarkup(<AuthPage onAuthed={() => {}} />);
   }
@@ -42,6 +43,14 @@ const probeSource = `
   }
   export function renderResetPage(token) {
     return renderToStaticMarkup(<ResetPasswordPage token={token} />);
+  }
+  export function renderAcceptInvite(token) {
+    return renderToStaticMarkup(<AcceptInvitePage token={token} />);
+  }
+  export function renderTeamPanel(role) {
+    return renderToStaticMarkup(
+      <TeamPanel org={{ id: 1, name: 'Org' }} currentUser={{ role, email: 'me@org.co' }} />
+    );
   }
   export function render(metrics, insightState, initialView) {
     return renderToStaticMarkup(
@@ -80,6 +89,8 @@ let renderAscendAi;
 let renderAuthPage;
 let renderVerifyBanner;
 let renderResetPage;
+let renderAcceptInvite;
+let renderTeamPanel;
 
 test.before(async () => {
   const out = here('./.render-smoke.bundle.cjs');
@@ -94,7 +105,7 @@ test.before(async () => {
   });
   ({
     render, renderSummary, renderDangerZone, renderMappingConfirmation, renderWizard, renderTour,
-    renderAscendAi, renderAuthPage, renderVerifyBanner, renderResetPage,
+    renderAscendAi, renderAuthPage, renderVerifyBanner, renderResetPage, renderAcceptInvite, renderTeamPanel,
   } = require(out));
 });
 
@@ -382,6 +393,26 @@ test('the reset-password page shows the form for a token and an error without on
   const noToken = renderResetPage(null);
   assert.ok(noToken.includes('missing its token'), 'a tokenless reset link must not show the form');
   assert.ok(!noToken.includes('New password'));
+});
+
+test('the accept-invite page shows a password form for a token, an error without one', () => {
+  const withToken = renderAcceptInvite('abc123');
+  assertClean(withToken, 'accept-invite');
+  assert.ok(withToken.includes('Accept invitation'));
+  assert.ok(withToken.includes('Choose a password'));
+
+  assert.ok(renderAcceptInvite(null).includes('missing its token'));
+});
+
+test('TeamPanel: owners get invite controls, members do not', () => {
+  const owner = renderTeamPanel('owner');
+  const member = renderTeamPanel('member');
+  assertClean(owner, 'team-owner');
+  assertClean(member, 'team-member');
+  assert.ok(owner.includes('>Team<'));
+  assert.ok(member.includes('>Team<'));
+  // collapsed by default — the panel body (and any invite affordance) is not in the markup yet
+  assert.ok(!owner.includes('Invite someone'), 'panel is collapsed until opened');
 });
 
 test('DangerZone: collapsed by default, and the reset button is disabled until the org name is typed', () => {

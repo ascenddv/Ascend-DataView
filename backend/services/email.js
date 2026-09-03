@@ -109,10 +109,27 @@ function passwordResetEmail(email, token) {
   };
 }
 
+function invitationEmail(email, token, orgName) {
+  const link = `${appBaseUrl()}/accept-invite?token=${token}`;
+  const org = orgName || 'an organization';
+  return {
+    to: email,
+    subject: `You've been invited to ${org} on AscendDV`,
+    text:
+      `You've been invited to join ${org} on AscendDV.\n\nAccept the invitation and set your password:\n${link}\n\n` +
+      `This link expires in 72 hours. If you weren't expecting this, you can ignore it.`,
+    html:
+      `<p>You've been invited to join <strong>${org}</strong> on AscendDV.</p>` +
+      `<p>Accept the invitation and set your password:</p><p><a href="${link}">${link}</a></p>` +
+      `<p>This link expires in 72 hours. If you weren't expecting this, you can ignore it.</p>`,
+  };
+}
+
 module.exports = {
   sendEmail,
   isConfigured,
   appBaseUrl,
   verificationEmail,
   passwordResetEmail,
+  invitationEmail,
 };

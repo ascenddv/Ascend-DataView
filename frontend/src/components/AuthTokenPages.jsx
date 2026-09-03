@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { verifyEmail, resetPassword } from '../lib/api.js';
+import { verifyEmail, resetPassword, acceptInvite } from '../lib/api.js';
 
 const PASSWORD_MIN = 10;
 
@@ -134,6 +134,75 @@ export function ResetPasswordPage({ token }) {
           style={{ background: 'var(--series-1)' }}
         >
           {state === 'working' ? 'Working…' : 'Set new password'}
+        </button>
+      </form>
+      {homeLink}
+    </Shell>
+  );
+}
+
+/** GET /accept-invite?token=… — set a password and join the inviting org. */
+export function AcceptInvitePage({ token }) {
+  const [password, setPassword] = useState('');
+  const [state, setState] = useState('form'); // form | working | error
+  const [error, setError] = useState(null);
+
+  async function submit(e) {
+    e.preventDefault();
+    setError(null);
+    setState('working');
+    try {
+      await acceptInvite(token, password);
+      // Session cookie is set — land on the app, which resolves the new session.
+      window.location.href = '/';
+    } catch (err) {
+      setError(err.message);
+      setState('error');
+    }
+  }
+
+  if (!token) {
+    return (
+      <Shell title="Join your team">
+        <p role="alert" className="mt-2 text-sm" style={{ color: 'var(--status-critical)' }}>
+          This invitation link is missing its token. Ask whoever invited you to send it again.
+        </p>
+        {homeLink}
+      </Shell>
+    );
+  }
+
+  return (
+    <Shell title="Join your team">
+      <p className="mt-2 text-sm" style={{ color: 'var(--text-secondary)' }}>
+        Set a password to accept your invitation and sign in.
+      </p>
+      <form onSubmit={submit} className="mt-4 space-y-3">
+        <label className="block text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
+          Choose a password
+          <input
+            type="password"
+            className="mt-1 w-full rounded-lg border px-3 py-2 text-sm outline-none"
+            style={{ borderColor: 'var(--border)', background: 'var(--page)', color: 'var(--text-primary)' }}
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            minLength={PASSWORD_MIN}
+            required
+          />
+        </label>
+        <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+          At least {PASSWORD_MIN} characters. Passwords found in known breaches are rejected.
+        </p>
+        {error && (
+          <p role="alert" className="text-sm" style={{ color: 'var(--status-critical)' }}>{error}</p>
+        )}
+        <button
+          type="submit"
+          disabled={state === 'working'}
+          className="w-full rounded-lg px-3 py-2 text-sm font-semibold text-white disabled:opacity-60"
+          style={{ background: 'var(--series-1)' }}
+        >
+          {state === 'working' ? 'Working…' : 'Accept invitation'}
         </button>
       </form>
       {homeLink}

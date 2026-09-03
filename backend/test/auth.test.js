@@ -113,7 +113,7 @@ test('requireAuth: attaches req.auth from a valid token when tv matches', async 
   let nexted = false;
   await requireAuth(req, res, () => (nexted = true));
   assert.equal(nexted, true);
-  assert.deepEqual(req.auth, { userId: 42, orgId: 5, email: 'x@y.com', emailVerified: true });
+  assert.deepEqual(req.auth, { userId: 42, orgId: 5, email: 'x@y.com', role: 'owner', emailVerified: true });
 });
 
 test('requireAuth: req.auth.emailVerified is false when the user has not verified', async () => {

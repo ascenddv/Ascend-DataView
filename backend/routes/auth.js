@@ -34,6 +34,8 @@ const {
   consumeEmailVerification,
   createPasswordReset,
   consumePasswordReset,
+  getInvitationByToken,
+  acceptInvitation,
 } = require('../db');
 const { isBreachedPassword } = require('../services/passwordCheck');
 const { sendEmail, verificationEmail, passwordResetEmail } = require('../services/email');
@@ -222,6 +224,50 @@ router.post('/reset-password', authLimiter, async (req, res, next) => {
     await bumpTokenVersion(claim.userId); // every existing session is now dead
     res.clearCookie(COOKIE_NAME, { ...cookieOptions(), maxAge: undefined });
     res.json({ ok: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Accept a team invitation: the token identifies the org + role + email, so the
+// only thing the invitee supplies is a password. The email is treated as
+// verified — they demonstrably received the link.
+router.post('/accept-invite', authLimiter, async (req, res, next) => {
+  try {
+    const { token, password } = req.body || {};
+    const inv = await getInvitationByToken(String(token || ''));
+    if (!inv) {
+      return res.status(400).json({
+        ok: false,
+        error: 'That invitation link is invalid, was revoked, or has expired.',
+      });
+    }
+    if (!password || String(password).length < PASSWORD_MIN_LENGTH) {
+      return res
+        .status(400)
+        .json({ ok: false, error: `Password must be at least ${PASSWORD_MIN_LENGTH} characters.` });
+    }
+    if (await isBreachedPassword(String(password))) {
+      return res.status(400).json({ ok: false, error: BREACHED_MSG });
+    }
+    if (await getUserByEmail(inv.email)) {
+      return res
+        .status(409)
+        .json({ ok: false, error: 'An account with that email already exists. Sign in instead.' });
+    }
+
+    const user = await acceptInvitation({
+      token: inv.token,
+      email: inv.email,
+      passwordHash: await hashPassword(String(password)),
+    });
+    if (!user) {
+      return res.status(400).json({ ok: false, error: 'That invitation is no longer valid.' });
+    }
+
+    const org = await getOrganizationById(user.org_id);
+    setSession(res, user);
+    res.status(201).json({ ok: true, user: publicUser(user), org: publicOrg(org) });
   } catch (err) {
     next(err);
   }

@@ -34,7 +34,7 @@ const ORG = 42;
 const app = express();
 app.use(express.json());
 app.use((req, _res, next) => {
-  req.auth = { orgId: ORG, userId: 1, email: 't@t.co' };
+  req.auth = { orgId: ORG, userId: 1, email: 't@t.co', role: 'owner', emailVerified: true };
   next();
 });
 app.use('/api', organizationsRouter);
