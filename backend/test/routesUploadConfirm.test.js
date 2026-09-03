@@ -10,8 +10,13 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const express = require('express');
 
+const crypto = require('node:crypto');
+
 const dbId = require.resolve('../db');
 const merged = [];
+// In-memory stand-ins for the pending_uploads table helpers, with the same
+// single-use / org-scoped semantics the real SQL enforces.
+const pendingRows = new Map();
 require.cache[dbId] = {
   id: dbId,
   filename: dbId,
@@ -25,6 +30,17 @@ require.cache[dbId] = {
     },
     upsertStandardizedRow: async () => ({ inserted: true }),
     getStandardizedData: async () => [],
+    putPendingUpload: async (orgId, payload) => {
+      const id = crypto.randomUUID();
+      pendingRows.set(id, { orgId, payload });
+      return id;
+    },
+    takePendingUpload: async (id, orgId) => {
+      const row = pendingRows.get(id);
+      if (!row || row.orgId !== orgId) return null;
+      pendingRows.delete(id); // single-use
+      return row.payload;
+    },
   },
 };
 
@@ -65,6 +81,7 @@ const guessMapping = {
 
 const seedPending = (orgId = ORG) =>
   pendingUploads.put({ orgId, parsed, mapping: guessMapping, filename: 'f.csv', source: 'csv_upload' });
+// seedPending() returns a Promise<id>; tests await it.
 
 const post = (path, body) =>
   fetch(base + path, {
@@ -75,7 +92,7 @@ const post = (path, body) =>
 
 test('confirm stores with the CORRECTED mapping, not the original guess', async () => {
   merged.length = 0;
-  const id = seedPending();
+  const id = await seedPending();
   const r = await post('/api/upload/confirm', {
     pendingId: id,
     corrections: { Rev: 'revenue', Spend: 'expenses', Helpers: 'volunteers_active' },
@@ -108,7 +125,7 @@ test('an unknown pendingId -> 404 and nothing is stored', async () => {
 
 test('another org cannot complete this org\'s pending upload -> 404, entry still owned', async () => {
   merged.length = 0;
-  const id = seedPending(ORG);
+  const id = await seedPending(ORG);
   const r = await post(`/api/upload/confirm?as=${OTHER}`, {
     pendingId: id,
     corrections: { Rev: 'revenue' },
@@ -116,12 +133,12 @@ test('another org cannot complete this org\'s pending upload -> 404, entry still
   assert.equal(r.status, 404);
   assert.equal(merged.length, 0);
   // the real owner can still take it — the failed cross-org attempt didn't consume it
-  assert.ok(pendingUploads.take(id, ORG));
+  assert.ok(await pendingUploads.take(id, ORG));
 });
 
 test('a pending upload is single-use', async () => {
   merged.length = 0;
-  const id = seedPending();
+  const id = await seedPending();
   const first = await post('/api/upload/confirm', { pendingId: id, corrections: { Rev: 'revenue', Spend: 'expenses' } });
   assert.equal(first.status, 200);
   const second = await post('/api/upload/confirm', { pendingId: id, corrections: {} });

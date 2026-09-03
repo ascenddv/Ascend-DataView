@@ -12,6 +12,7 @@
  * field dictionary so field names live in exactly one place (config/schema.js).
  */
 
+const crypto = require('crypto');
 const { Pool } = require('pg');
 
 const { FIELDS, FIELD_NAMES, TYPE } = require('../config/schema');
@@ -101,6 +102,28 @@ CREATE TABLE IF NOT EXISTS chat_messages (
 );
 `;
 
+// Serverless durability (post-Stage-4): both of these replace an in-memory Map
+// that isn't shared across function instances on Vercel.
+//   rate_limits    — the express-rate-limit auth limiter, fixed window per key.
+//   pending_uploads — Phase 14b's paused mapping-confirmation stash, with the
+//                     same 15-min TTL / single-use / org-scoped semantics.
+const RATE_LIMITS_DDL = `
+CREATE TABLE IF NOT EXISTS rate_limits (
+  key TEXT PRIMARY KEY,
+  hits INTEGER NOT NULL,
+  expires_at TIMESTAMPTZ NOT NULL
+);
+`;
+const PENDING_UPLOADS_DDL = `
+CREATE TABLE IF NOT EXISTS pending_uploads (
+  id UUID PRIMARY KEY,
+  org_id INTEGER NOT NULL REFERENCES organizations(id),
+  payload JSONB NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+`;
+const PENDING_UPLOAD_TTL = '15 minutes'; // mirrors services/pendingUploads.js TTL_MS
+
 // Stage 4 (Phase 19): one row per attempted AscendAI chat turn — token totals
 // for cost visibility, and the source of truth for the per-org daily rate limit.
 // Deliberately NOT cleared by DELETE /api/ascendai/chat: clearing a conversation
@@ -184,8 +207,12 @@ async function initDb() {
   await conn.query(MAPPING_CACHE_DDL);
   await conn.query(CHAT_MESSAGES_DDL);
   await conn.query(ASCENDAI_USAGE_DDL);
+  await conn.query(RATE_LIMITS_DDL);
+  await conn.query(PENDING_UPLOADS_DDL);
   await conn.query('CREATE INDEX IF NOT EXISTS chat_messages_org_user_idx ON chat_messages (org_id, user_id, created_at)');
   await conn.query('CREATE INDEX IF NOT EXISTS ascendai_usage_org_time_idx ON ascendai_usage (org_id, created_at)');
+  await conn.query('CREATE INDEX IF NOT EXISTS rate_limits_expires_idx ON rate_limits (expires_at)');
+  await conn.query('CREATE INDEX IF NOT EXISTS pending_uploads_created_idx ON pending_uploads (created_at)');
 
   // Phase 17: onboarding flag on pre-existing organizations tables.
   await conn.query(
@@ -540,11 +567,49 @@ async function countAscendaiUsageSince(orgId, sinceIso) {
   return rows[0].n;
 }
 
+/* -------------------------------------------------------------------------- */
+/* pending_uploads — Phase 14b stash, DB-backed so it survives across          */
+/* serverless instances. Single-use + TTL + org scope enforced in one query.  */
+/* -------------------------------------------------------------------------- */
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+async function putPendingUpload(orgId, payload) {
+  assertOrgId(orgId, 'putPendingUpload');
+  const conn = getDb();
+  await conn.query(
+    `DELETE FROM pending_uploads WHERE created_at < now() - interval '${PENDING_UPLOAD_TTL}'`
+  );
+  const id = crypto.randomUUID();
+  await conn.query('INSERT INTO pending_uploads (id, org_id, payload) VALUES ($1, $2, $3)', [
+    id,
+    orgId,
+    JSON.stringify(payload),
+  ]);
+  return id;
+}
+
+/** Atomically claim (delete + return) a non-expired pending upload for this org. */
+async function takePendingUpload(id, orgId) {
+  assertOrgId(orgId, 'takePendingUpload');
+  if (typeof id !== 'string' || !UUID_RE.test(id)) return null;
+  const conn = getDb();
+  const { rows } = await conn.query(
+    `DELETE FROM pending_uploads
+     WHERE id = $1 AND org_id = $2 AND created_at > now() - interval '${PENDING_UPLOAD_TTL}'
+     RETURNING payload`,
+    [id, orgId]
+  );
+  return rows[0] ? rows[0].payload : null;
+}
+
 module.exports = {
   getDb,
   initDb,
   closeDb,
   DB_PATH,
+  putPendingUpload,
+  takePendingUpload,
   DEMO_ORG_NAME,
   buildStandardizedDataDDL,
   createOrganization,

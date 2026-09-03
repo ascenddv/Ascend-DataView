@@ -13,9 +13,6 @@
     "test": "npm --prefix backend test && npm --prefix frontend test"
   },
   "dependencies": {
-    "@supabase/server": "^1.5.2",
-    "@supabase/ssr": "^0.12.5",
-    "@supabase/supabase-js": "^2.114.0",
     "bcryptjs": "^3.0.3",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",

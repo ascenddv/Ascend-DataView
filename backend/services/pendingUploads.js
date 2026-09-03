@@ -1,47 +1,34 @@
 /**
- * In-memory holding area for uploads paused on the column-mapping confirmation
- * step (Phase 14b).
+ * Holding area for uploads paused on the column-mapping confirmation step
+ * (Phase 14b).
  *
  * When an upload produces a field in `fieldsNeedingConfirmation`, its parsed
- * rows are stashed here — NOT written to the database — until the user confirms
- * or corrects each flagged mapping. Entries are single-use and expire, so a
- * user who walks away never leaves data half-ingested.
+ * rows are stashed here — NOT written to standardized_data — until the user
+ * confirms or corrects each flagged mapping. Entries are single-use, expire
+ * after TTL_MS, and are scoped by `orgId` on the way out (never leak another
+ * tenant's rows).
  *
- * Process-local and deliberately not persisted: an abandoned confirmation is
- * meant to evaporate, and a server restart legitimately discards it (the user
- * just re-uploads). Scoped by `orgId` on the way out.
+ * Backed by the `pending_uploads` table (was an in-memory Map): a serverless
+ * platform runs many function instances with separate memory, so a paused
+ * upload stashed by one instance has to be reachable from any other.
  */
 
-const crypto = require('crypto');
+const { putPendingUpload, takePendingUpload } = require('../db');
 
-const TTL_MS = 15 * 60 * 1000;
-const store = new Map(); // id -> { orgId, parsed, mapping, filename, source, createdAt }
-
-function sweep() {
-  const cutoff = Date.now() - TTL_MS;
-  for (const [id, entry] of store) {
-    if (entry.createdAt < cutoff) store.delete(id);
-  }
-}
+const TTL_MS = 15 * 60 * 1000; // mirrors PENDING_UPLOAD_TTL in db/index.js
 
 /** Stash a parsed-but-unstored upload; returns its one-time id. */
-function put({ orgId, parsed, mapping, filename, source }) {
-  sweep();
-  const id = crypto.randomUUID();
-  store.set(id, { orgId, parsed, mapping, filename, source, createdAt: Date.now() });
-  return id;
+async function put({ orgId, parsed, mapping, filename, source }) {
+  return putPendingUpload(orgId, { parsed, mapping, filename, source });
 }
 
 /**
  * Retrieve and remove a pending upload. Returns null if the id is unknown,
- * expired, or belongs to a different org (never leak another tenant's rows).
+ * malformed, expired, or belongs to a different org.
  */
-function take(id, orgId) {
-  sweep();
-  const entry = store.get(id);
-  if (!entry || entry.orgId !== orgId) return null;
-  store.delete(id);
-  return entry;
+async function take(id, orgId) {
+  const payload = await takePendingUpload(id, orgId);
+  return payload ? { orgId, ...payload } : null;
 }
 
-module.exports = { put, take, _store: store, TTL_MS };
+module.exports = { put, take, TTL_MS };

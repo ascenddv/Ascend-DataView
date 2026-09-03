@@ -1,16 +1,18 @@
 /**
- * Phase 14b — column-mapping confirmation.
+ * Phase 14b — column-mapping confirmation (mapper-injection path).
  *   - ingestParsed accepts an already-resolved mapping and skips the mapper
  *   - `confirmedFields` is recorded in each row's source_meta
  *   - a corrected mapping changes which field the cell is stored under
- *   - pendingUploads is single-use and org-scoped
+ *
+ * pendingUploads is now DB-backed (pending_uploads table); its single-use /
+ * TTL / org-scope semantics are covered by test/routesUploadConfirm.test.js
+ * (mocked) and scripts/serverless-durability-gate.mjs (live, cross-instance).
  */
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
 const { ingestParsed } = require('../services/ingest');
-const pendingUploads = require('../services/pendingUploads');
 
 const PARSED = {
   headers: ['Month', 'Rev ($)', 'Total Expenses', 'Cash on Hand', 'Supporters'],
@@ -67,12 +69,4 @@ test('correcting a mapping stores the cell under the corrected field, not the gu
   });
   assert.equal(rows[0].volunteers_active, 12);
   assert.equal(rows[0].donors_total, null);
-});
-
-test('pendingUploads: take() is single-use and rejects the wrong org', () => {
-  const id = pendingUploads.put({ orgId: 7, parsed: PARSED, mapping: GUESS_MAPPING, filename: 'f.csv', source: 'csv_upload' });
-  assert.equal(pendingUploads.take(id, 9), null, 'another org cannot take it');
-  const got = pendingUploads.take(id, 7);
-  assert.equal(got.orgId, 7);
-  assert.equal(pendingUploads.take(id, 7), null, 'a second take returns nothing');
 });

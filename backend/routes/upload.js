@@ -103,7 +103,7 @@ router.post('/upload', upload.single('file'), async (req, res, next) => {
 
     // Phase 14b: a low-confidence mapping pauses the upload before storage.
     if (report.fieldsNeedingConfirmation.length > 0) {
-      const pendingId = pendingUploads.put({
+      const pendingId = await pendingUploads.put({
         orgId,
         parsed,
         mapping: report.columnMapping,
@@ -138,7 +138,7 @@ router.post('/upload/confirm', async (req, res, next) => {
   try {
     const orgId = req.auth.orgId;
     const { pendingId, corrections } = req.body || {};
-    const entry = pendingUploads.take(pendingId, orgId);
+    const entry = await pendingUploads.take(pendingId, orgId);
     if (!entry) {
       res.status(404).json({
         ok: false,

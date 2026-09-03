@@ -1,21 +1,14 @@
-
 {
   "framework": null,
   "buildCommand": "npm run build",
   "outputDirectory": "frontend/dist",
   "functions": {
     "api/index.js": {
-      "includeFiles": "shared/**"
+      "includeFiles": "{shared/**,node_modules/pdfkit/**}"
     }
   },
   "rewrites": [
-    {
-      "source": "/api/:path*",
-      "destination": "/api/index.js"
-    },
-    {
-      "source": "/(.*)",
-      "destination": "/index.html"
-    }
+    { "source": "/api/:path*", "destination": "/api/index.js" },
+    { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
