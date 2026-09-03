@@ -1,0 +1,83 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  unit:
+    name: unit tests + build + audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install backend deps
+        working-directory: backend
+        run: npm ci
+      - name: Install frontend deps
+        working-directory: frontend
+        run: npm ci
+      - name: Backend unit tests
+        working-directory: backend
+        run: npm test
+      - name: Frontend render-smoke tests
+        working-directory: frontend
+        run: npm test
+      - name: Frontend production build
+        working-directory: frontend
+        run: npm run build
+      - name: Dependency audit (backend, prod only)
+        working-directory: backend
+        run: npm audit --omit=dev --audit-level=high
+      - name: Dependency audit (frontend, prod only)
+        working-directory: frontend
+        run: npm audit --omit=dev --audit-level=high
+
+  gates:
+    name: live verification gates
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: ascenddv
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5433/ascenddv
+      JWT_SECRET: ci-only-jwt-secret-not-used-in-production-000
+      HIBP_CHECK_ENABLED: '0'
+      GEMINI_API_KEY: ''
+      DEEPSEEK_API_KEY: ''
+      RESEND_API_KEY: ''
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install backend deps
+        working-directory: backend
+        run: npm ci
+      - name: Apply migrations
+        run: npm run migrate
+      - name: Serverless durability gate
+        working-directory: backend
+        run: node scripts/serverless-durability-gate.mjs
+      - name: Stage 5 phase gates
+        working-directory: backend
+        run: |
+          set -e
+          for n in 22 23 24 25 26 27 28 29 30 31; do
+            echo "=== phase${n}-gate ==="
+            node "scripts/phase${n}-gate.mjs"
+          done

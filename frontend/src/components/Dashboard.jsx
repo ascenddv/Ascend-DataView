@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { Suspense, lazy, useEffect, useState } from 'react';
 import {
   planCards,
   cardsForView,
@@ -7,15 +7,19 @@ import {
   OVERVIEW,
 } from '../cards/registry.js';
 import KpiCard from '../cards/KpiCard.jsx';
-import TrendCard from '../cards/TrendCard.jsx';
-import BarComparisonCard from '../cards/BarComparisonCard.jsx';
 import HealthScoreCard from '../cards/HealthScoreCard.jsx';
 import RiskOpportunityCard from '../cards/RiskOpportunityCard.jsx';
 import InsightCard from '../cards/InsightCard.jsx';
 import ViewTabs from './ViewTabs.jsx';
 import PdfExportButton from './PdfExportButton.jsx';
-import DashboardTour from './DashboardTour.jsx';
 import { formatPeriodRange } from '../lib/format.js';
+
+// Recharts is the single heaviest dependency; the two cards that use it and the
+// guided tour are split into their own chunks so the initial load doesn't carry
+// them. Suspense fallbacks keep the layout stable while a chunk arrives.
+const TrendCard = lazy(() => import('../cards/TrendCard.jsx'));
+const BarComparisonCard = lazy(() => import('../cards/BarComparisonCard.jsx'));
+const DashboardTour = lazy(() => import('./DashboardTour.jsx'));
 
 const COMPONENT_FOR_TYPE = {
   [CARD_TYPES.HEALTH]: HealthScoreCard,
@@ -25,7 +29,7 @@ const COMPONENT_FOR_TYPE = {
   [CARD_TYPES.RISK]: RiskOpportunityCard,
 };
 
-function CardGrid({ cards }) {
+function CardGridInner({ cards }) {
   const firstOfType = {};
   for (const c of cards) if (!(c.type in firstOfType)) firstOfType[c.type] = c.key;
 
@@ -42,6 +46,29 @@ function CardGrid({ cards }) {
         );
       })}
     </div>
+  );
+}
+
+function CardGrid({ cards }) {
+  return (
+    <Suspense
+      fallback={
+        <div
+          className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3"
+          aria-hidden="true"
+        >
+          {cards.map(({ key, span }) => (
+            <div
+              key={key}
+              className={`h-40 animate-pulse rounded-xl border ${span === 2 ? 'sm:col-span-2' : ''}`}
+              style={{ background: 'var(--surface-1)', borderColor: 'var(--border)' }}
+            />
+          ))}
+        </div>
+      }
+    >
+      <CardGridInner cards={cards} />
+    </Suspense>
   );
 }
 
@@ -129,7 +156,11 @@ export default function Dashboard({
         )}
       </header>
 
-      {showTour && <DashboardTour metrics={metrics} onClose={closeTour} />}
+      {showTour && (
+        <Suspense fallback={null}>
+          <DashboardTour metrics={metrics} onClose={closeTour} />
+        </Suspense>
+      )}
 
       {isOverview && showInsight && (
         <div className="mb-4">

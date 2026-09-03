@@ -55,6 +55,15 @@ export default function AscendAiPanel({ initialOpen = false, initialMessages = n
     if (listRef.current) listRef.current.scrollTop = listRef.current.scrollHeight;
   }, [messages, pending, open]);
 
+  // Modal behaviour: focus the input when it opens, close on Escape.
+  useEffect(() => {
+    if (!open) return undefined;
+    inputRef.current?.focus();
+    const onKey = (e) => { if (e.key === 'Escape') setOpen(false); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [open]);
+
   async function submit(e) {
     if (e) e.preventDefault();
     const text = input.trim();
@@ -127,6 +136,7 @@ export default function AscendAiPanel({ initialOpen = false, initialMessages = n
   return (
     <section
       role="dialog"
+      aria-modal="true"
       aria-label="AscendAI chat"
       className="fixed inset-y-0 right-0 z-40 flex w-full max-w-md flex-col border-l shadow-2xl"
       style={{ background: 'var(--surface-1)', borderColor: 'var(--border)' }}

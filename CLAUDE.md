@@ -6,7 +6,9 @@ Ascend Dataview (AscendDV) is an analytics platform for organizations with messy
 ## Project status
 **Stages 1–4 are complete and verified**: single-tenant demo → multi-tenant Postgres product → trust/comprehension features → **AscendAI** (tool-grounded conversational chat). Deployed on Vercel (static frontend + the Express backend as one `/api` serverless function) with Supabase Postgres. Serverless durability (rate limiter + pending uploads moved to Postgres so shared state holds across function instances) is done and cross-instance-verified. This is the regression baseline nothing in Stage 5 may break.
 
-**Stage 5 (in progress) is Production Hardening** — resolves a full production-readiness audit (security headers, migrations, rate limiting on every expensive endpoint, session revocation, transactional email + verification + password reset, team invites + owner/member roles, account/data deletion + export, AI kill-switches, observability, legal, CI, paid-infra cutover). See `SPEC_STAGE5.md`.
+**Stage 5 is Production Hardening** — resolves a full production-readiness audit (security headers, migrations, rate limiting on every expensive endpoint, session revocation, transactional email + verification + password reset, team invites + owner/member roles, account/data deletion + export, AI kill-switches, observability, legal, CI, paid-infra cutover). See `SPEC_STAGE5.md`.
+
+**Phases 21–31 are code-complete and gated** (`backend/scripts/phase22-gate.mjs` … `phase31-gate.mjs` + `serverless-durability-gate.mjs`, all green; backend `node --test` 229, frontend render-smoke 63). What remains is operational, tracked in `DEPLOY_CHECKLIST.md`: the paid Supabase/Vercel cutover, a Lighthouse a11y ≥ 95 pass, and the live end-to-end run on the deployed URL. Mark Stage 5 fully complete once that checklist is done.
 
 **Rule that carries over unchanged: complete a phase, pass its test gate, show the user, stop. Do not begin a new phase until the current one is confirmed. Commit the finished phase before proceeding — every phase report ends with that phase's commit hash.**
 

@@ -23,6 +23,7 @@ const insightRoutes = require('./routes/insight');
 const pdfRoutes = require('./routes/pdf');
 const ascendaiRoutes = require('./routes/ascendai');
 const accountRoutes = require('./routes/account');
+const internalRoutes = require('./routes/internal');
 const { requireAuth } = require('./middleware/requireAuth');
 const { getDb } = require('./db');
 const { requestLog, captureError } = require('./services/observability');
@@ -123,6 +124,8 @@ app.use('/api', healthRoutes); // /api/health — liveness check, works with no 
 app.use('/api', (_req, res, next) => {
   ready().then(() => next()).catch(next);
 });
+
+app.use('/api', internalRoutes); // /api/internal/* — cron-secret auth, no session
 
 app.use('/api/auth', authRoutes); // signup / login / logout / me
 

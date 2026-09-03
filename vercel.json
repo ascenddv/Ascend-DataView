@@ -10,5 +10,8 @@
   "rewrites": [
     { "source": "/api/:path*", "destination": "/api/index.js" },
     { "source": "/(.*)", "destination": "/index.html" }
+  ],
+  "crons": [
+    { "path": "/api/internal/prune", "schedule": "0 4 * * *" }
   ]
 }

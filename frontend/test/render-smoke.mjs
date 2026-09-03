@@ -128,6 +128,13 @@ test.before(async () => {
     renderAscendAi, renderAuthPage, renderVerifyBanner, renderResetPage, renderAcceptInvite, renderTeamPanel,
     renderErrorBoundaryOk, renderErrorBoundaryFallback, renderLegal,
   } = require(out));
+
+  // Dashboard code-splits the Recharts cards via React.lazy (Phase 31).
+  // renderToStaticMarkup can't await a suspended lazy import, so prime them
+  // once: render, let the (esbuild-inlined) dynamic imports resolve, and every
+  // subsequent render() then renders the real cards synchronously.
+  try { render(load('metrics_rich_v2'), null); } catch { /* first pass suspends */ }
+  await new Promise((r) => setTimeout(r, 200));
 });
 
 const FORBIDDEN = ['N/A', 'NaN', 'undefined', 'Infinity'];

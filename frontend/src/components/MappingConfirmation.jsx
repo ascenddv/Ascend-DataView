@@ -42,10 +42,11 @@ export default function MappingConfirmation({ pending, onConfirmed, onCancel }) 
 
   return (
     <section
+      aria-labelledby="mapping-confirm-heading"
       className="rounded-xl border p-4"
       style={{ borderColor: 'var(--status-warning)', background: 'var(--surface-1)' }}
     >
-      <h3 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
+      <h3 id="mapping-confirm-heading" className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
         Confirm {flagged.length} column {flagged.length === 1 ? 'match' : 'matches'} before saving
       </h3>
       <p className="mt-1 text-sm" style={{ color: 'var(--text-secondary)' }}>

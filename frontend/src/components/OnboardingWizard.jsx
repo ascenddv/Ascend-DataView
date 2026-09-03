@@ -44,6 +44,7 @@ export default function OnboardingWizard({ onComplete, onSkip }) {
 
   return (
     <section
+      aria-label="Get started with AscendDV"
       className="rounded-xl border p-6"
       style={{ background: 'var(--surface-1)', borderColor: 'var(--border)' }}
       data-testid="onboarding-wizard"

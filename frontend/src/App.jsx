@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { Suspense, lazy, useState } from 'react';
 import AuthGate from './components/AuthGate.jsx';
 import Uploader from './components/Uploader.jsx';
 import ManualEntry from './components/ManualEntry.jsx';
@@ -7,7 +7,7 @@ import MappingConfirmation from './components/MappingConfirmation.jsx';
 import UploadErrorBanner from './components/UploadErrorBanner.jsx';
 import Overview from './components/Overview.jsx';
 import DangerZone from './components/DangerZone.jsx';
-import OnboardingWizard from './components/OnboardingWizard.jsx';
+const OnboardingWizard = lazy(() => import('./components/OnboardingWizard.jsx'));
 import AscendAiPanel from './components/AscendAiPanel.jsx';
 import VerifyEmailBanner from './components/VerifyEmailBanner.jsx';
 import TeamPanel from './components/TeamPanel.jsx';
@@ -91,7 +91,9 @@ function Workspace({ user, org, onLogout, onLogoutAll }) {
         {user.emailVerified === false && <VerifyEmailBanner email={user.email} />}
 
         {!onboarded ? (
-          <OnboardingWizard onComplete={handleWizardComplete} onSkip={markOnboardingDone} />
+          <Suspense fallback={null}>
+            <OnboardingWizard onComplete={handleWizardComplete} onSkip={markOnboardingDone} />
+          </Suspense>
         ) : (
           <>
             <Uploader
