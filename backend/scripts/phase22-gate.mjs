@@ -1,30 +1,47 @@
 /**
  * Phase 22 gate — versioned migrations replace request-time DDL; FKs cascade.
- *   node scripts/phase22-gate.mjs [runningBackendBaseUrl]
+ *   node scripts/phase22-gate.mjs
  *
- * Spins a throwaway database on the local :5433 cluster, migrates it from empty,
- * verifies the full schema + idempotency + cascade deletes, then drops it.
+ * Self-contained: creates a throwaway database on the local :5433 cluster,
+ * migrates it from empty, verifies the full schema + idempotency + cascade
+ * deletes + the checksum guard, spawns its OWN backend against the migrated DB
+ * to prove no request-time DDL, then drops everything. Assumes nothing is
+ * already running.
  */
 
-import { spawnSync } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { readdirSync } from 'node:fs';
 import { createRequire } from 'node:module';
 
 const require = createRequire(import.meta.url);
 const { Client } = require('pg');
 
-// The set of migrations on disk, in order — the gate checks the ledger against
-// this rather than a hardcoded list, so later phases that add migrations don't
-// break it.
-const EXPECTED_MIGRATIONS = readdirSync('C:/Ascend-DataView/backend/db/migrations')
+const ROOT = 'C:/Ascend-DataView';
+
+// The set of migrations on disk, in numeric order — the gate checks the ledger
+// against this rather than a hardcoded list, so later phases don't break it.
+const EXPECTED_MIGRATIONS = readdirSync(`${ROOT}/backend/db/migrations`)
   .filter((f) => /^\d+.*\.sql$/.test(f))
-  .sort()
+  .sort((a, b) => a.localeCompare(b, 'en', { numeric: true }))
   .map((f) => f.replace(/\.sql$/, ''));
 
-const BASE = process.argv[2] || 'http://localhost:3001';
-const ADMIN = 'postgresql://postgres@127.0.0.1:5433/postgres';
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+const GATE_PORT = 3125; // this gate spawns its own backend — never assumes :3001
 const DBNAME = `ascenddv_mig_${Date.now()}`;
-const TESTDB_URL = `postgresql://postgres@127.0.0.1:5433/${DBNAME}`;
+
+// Derive host + credentials from DATABASE_URL when present (CI's postgres
+// service needs a password), else the local trust cluster on :5433.
+function pgBase() {
+  const raw = process.env.DATABASE_URL;
+  if (!raw) return 'postgresql://postgres@127.0.0.1:5433';
+  const u = new URL(raw);
+  const auth = u.username + (u.password ? `:${u.password}` : '');
+  return `${u.protocol}//${auth}@${u.host}`;
+}
+const PG_BASE = pgBase();
+const ADMIN = `${PG_BASE}/postgres`;
+const TESTDB_URL = `${PG_BASE}/${DBNAME}`;
 
 let fail = 0;
 const check = (label, cond, detail = '') => {
@@ -40,6 +57,7 @@ const runMigrate = () =>
 
 const admin = new Client({ connectionString: ADMIN });
 let db;
+let backend;
 try {
   await admin.connect();
   await admin.query(`DROP DATABASE IF EXISTS ${DBNAME}`);
@@ -128,13 +146,43 @@ try {
   const { rows: bRows } = await db.query(`SELECT count(*)::int n FROM standardized_data WHERE org_id = $1`, [orgB]);
   check('the other org is untouched', bRows[0].n === 1);
 
-  /* ---- 4. running backend serves with no request-time DDL ---- */
-  console.log('\n== the running backend needs no DDL at request time ==');
-  const h = await fetch(`${BASE}/api/health`).then((r) => r.status).catch(() => 0);
-  const m = await fetch(`${BASE}/api/metrics`).then((r) => r.status).catch(() => 0);
-  check('/api/health 200 and /api/metrics 401 (SELECT 1 readiness reached, no DDL)', h === 200 && m === 401,
-    `health ${h}, metrics ${m}`);
+  /* ---- 4. a backend against the migrated DB serves with no request-time DDL ---- */
+  console.log('\n== a backend on the migrated DB needs no DDL at request time ==');
+  backend = spawn(process.execPath, ['index.js'], {
+    cwd: `${ROOT}/backend`,
+    env: {
+      ...process.env,
+      PORT: String(GATE_PORT),
+      DATABASE_URL: TESTDB_URL,
+      JWT_SECRET: 'phase22-gate-secret-not-for-production-0000',
+      HIBP_CHECK_ENABLED: '0',
+    },
+    stdio: 'ignore',
+  });
+  const gateBase = `http://localhost:${GATE_PORT}`;
+  let up = false;
+  for (let i = 0; i < 80 && !up; i += 1) {
+    try { up = (await fetch(`${gateBase}/api/health`)).ok; } catch { /* not up */ }
+    if (!up) await sleep(200);
+  }
+  const h = await fetch(`${gateBase}/api/health`).then((r) => r.status).catch(() => 0);
+  const m = await fetch(`${gateBase}/api/metrics`).then((r) => r.status).catch(() => 0);
+  check('spawned backend: /api/health 200 and /api/metrics 401 (SELECT 1 readiness, no DDL)',
+    h === 200 && m === 401, `health ${h}, metrics ${m}`);
+
+  /* ---- 5. checksum guard rejects a drifted already-applied migration ---- */
+  console.log('\n== the checksum guard catches a modified applied migration ==');
+  await db.query(`UPDATE schema_migrations SET checksum = 'tampered_${'0'.repeat(56)}' WHERE version = $1`,
+    [EXPECTED_MIGRATIONS[0]]);
+  const drifted = runMigrate();
+  check('re-running migrate after a checksum was tampered -> non-zero exit',
+    drifted.status !== 0, `status ${drifted.status}`);
+  check('the error names the modified migration and refuses to proceed',
+    /was modified after it was applied/.test(drifted.stderr) &&
+      new RegExp(EXPECTED_MIGRATIONS[0]).test(drifted.stderr),
+    (drifted.stderr || '').trim().split('\n')[0]);
 } finally {
+  try { if (backend) backend.kill(); } catch { /* */ }
   try { if (db) await db.end(); } catch { /* */ }
   try { await admin.query(`DROP DATABASE IF EXISTS ${DBNAME} WITH (FORCE)`); } catch { /* */ }
   await admin.end();

@@ -13,7 +13,7 @@ require.cache[dbId] = {
   exports: {
     pruneOldRows: async () => {
       pruneCalls += 1;
-      return { chatMessages: 1, ascendaiUsage: 2, pendingUploads: 0, emailVerifications: 0, passwordResets: 0, invitations: 3 };
+      return { chatMessages: 1, ascendaiUsage: 2, pendingUploads: 0, rateLimits: 5, emailVerifications: 0, passwordResets: 0, invitations: 3 };
     },
   },
 };
@@ -44,6 +44,7 @@ test('with CRON_SECRET set: bearer or x-cron-secret -> 200 with the prune counts
   const body = await bearer.json();
   assert.equal(body.ok, true);
   assert.equal(body.pruned.ascendaiUsage, 2);
+  assert.equal(body.pruned.rateLimits, 5, 'rate_limits is one of the pruned tables');
 
   const header = await hit('POST', { 'x-cron-secret': 's3cr3t' });
   assert.equal(header.status, 200);

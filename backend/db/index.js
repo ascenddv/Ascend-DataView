@@ -45,8 +45,10 @@ const CONNECTION_STRING =
 
 const DB_PATH = CONNECTION_STRING; // kept as an export for backwards compat
 
-// mirrors services/pendingUploads.js TTL_MS and the interval in 001_init.sql
-const PENDING_UPLOAD_TTL = '15 minutes';
+// mirrors services/pendingUploads.js TTL_MS. A trusted constant, but passed as a
+// query PARAMETER everywhere (never string-interpolated) so it can be made
+// configurable later without becoming an injection point.
+const PENDING_UPLOAD_TTL_MIN = 15;
 
 let pool;
 
@@ -112,8 +114,10 @@ async function initDb(opts) {
 }
 
 /**
- * Retention prune (wired to a cron in Phase 31). Also opportunistically clears
- * expired pending uploads. Returns the row counts removed.
+ * Retention prune (wired to a cron in Phase 31). Also clears expired
+ * pending_uploads and expired rate_limits rows (the latter are only ever
+ * overwritten per-key, never deleted, so they accumulate without this).
+ * Returns the row counts removed, one field per table.
  */
 async function pruneOldRows() {
   const conn = getDb();
@@ -126,7 +130,11 @@ async function pruneOldRows() {
     [ASCENDAI_USAGE_RETENTION_DAYS]
   );
   const pending = await conn.query(
-    `DELETE FROM pending_uploads WHERE created_at < now() - interval '${PENDING_UPLOAD_TTL}'`
+    `DELETE FROM pending_uploads WHERE created_at < now() - ($1 || ' minutes')::interval`,
+    [PENDING_UPLOAD_TTL_MIN]
+  );
+  const rateLimits = await conn.query(
+    `DELETE FROM rate_limits WHERE expires_at < now()`
   );
   const verifications = await conn.query(
     `DELETE FROM email_verifications WHERE created_at < now() - ($1 || ' days')::interval`,
@@ -146,6 +154,7 @@ async function pruneOldRows() {
     chatMessages: chat.rowCount,
     ascendaiUsage: usage.rowCount,
     pendingUploads: pending.rowCount,
+    rateLimits: rateLimits.rowCount,
     emailVerifications: verifications.rowCount,
     passwordResets: resets.rowCount,
     invitations: invites.rowCount,
@@ -765,7 +774,8 @@ async function putPendingUpload(orgId, payload) {
   }
   const conn = getDb();
   await conn.query(
-    `DELETE FROM pending_uploads WHERE created_at < now() - interval '${PENDING_UPLOAD_TTL}'`
+    `DELETE FROM pending_uploads WHERE created_at < now() - ($1 || ' minutes')::interval`,
+    [PENDING_UPLOAD_TTL_MIN]
   );
   const id = crypto.randomUUID();
   await conn.query('INSERT INTO pending_uploads (id, org_id, payload) VALUES ($1, $2, $3)', [
@@ -783,9 +793,9 @@ async function takePendingUpload(id, orgId) {
   const conn = getDb();
   const { rows } = await conn.query(
     `DELETE FROM pending_uploads
-     WHERE id = $1 AND org_id = $2 AND created_at > now() - interval '${PENDING_UPLOAD_TTL}'
+     WHERE id = $1 AND org_id = $2 AND created_at > now() - ($3 || ' minutes')::interval
      RETURNING payload`,
-    [id, orgId]
+    [id, orgId, PENDING_UPLOAD_TTL_MIN]
   );
   return rows[0] ? rows[0].payload : null;
 }

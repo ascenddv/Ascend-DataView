@@ -63,11 +63,20 @@ try {
   check('no auth -> 401', (await call(WITH, 'POST')).status === 401);
   check('wrong secret -> 401', (await call(WITH, 'POST', { authorization: 'Bearer nope' })).status === 401);
 
+  // seed an expired rate_limits row so the prune has something to remove there
+  await db.getDb().query(
+    "INSERT INTO rate_limits (key, hits, expires_at) VALUES ('p31-prune-probe:x', 1, now() - interval '1 hour') ON CONFLICT (key) DO UPDATE SET expires_at = now() - interval '1 hour'"
+  );
+
   const okBearer = await call(WITH, 'POST', { authorization: `Bearer ${SECRET}` });
   const okBody = await okBearer.json();
   check('Authorization: Bearer <secret> -> 200 { ok:true, pruned }',
     okBearer.status === 200 && okBody.ok === true && okBody.pruned && typeof okBody.pruned.chatMessages === 'number',
     JSON.stringify(okBody.pruned));
+  check('the prune report includes rate_limits, and the expired row was removed',
+    typeof okBody.pruned.rateLimits === 'number' && okBody.pruned.rateLimits >= 1 &&
+      (await db.getDb().query("SELECT 1 FROM rate_limits WHERE key = 'p31-prune-probe:x'")).rowCount === 0,
+    `rateLimits=${okBody.pruned && okBody.pruned.rateLimits}`);
 
   check('x-cron-secret header -> 200', (await call(WITH, 'POST', { 'x-cron-secret': SECRET })).status === 200);
   check('GET (Vercel Cron style) with the bearer -> 200',

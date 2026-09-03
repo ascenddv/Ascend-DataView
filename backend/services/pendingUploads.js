@@ -15,7 +15,7 @@
 
 const { putPendingUpload, takePendingUpload } = require('../db');
 
-const TTL_MS = 15 * 60 * 1000; // mirrors PENDING_UPLOAD_TTL in db/index.js
+const TTL_MS = 15 * 60 * 1000; // mirrors PENDING_UPLOAD_TTL_MIN in db/index.js
 
 /** Stash a parsed-but-unstored upload; returns its one-time id. */
 async function put({ orgId, parsed, mapping, filename, source }) {
