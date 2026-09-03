@@ -19,6 +19,19 @@ test.afterEach(() => {
   else process.env.HIBP_CHECK_ENABLED = realFlag;
 });
 
+// Capture the HIBP_DEGRADED signal (written to stderr by the observability layer)
+// while an isBreachedPassword call runs.
+async function withStderr(fn) {
+  const original = process.stderr.write.bind(process.stderr);
+  let out = '';
+  process.stderr.write = (c) => { out += String(c); return true; };
+  try {
+    return { result: await fn(), stderr: out };
+  } finally {
+    process.stderr.write = original;
+  }
+}
+
 const suffixOf = (pw) =>
   crypto.createHash('sha1').update(pw, 'utf8').digest('hex').toUpperCase().slice(5);
 
@@ -39,21 +52,34 @@ test('returns false when the suffix is absent from the range response', async ()
   assert.equal(await isBreachedPassword('a-very-unusual-passphrase-9173'), false);
 });
 
-test('fails open (false) when HIBP errors or is unreachable', async () => {
+test('fails open (false) AND logs HIBP_DEGRADED when the network throws', async () => {
   delete process.env.HIBP_CHECK_ENABLED;
-  global.fetch = async () => { throw new Error('ENOTFOUND'); };
-  assert.equal(await isBreachedPassword('hunter2'), false);
-
-  global.fetch = async () => ({ ok: false, status: 503, text: async () => '' });
-  assert.equal(await isBreachedPassword('hunter2'), false);
+  global.fetch = async () => { throw new Error('ENOTFOUND api.pwnedpasswords.com'); };
+  const { result, stderr } = await withStderr(() => isBreachedPassword('hunter2'));
+  assert.equal(result, false);
+  assert.match(stderr, /"code":"HIBP_DEGRADED"/);
+  assert.match(stderr, /ENOTFOUND/);
 });
 
-test('short-circuits to false (no network) when HIBP_CHECK_ENABLED is off', async () => {
-  process.env.HIBP_CHECK_ENABLED = '0';
-  let called = false;
-  global.fetch = async () => { called = true; return { ok: true, text: async () => `${suffixOf('hunter2')}:99` }; };
-  assert.equal(await isBreachedPassword('hunter2'), false);
-  assert.equal(called, false);
+test('fails open (false) AND logs HIBP_DEGRADED on a non-2xx response', async () => {
+  delete process.env.HIBP_CHECK_ENABLED;
+  global.fetch = async () => ({ ok: false, status: 429, text: async () => '' });
+  const { result, stderr } = await withStderr(() => isBreachedPassword('hunter2'));
+  assert.equal(result, false);
+  assert.match(stderr, /"code":"HIBP_DEGRADED"/);
+  assert.match(stderr, /429/);
+});
+
+test('short-circuits to false (no network, no log) when HIBP_CHECK_ENABLED is a disable word', async () => {
+  for (const word of ['0', 'false', 'off', 'no', 'NO', ' Off ']) {
+    process.env.HIBP_CHECK_ENABLED = word;
+    let called = false;
+    global.fetch = async () => { called = true; return { ok: true, text: async () => `${suffixOf('hunter2')}:99` }; };
+    const { result, stderr } = await withStderr(() => isBreachedPassword('hunter2'));
+    assert.equal(result, false, `"${word}" should disable the check`);
+    assert.equal(called, false, `"${word}" should skip the network call`);
+    assert.doesNotMatch(stderr, /HIBP_DEGRADED/, `"${word}" is a deliberate off, not a degradation`);
+  }
 });
 
 test('an empty password is never "breached"', async () => {

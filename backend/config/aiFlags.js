@@ -9,9 +9,9 @@
  * route.
  */
 
-const isOff = (v) => /^(0|false|off|no)$/i.test(String(v ?? '').trim());
+const { flagIsOn } = require('./envFlags');
 
-const insightEnabled = () => !isOff(process.env.INSIGHT_ENABLED);
-const ascendaiEnabled = () => !isOff(process.env.ASCENDAI_ENABLED);
+const insightEnabled = () => flagIsOn(process.env.INSIGHT_ENABLED);
+const ascendaiEnabled = () => flagIsOn(process.env.ASCENDAI_ENABLED);
 
 module.exports = { insightEnabled, ascendaiEnabled };
