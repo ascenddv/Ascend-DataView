@@ -23,7 +23,7 @@
     "papaparse": "^5.7.0",
     "pdfkit": "^0.15.2",
     "pg": "^8.23.0",
-    "xlsx": "^0.18.5"
+    "xlsx": "file:../xlsx-0.20.3.tgz"
   },
   "devDependencies": {
     "better-sqlite3": "^12.2.0"
