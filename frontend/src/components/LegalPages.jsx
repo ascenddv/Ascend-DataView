@@ -181,7 +181,11 @@ export function TermsPage() {
       </p>
 
       <h2 className={shell.h2}>9. Changes</h2>
-      <p className={shell.p}>We may update these terms; material changes will be surfaced in-app before they take effect.</p>
+      <p className={shell.p}>
+        We may update these terms. The version in effect is the one published on this page, and the
+        “Last updated” date above reflects the most recent change. Your continued use of the Service
+        after a change constitutes acceptance of the updated terms.
+      </p>
     </Page>
   );
 }

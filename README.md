@@ -105,17 +105,17 @@ detects `VERCEL`.
 |---|---|---|---|
 | `DATABASE_URL` | yes | local `.env` + Vercel | Postgres connection. In production use the Supabase **Session pooler** string (`postgres.<ref>:<pw>@aws-0-<region>.pooler.supabase.com:5432/postgres`), not the direct connection (IPv6-only, unreachable from Vercel). `POSTGRES_URL` is accepted as a fallback. |
 | `JWT_SECRET` | yes | local `.env` + Vercel | Signs the session cookie. Must be ≥ 32 random chars in production; the config guard complains otherwise. |
-| `APP_BASE_URL` | prod | Vercel | Origin used to build links inside emails. Set to the deployed URL. Defaults to `http://localhost:3001`. |
+| `APP_BASE_URL` | prod | Vercel | Origin used to build links inside emails (verification, reset, invite). Set to the deployed `https://` URL. Defaults to `http://localhost:3001`; the config guard flags a missing or localhost value in production. |
 | `CORS_ORIGINS` | prod | Vercel | Comma-separated allowlist for cross-origin API calls. Not exercised on a same-origin Vercel deploy, but the config guard wants it set. |
 | `GEMINI_API_KEY` | for insight | local `.env` + Vercel | Google Gemini, **paid AI Studio tier** (commercial-licensed, inputs not used for training). Powers `generateInsight()` + column mapping. Unset → the insight card is simply absent. |
 | `DEEPSEEK_API_KEY` | for AscendAI | local `.env` + Vercel | DeepSeek (`deepseek-chat`). Powers AscendAI chat only. **Prepaid balance, no auto-recharge** — the balance is the spend ceiling. Separate failure domain from Gemini. |
 | `DEEPSEEK_BASE_URL` / `DEEPSEEK_MODEL` / `ASCENDAI_MODEL` | no | — | Repoint the AscendAI provider/model without code. `ASCENDAI_MODEL` is an alias for `DEEPSEEK_MODEL`. |
 | `RESEND_API_KEY` | prod | Vercel | Resend, for transactional email. Unset → emails are logged to the console instead of sent. |
-| `EMAIL_FROM` | prod | Vercel | Sender identity, e.g. `AscendDV <noreply@yourdomain>`. |
+| `EMAIL_FROM` | prod | Vercel | Sender identity, e.g. `AscendDV <noreply@yourdomain>`. The config guard flags it missing, or set to a value without an `@`. |
 | `SENTRY_DSN` | optional | Vercel | If set **and** `@sentry/node` is installed, 5xx + provider failures are forwarded to Sentry (secrets redacted). Otherwise the structured stderr log is the only sink. |
 | `INSIGHT_ENABLED` / `ASCENDAI_ENABLED` | optional | Vercel | Global kill-switches. Default on; `0`/`false`/`off` returns a clean `unavailable` and hides the affordance. |
 | `HIBP_CHECK_ENABLED` | optional | — | `0`/`false` skips the Have I Been Pwned breached-password check (offline installs / HIBP outage). Default on; fails open on error regardless. |
-| `CRON_SECRET` | Phase 31 | Vercel | Guards the internal prune endpoint the retention cron calls. |
+| `CRON_SECRET` | prod | Vercel | Guards `POST /api/internal/prune`, which the daily retention cron calls. Unset → every call 401s and nothing is ever pruned, so the config guard flags it missing (or under 16 chars). |
 
 The per-org AscendAI toggle (`organizations.ascendai_enabled`) is data, not env —
 an owner flips it from the Team panel.

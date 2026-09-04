@@ -37,8 +37,20 @@ const probeSource = `
   import TeamPanel from '../src/components/TeamPanel.jsx';
   import ErrorBoundary from '../src/components/ErrorBoundary.jsx';
   import { TermsPage, PrivacyPage } from '../src/components/LegalPages.jsx';
+  import AuthGate from '../src/components/AuthGate.jsx';
   export function renderLegal(kind) {
     return renderToStaticMarkup(kind === 'terms' ? <TermsPage /> : <PrivacyPage />);
+  }
+  // Drive AuthGate's real pathname routing, not the page components directly.
+  export function renderAuthGateAt(pathname) {
+    const prev = globalThis.window;
+    globalThis.window = { location: { pathname, search: '' } };
+    try {
+      return renderToStaticMarkup(<AuthGate><p>app-shell-children</p></AuthGate>);
+    } finally {
+      if (prev === undefined) delete globalThis.window;
+      else globalThis.window = prev;
+    }
   }
   export function renderErrorBoundaryOk() {
     return renderToStaticMarkup(<ErrorBoundary><p>all good</p></ErrorBoundary>);
@@ -111,6 +123,7 @@ let renderTeamPanel;
 let renderErrorBoundaryOk;
 let renderErrorBoundaryFallback;
 let renderLegal;
+let renderAuthGateAt;
 
 test.before(async () => {
   const out = here('./.render-smoke.bundle.cjs');
@@ -126,7 +139,7 @@ test.before(async () => {
   ({
     render, renderSummary, renderDangerZone, renderMappingConfirmation, renderWizard, renderTour,
     renderAscendAi, renderAuthPage, renderVerifyBanner, renderResetPage, renderAcceptInvite, renderTeamPanel,
-    renderErrorBoundaryOk, renderErrorBoundaryFallback, renderLegal,
+    renderErrorBoundaryOk, renderErrorBoundaryFallback, renderLegal, renderAuthGateAt,
   } = require(out));
 
   // Dashboard code-splits the Recharts cards via React.lazy (Phase 31).
@@ -431,6 +444,23 @@ test('the legal pages carry the DRAFT banner and the required disclosures', () =
   }
   assert.ok(privacy.includes('ascenddv_token'), 'cookie notice missing');
   assert.ok(privacy.toLowerCase().includes('export') && privacy.toLowerCase().includes('deletion'), 'rights section missing');
+});
+
+test('AuthGate routes /legal/terms and /legal/privacy by pathname (real routing, not a direct component call)', () => {
+  const terms = renderAuthGateAt('/legal/terms');
+  assertClean(terms, 'authgate-terms');
+  assert.ok(terms.includes('Terms of Service'), 'AuthGate did not render the Terms page for /legal/terms');
+  assert.ok(/DRAFT .* needs review by counsel/i.test(terms));
+  assert.ok(!terms.includes('app-shell-children'), 'the app shell must not render on a legal route');
+
+  const privacy = renderAuthGateAt('/legal/privacy');
+  assertClean(privacy, 'authgate-privacy');
+  assert.ok(privacy.includes('Sub-processors') && privacy.includes('ascenddv_token'),
+    'AuthGate did not render the Privacy page for /legal/privacy');
+
+  // a non-legal path falls through to the app (loading/auth), NOT a legal page
+  const other = renderAuthGateAt('/');
+  assert.ok(!/DRAFT — NOT LEGAL ADVICE/i.test(other), 'a non-legal path must not render a legal page');
 });
 
 test('the verify-email banner explains the block and offers a resend', () => {

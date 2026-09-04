@@ -91,6 +91,12 @@ router.post('/signup', authLimiter, async (req, res, next) => {
 
     const errors = validateCredentials({ email, password });
     if (!orgName || !String(orgName).trim()) errors.push('An organization name is required.');
+    // Strict `!== true`, not `!acceptTos`: only the literal boolean sent by the
+    // signup form's checkbox counts as consent. A stringified "true", a 1, or a
+    // stray object must not pass. This is a signing owner affirmatively ticking
+    // a box that shows the Terms + Privacy links; the timestamp recorded in
+    // users.tos_accepted_at is evidence of that act. (Invited members take a
+    // different, weaker path — see routes below and db.acceptInvitation.)
     if (acceptTos !== true) {
       errors.push('You must agree to the Terms of Service and Privacy Policy.');
     }
@@ -255,6 +261,14 @@ router.post('/reset-password', authLimiter, async (req, res, next) => {
 // is POSSESSION OF THE LINK, not proof of mailbox control: whoever opens the
 // (single-use, 72h, owner-revocable) link becomes the invited email in the org.
 // This matches the "anyone with the link" model used by GitHub/Slack invites.
+//
+// CONSENT: there is no ToS checkbox on this flow. Accepting the invite is
+// treated as acceptance, and db.acceptInvitation stamps tos_accepted_at = now().
+// That timestamp therefore means "accepted the invite link", NOT "was shown and
+// affirmatively ticked a Terms checkbox" — a weaker consent record than the
+// signing owner's (see the /signup handler above). If an evidentiary consent
+// record is ever required for members, add the checkbox to AcceptInvitePage and
+// gate this route on it.
 router.post('/accept-invite', authLimiter, async (req, res, next) => {
   try {
     const { token, password } = req.body || {};

@@ -66,8 +66,9 @@ try {
   const bad = spawn(process.execPath, ['-e', "require('./app').listen(process.env.PORT)"], {
     cwd: `${ROOT}/backend`,
     env: {
-      ...process.env, PORT: '3182', DATABASE_URL: LOCAL_PG,
+      ...process.env, PORT: '3182', DATABASE_URL: LOCAL_PG, HIBP_CHECK_ENABLED: '0',
       VERCEL: '1', JWT_SECRET: '', CORS_ORIGINS: '', RESEND_API_KEY: '',
+      APP_BASE_URL: '', EMAIL_FROM: '', CRON_SECRET: '',
     },
     stdio: ['ignore', 'pipe', 'pipe'],
   });
@@ -113,14 +114,47 @@ try {
   await sleep(300);
   check('a "PRODUCTION CONFIG PROBLEM" banner was printed to stderr on boot',
     /PRODUCTION CONFIG PROBLEM/.test(badErr));
-  check('the banner names the missing vars (JWT_SECRET, CORS_ORIGINS, RESEND_API_KEY)',
+  check('the banner names the classic missing vars (JWT_SECRET, CORS_ORIGINS, RESEND_API_KEY)',
     /MISSING: JWT_SECRET/.test(badErr) && /MISSING: CORS_ORIGINS/.test(badErr) && /MISSING: RESEND_API_KEY/.test(badErr),
+    badErr.split('\n').filter((l) => /MISSING/.test(l)).join(' | '));
+  // Phase 30 audit: these three were previously invisible to the guard — a
+  // deploy missing them (broken email links, a cron that silently never runs)
+  // would have been reported "config is fine".
+  check('the guard now ALSO catches APP_BASE_URL, EMAIL_FROM and CRON_SECRET',
+    /MISSING: APP_BASE_URL/.test(badErr) && /MISSING: EMAIL_FROM/.test(badErr) && /MISSING: CRON_SECRET/.test(badErr),
     badErr.split('\n').filter((l) => /MISSING/.test(l)).join(' | '));
   const configSignal = badErr.split('\n').map((l) => { try { return JSON.parse(l); } catch { return null; } })
     .find((o) => o && o.code === 'CONFIG_GUARD');
-  check('a CONFIG_GUARD signal line was emitted', configSignal && Array.isArray(configSignal.missing));
+  check('a CONFIG_GUARD signal line was emitted, listing every missing var',
+    configSignal && Array.isArray(configSignal.missing) &&
+    ['JWT_SECRET', 'CORS_ORIGINS', 'RESEND_API_KEY', 'APP_BASE_URL', 'EMAIL_FROM', 'CRON_SECRET']
+      .every((v) => configSignal.missing.includes(v)),
+    configSignal ? configSignal.missing.join(',') : 'no signal');
   const h = await fetch(`${BAD}/api/health`);
   check('the misconfigured backend still serves /api/health with HTTP 200', h.status === 200, `-> ${h.status}`);
+
+  /* ============================================================ */
+  console.log('\n== 3. a route that needs the missing JWT_SECRET returns a handled 500, not a crash ==');
+  await db.getDb().query('DELETE FROM rate_limits');
+  // p30_<s> was created + verified on the APP instance in §1; both instances
+  // share one DB. Login gets past getUserByEmail/verifyPassword, then
+  // setSession -> signToken -> jwtSecret() throws on the JWT_SECRET-less BAD
+  // instance. That throw must land in the app.js error handler.
+  const beforeLen = badErr.length;
+  const boom = await post(BAD, '/api/auth/login', { email: `p30_${s}@t.co`, password: PW });
+  const boomBody = await boom.json().catch(() => null);
+  check('the auth route -> HTTP 500 (handled, not a socket hang-up)', boom.status === 500, `-> ${boom.status}`);
+  check('the 500 body is the generic error handler message, no stack / no detail',
+    boomBody && boomBody.ok === false && boomBody.error === 'Something went wrong. Please try again.',
+    JSON.stringify(boomBody));
+  await sleep(150);
+  const newErr = badErr.slice(beforeLen);
+  const route5xx = newErr.split('\n').map((l) => { try { return JSON.parse(l); } catch { return null; } })
+    .find((o) => o && o.code === 'ROUTE_5XX');
+  check('the throw went through the ROUTE_5XX capture path (error handler ran)',
+    Boolean(route5xx) || /ROUTE_5XX/.test(newErr), newErr.split('\n').find((l) => /ROUTE_5XX|Error/.test(l)) || '(nothing)');
+  const h2 = await fetch(`${BAD}/api/health`);
+  check('the BAD instance is still alive after the throw (process did not exit)', h2.status === 200, `-> ${h2.status}`);
 
   console.log(`\n${fail === 0 ? 'ALL PHASE 30 CHECKS PASSED' : `${fail} CHECK(S) FAILED`}`);
 } finally {

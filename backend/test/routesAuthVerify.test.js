@@ -201,6 +201,21 @@ test('signup: without the ToS checkbox -> 400, nothing created', async () => {
   assert.equal(withBox.status, 201);
 });
 
+test('signup: acceptTos must be the boolean true — "true" / 1 / {} are all rejected', async () => {
+  // Guards against a refactor to a loose `!acceptTos` check: a truthy non-true
+  // value (a stringified form field, a checkbox serialised as 1, a stray object)
+  // must NOT be accepted as consent.
+  for (const value of ['true', 1, {}, 'on', 'yes', [], 'false']) {
+    const r = await post('/api/auth/signup', {
+      email: `tos_${Math.random().toString(36).slice(2)}@y.co`,
+      password: GOOD_PW, orgName: 'Org', acceptTos: value,
+    });
+    assert.equal(r.status, 400, `acceptTos=${JSON.stringify(value)} should be rejected`);
+    assert.match((await r.json()).error, /terms of service/i);
+  }
+  assert.equal(store.users.size, 0, 'no account created for any non-true acceptTos');
+});
+
 test('verify-email: a valid token verifies once; reuse and garbage 400', async () => {
   await signup();
   const token = [...store.verifications.keys()][0];

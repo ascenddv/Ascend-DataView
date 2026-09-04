@@ -460,6 +460,13 @@ async function acceptInvitation({ token, email, passwordHash }) {
       await client.query('ROLLBACK');
       return null;
     }
+    // email_verified_at: possession of the invite link stands in for a mailbox
+    // round-trip (see routes/auth.js /accept-invite).
+    // tos_accepted_at: set unconditionally here — an invited member never sees a
+    // Terms checkbox, so this timestamp records "accepted the invite link", not
+    // "affirmatively viewed and ticked a Terms checkbox" the way a signing
+    // owner's does. Behaviour is intentional; don't tighten without adding the
+    // checkbox to AcceptInvitePage.
     const { rows: userRows } = await client.query(
       `INSERT INTO users (org_id, email, password_hash, role, email_verified_at, tos_accepted_at)
        VALUES ($1, $2, $3, $4, now(), now())
