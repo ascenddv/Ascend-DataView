@@ -1,29 +1,63 @@
 /**
  * Phase 28 gate — AI kill-switches + usage visibility.
  *
- * Two backends on the local Postgres:
+ * Three backends on the local Postgres:
  *   - "flagsOff": INSIGHT_ENABLED=false, ASCENDAI_ENABLED=false
- *   - "flagsOn":  defaults (both AI features on)
- * Both run with GEMINI_API_KEY / DEEPSEEK_API_KEY blank, so on flagsOn the AI
- * paths degrade through the *provider* "unavailable" route — the gate checks
- * that the kill-switch "unavailable" is a distinct, clearly-worded response and
- * that everything non-AI is untouched.
+ *   - "flagsOn":  defaults (both AI features on), GEMINI/DEEPSEEK keys blank so
+ *                 the AI paths degrade through the *provider* "unavailable"
+ *                 route — lets the gate prove the kill-switch "unavailable" is a
+ *                 distinct, clearly-worded response and everything non-AI is
+ *                 untouched.
+ *   - "stubbed":  DEEPSEEK_API_KEY set + DEEPSEEK_BASE_URL pointed at a local
+ *                 stub that returns a real OpenAI-shaped completion (with a
+ *                 `usage` object), so the real provider-response -> trace.usage
+ *                 -> sumUsage -> ascendai_usage -> /api/ascendai/usage path runs
+ *                 end to end against a real HTTP response, not hand-seeded rows.
  *
  *   node scripts/phase28-gate.mjs
  */
 
 import { spawn } from 'node:child_process';
 import { readFileSync } from 'node:fs';
+import { createServer } from 'node:http';
 import { createRequire } from 'node:module';
 
 const require = createRequire(import.meta.url);
 const db = require('../db');
+const {
+  ASCENDAI_DAILY_MESSAGE_LIMIT_PER_ORG: CAP,
+  ASCENDAI_CHAT_BURST_LIMIT: BURST,
+} = require('../config/thresholds');
 
 const ROOT = 'C:/Ascend-DataView';
 const OFF = 'http://localhost:3161';
 const ON = 'http://localhost:3162';
+const STUBBED = 'http://localhost:3163';
+const STUB_PROVIDER_PORT = 3170;
 const LOCAL_PG = process.env.DATABASE_URL || 'postgresql://postgres@127.0.0.1:5433/ascenddv';
 const PW = 'ascend-gate-K7m2Qp-Zx9';
+
+// Minimal OpenAI-compatible chat/completions stub. Returns a final answer (no
+// tool calls) with a real `usage` object so sumUsage() has the exact shape it
+// parses in production.
+const STUB_USAGE = { prompt_tokens: 111, completion_tokens: 22, total_tokens: 133 };
+function startProviderStub(port) {
+  const server = createServer((req, res) => {
+    let body = '';
+    req.on('data', (c) => { body += c; });
+    req.on('end', () => {
+      res.setHeader('Content-Type', 'application/json');
+      res.end(JSON.stringify({
+        id: 'stub-cmpl', object: 'chat.completion', model: 'stub',
+        choices: [{ index: 0, finish_reason: 'stop',
+          message: { role: 'assistant', content: 'Stubbed answer for the Phase 28 gate.' } }],
+        usage: STUB_USAGE,
+      }));
+    });
+  });
+  server.listen(port);
+  return server;
+}
 
 let fail = 0;
 const check = (label, cond, detail = '') => {
@@ -84,12 +118,19 @@ async function signupVerified(base, label) {
 }
 
 const procs = [];
+let providerStub;
 try {
   await db.initDb();
+  providerStub = startProviderStub(STUB_PROVIDER_PORT);
   procs.push(startBackend(3161, { INSIGHT_ENABLED: 'false', ASCENDAI_ENABLED: 'false' }));
   procs.push(startBackend(3162, {}));
+  procs.push(startBackend(3163, {
+    DEEPSEEK_API_KEY: 'stub-key-not-real',
+    DEEPSEEK_BASE_URL: `http://127.0.0.1:${STUB_PROVIDER_PORT}`,
+  }));
   await waitHealth(OFF);
   await waitHealth(ON);
+  await waitHealth(STUBBED);
 
   /* ============================================================ */
   console.log('\n== 1. global flags off: AI endpoints return "unavailable", the rest is fine ==');
@@ -187,7 +228,6 @@ try {
   const cUid = (await db.getDb().query("SELECT id FROM users WHERE org_id=$1 AND role='owner' LIMIT 1", [cCtx.org.id])).rows[0].id;
 
   // Simulate a long outage: CAP failed turns recorded.
-  const { ASCENDAI_DAILY_MESSAGE_LIMIT_PER_ORG: CAP } = require('../config/thresholds');
   for (let i = 0; i < CAP; i += 1) {
     await db.recordAscendaiUsage(cCtx.org.id, cUid, { status: 'unavailable', promptTokens: 0, completionTokens: 0, totalTokens: 0 });
   }
@@ -218,9 +258,57 @@ try {
     cCapped.status === 200 && cCappedBody.status === 'rate_limited' && /limit/i.test(cCappedBody.reason || ''),
     JSON.stringify(cCappedBody.reason));
 
+  /* ============================================================ */
+  console.log('\n== 6. a disabled org: flooding chat past the burst limit reaches neither the provider nor the usage log ==');
+  // The unit tests prove "disabled org -> provider not called, no usage row"
+  // against a mocked handler. This proves it live, and across a whole flood
+  // that also crosses the burst-limiter threshold (which sits *before* the
+  // kill-switch in the middleware chain).
+  const dis = await signupVerified(ON, 'flood');
+  const patchDis = await dis.c.req('PATCH', `/api/organizations/${dis.org.id}`, { body: { ascendaiEnabled: false } });
+  check('owner disables AscendAI for the flood org -> 200', patchDis.status === 200 && (await patchDis.json()).ascendaiEnabled === false);
+
+  await clearLimits();
+  await db.getDb().query('DELETE FROM ascendai_usage WHERE org_id = $1', [dis.org.id]);
+  const FLOOD = BURST + 7;
+  const floodStatuses = [];
+  for (let i = 0; i < FLOOD; i += 1) {
+    const r = await dis.c.req('POST', '/api/ascendai/chat', { body: { message: `flood ${i}` } });
+    floodStatuses.push((await r.json())?.status);
+  }
+  const killSwitched = floodStatuses.slice(0, BURST);
+  const burstLimited = floodStatuses.slice(BURST);
+  check(`the first ${BURST} turns hit the kill-switch (status:"unavailable")`,
+    killSwitched.every((s) => s === 'unavailable'), killSwitched.join(','));
+  check(`turns ${BURST + 1}..${FLOOD} are shed by the burst limiter (status:"rate_limited")`,
+    burstLimited.length > 0 && burstLimited.every((s) => s === 'rate_limited'), burstLimited.join(','));
+  const floodRows = (await db.getDb().query(
+    'SELECT count(*)::int AS n FROM ascendai_usage WHERE org_id = $1', [dis.org.id]
+  )).rows[0].n;
+  check(`ZERO ascendai_usage rows after all ${FLOOD} turns — no turn reached recordAscendaiUsage, hence none reached the provider`,
+    floodRows === 0, `rows=${floodRows}`);
+
+  /* ============================================================ */
+  console.log('\n== 7. a real provider response: usage flows end-to-end into /api/ascendai/usage (not hand-seeded) ==');
+  const stub = await signupVerified(STUBBED, 'stub');
+  await clearLimits();
+  const stChat = await stub.c.req('POST', '/api/ascendai/chat', { body: { message: 'what is my cash balance?' } });
+  const stChatBody = await stChat.json();
+  check('stubbed provider turn -> status "ok" with a non-empty reply',
+    stChat.status === 200 && stChatBody.status === 'ok' && typeof stChatBody.reply === 'string' && stChatBody.reply.length > 0,
+    JSON.stringify(stChatBody.status));
+  const stUsage = await (await stub.c.req('GET', '/api/ascendai/usage')).json();
+  check('the usage view shows the REAL parsed token counts from the provider response body',
+    stUsage.today.count === 1 &&
+    stUsage.tokens.prompt === STUB_USAGE.prompt_tokens &&
+    stUsage.tokens.completion === STUB_USAGE.completion_tokens &&
+    stUsage.tokens.total === STUB_USAGE.total_tokens,
+    JSON.stringify(stUsage.tokens));
+
   console.log(`\n${fail === 0 ? 'ALL PHASE 28 CHECKS PASSED' : `${fail} CHECK(S) FAILED`}`);
 } finally {
   for (const p of procs) p.kill();
+  if (providerStub) providerStub.close();
   await db.closeDb();
 }
 process.exit(fail === 0 ? 0 : 1);

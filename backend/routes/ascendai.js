@@ -32,6 +32,7 @@ const {
 const { chatBurstLimiter } = require('../middleware/rateLimit');
 const { requireVerified } = require('../middleware/requireVerified');
 const { ascendaiEnabled } = require('../config/aiFlags');
+const { captureMessage } = require('../services/observability');
 
 const router = express.Router();
 
@@ -65,6 +66,22 @@ function sumUsage(trace) {
     acc.totalTokens += u.total_tokens || 0;
   }
   return acc;
+}
+
+// A successful turn should carry at least one provider usage object with the
+// OpenAI-style token keys sumUsage() reads. If it does not (the provider
+// omitted `usage`, or was swapped for one with a different shape), the token
+// telemetry for this turn silently records as zero. sumUsage()'s parsing is
+// left as-is on purpose — this only makes the silent-zero case observable.
+function usageIsParseable(trace) {
+  const entries = (trace && trace.usage) || [];
+  return entries.some(
+    (u) =>
+      u &&
+      (Number.isFinite(u.prompt_tokens) ||
+        Number.isFinite(u.completion_tokens) ||
+        Number.isFinite(u.total_tokens))
+  );
 }
 
 router.post('/ascendai/chat', requireVerified, chatBurstLimiter, async (req, res, next) => {
@@ -120,6 +137,15 @@ router.post('/ascendai/chat', requireVerified, chatBurstLimiter, async (req, res
 
     // --- token-usage logging (also the source of truth for the rate limit) ---
     const usage = sumUsage(result.trace);
+    if (result.status === 'ok' && !usageIsParseable(result.trace)) {
+      // Real answer, but no parseable provider usage — this turn's token
+      // totals will record as zero. Surface it rather than hide it.
+      captureMessage('ASCENDAI_USAGE_UNPARSED', {
+        orgId,
+        iterations: (result.trace && result.trace.iterations) || 0,
+        usageEntries: ((result.trace && result.trace.usage) || []).length,
+      });
+    }
     await recordAscendaiUsage(orgId, userId, {
       status: result.status,
       promptTokens: usage.promptTokens,

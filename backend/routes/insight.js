@@ -4,6 +4,12 @@
  * Recomputes metrics deterministically (same path as /api/metrics), then hands
  * only those computed aggregates to generateInsight(). Raw rows never leave the
  * DB layer.
+ *
+ * `requireVerified`: this is an LLM-spend endpoint, so it is gated on email
+ * verification exactly like /api/upload, /api/manual-entry and
+ * /api/ascendai/chat — an unverified account can view /api/metrics but cannot
+ * make the app spend on a provider call. The guard runs before insightLimiter
+ * so an unverified caller doesn't consume rate-limit budget either.
  */
 
 const express = require('express');
@@ -12,6 +18,7 @@ const { getStandardizedData } = require('../db');
 const { buildMetrics } = require('../services/buildMetrics');
 const { generateInsight } = require('../services/generateInsight');
 const { insightLimiter } = require('../middleware/rateLimit');
+const { requireVerified } = require('../middleware/requireVerified');
 const { insightEnabled } = require('../config/aiFlags');
 const { captureError } = require('../services/observability');
 
@@ -26,7 +33,7 @@ const disabledInsight = (reason) => ({
   reason,
 });
 
-router.get('/insight', insightLimiter, async (req, res, next) => {
+router.get('/insight', requireVerified, insightLimiter, async (req, res, next) => {
   try {
     if (!insightEnabled()) {
       return res.json({ ok: true, ...disabledInsight('AI insight is turned off for this deployment.') });

@@ -24,6 +24,7 @@ const calls = {
   insertChatMessage: [],
   recordAscendaiUsage: [],
   deleteChatMessages: [],
+  captureMessage: [],
 };
 const state = {
   usedToday: 0,
@@ -76,6 +77,17 @@ require.cache[chatId] = {
       state.askInput = input;
       return state.askResult;
     },
+  },
+};
+
+const obsId = require.resolve('../services/observability');
+require.cache[obsId] = {
+  id: obsId, filename: obsId, loaded: true, children: [], paths: [],
+  exports: {
+    captureMessage: (code, context) => { calls.captureMessage.push([code, context]); },
+    captureError: () => {},
+    redact: (x) => x,
+    requestLog: () => {},
   },
 };
 
@@ -239,4 +251,40 @@ test('GET /api/ascendai/usage reports today\'s count, the limit, tokens and enab
   state.orgAscendaiEnabled = false;
   const j2 = await (await fetch(`${base}/api/ascendai/usage`)).json();
   assert.equal(j2.enabled, false);
+});
+
+test('an ok turn whose trace carries no parseable provider usage emits ASCENDAI_USAGE_UNPARSED', async () => {
+  reset();
+  state.askResult = { status: 'ok', reply: 'the answer', reason: null, trace: { iterations: 1, usage: [] } };
+  await post('/api/ascendai/chat', { message: 'hi' });
+  assert.equal(calls.captureMessage.length, 1);
+  assert.equal(calls.captureMessage[0][0], 'ASCENDAI_USAGE_UNPARSED');
+  assert.equal(calls.captureMessage[0][1].usageEntries, 0);
+  // the turn still succeeds and still records a (zero-token) usage row
+  assert.equal(calls.recordAscendaiUsage.length, 1);
+  assert.equal(calls.recordAscendaiUsage[0][2].totalTokens, 0);
+});
+
+test('a usage array with unrecognised keys also emits the signal (silent-zero would otherwise hide it)', async () => {
+  reset();
+  state.askResult = {
+    status: 'ok', reply: 'the answer', reason: null,
+    trace: { iterations: 1, usage: [{ input_tokens: 40, output_tokens: 10 }] },
+  };
+  await post('/api/ascendai/chat', { message: 'hi' });
+  assert.equal(calls.captureMessage.length, 1);
+  assert.equal(calls.captureMessage[0][0], 'ASCENDAI_USAGE_UNPARSED');
+});
+
+test('a normal ok turn with real token keys emits NO signal', async () => {
+  reset(); // reset() sets a trace with well-formed prompt_tokens/… entries
+  await post('/api/ascendai/chat', { message: 'hi' });
+  assert.equal(calls.captureMessage.length, 0);
+});
+
+test('a provider-failure turn (status unavailable, empty usage) emits NO signal', async () => {
+  reset();
+  state.askResult = { status: 'unavailable', reply: null, reason: 'temporarily unavailable', trace: { iterations: 1, usage: [] } };
+  await post('/api/ascendai/chat', { message: 'hi' });
+  assert.equal(calls.captureMessage.length, 0, 'an outage is not a usage-parsing problem');
 });
