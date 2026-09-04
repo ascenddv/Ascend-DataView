@@ -15,6 +15,7 @@ const {
   PDF_RATE_LIMIT,
   UPLOAD_RATE_LIMIT,
   ASCENDAI_CHAT_BURST_LIMIT,
+  EXPORT_RATE_LIMIT,
 } = require('../config/thresholds');
 
 /* --- swap PgRateStore for a Map-backed fixed-window counter -------------- */
@@ -39,7 +40,7 @@ require.cache[storeId] = {
   },
 };
 
-const { insightLimiter, chatBurstLimiter, pdfLimiter, uploadLimiter } = require('../middleware/rateLimit');
+const { insightLimiter, chatBurstLimiter, pdfLimiter, uploadLimiter, exportLimiter } = require('../middleware/rateLimit');
 
 const app = express();
 app.use(express.json());
@@ -51,6 +52,7 @@ app.get('/api/insight', insightLimiter, (_req, res) => res.json({ ok: true, stat
 app.get('/api/report.pdf', pdfLimiter, (_req, res) => res.json({ ok: true, status: 'served' }));
 app.post('/api/upload', uploadLimiter, (_req, res) => res.json({ ok: true, status: 'served' }));
 app.post('/api/ascendai/chat', chatBurstLimiter, (_req, res) => res.json({ ok: true, status: 'served' }));
+app.get('/api/account/export', exportLimiter, (_req, res) => res.json({ ok: true, status: 'served' }));
 
 const server = app.listen(0);
 const base = `http://127.0.0.1:${server.address().port}`;
@@ -79,6 +81,13 @@ test('GET /api/report.pdf and POST /api/upload each enforce their own ceiling', 
     assert.equal((await hit('/api/upload', { method: 'POST' })).status, 200);
   }
   assert.equal((await hit('/api/upload', { method: 'POST' })).status, 429);
+});
+
+test('GET /api/account/export enforces its own hard 429 ceiling', async () => {
+  for (let i = 0; i < EXPORT_RATE_LIMIT; i += 1) assert.equal((await hit('/api/account/export')).status, 200);
+  const over = await hit('/api/account/export');
+  assert.equal(over.status, 429);
+  assert.match((await over.json()).error, /too many data exports/i);
 });
 
 test('the limit is keyed per org — a second org is unaffected', async () => {

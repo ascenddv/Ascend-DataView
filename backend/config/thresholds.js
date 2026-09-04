@@ -75,6 +75,11 @@ const UPLOAD_RATE_WINDOW_MS = 10 * 60 * 1000;
 // Team invitations send an email each — cap the rate an owner can fire them.
 const INVITE_RATE_LIMIT = 20;
 const INVITE_RATE_WINDOW_MS = 10 * 60 * 1000;
+// Account data export is a multi-query read + a full standardized_data scan +
+// a whole-bundle JSON serialization held in memory — an expensive endpoint in
+// the Phase 23 sense, keyed per org+user.
+const EXPORT_RATE_LIMIT = 10;
+const EXPORT_RATE_WINDOW_MS = 10 * 60 * 1000;
 
 // --- Team invitations (Stage 5, Phase 26) ---
 const INVITATION_TTL_HOURS = 72;
@@ -131,6 +136,8 @@ module.exports = {
   UPLOAD_RATE_WINDOW_MS,
   INVITE_RATE_LIMIT,
   INVITE_RATE_WINDOW_MS,
+  EXPORT_RATE_LIMIT,
+  EXPORT_RATE_WINDOW_MS,
   INVITATION_TTL_HOURS,
   REVENUE_RECONCILE_TOLERANCE_PCT,
 };

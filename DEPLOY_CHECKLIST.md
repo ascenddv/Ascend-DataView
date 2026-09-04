@@ -114,6 +114,18 @@ page errors are allowed at any point.
 - [ ] **PDF export** downloads a real `%PDF` file.
 - [ ] **Data export** (Danger zone) downloads the JSON bundle; spot-check it
       has this org's data and no password hashes.
+- [ ] **KNOWN LIMIT — export size.** `GET /api/account/export`
+      (`db.exportOrganizationData`) builds the whole bundle in memory and
+      `res.send`s it as one `JSON.stringify(..., null, 2)` string — it does not
+      stream. Vercel caps a serverless **response** body at ~4.5 MB (the same
+      limit `upload.js` documents for the request side). An organisation with
+      years of monthly `standardized_data` plus heavy AscendAI chat history can
+      exceed that, and the failure is an opaque platform error, not a clean
+      message. Mitigations for now: the endpoint is owner-only + verified +
+      rate-limited (`exportLimiter`, 10 / 10 min). If a real customer's export
+      approaches the cap, switch the route to a streamed JSON response (or a
+      pre-signed object-storage download) before it bites. Track the largest
+      real export size once there is production data.
 - [ ] **Second org B** in another profile: sign up, upload different data.
       Confirm from org A you cannot see org B's data and the org-A invite link
       cannot add anyone to org B.

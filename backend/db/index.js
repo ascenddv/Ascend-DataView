@@ -484,40 +484,48 @@ async function deleteOrganization(orgId) {
 async function exportOrganizationData(orgId) {
   assertOrgId(orgId, 'exportOrganizationData');
   const conn = getDb();
-  const [org, members, standardizedData, chatMessages, ascendaiUsage, invitations] = await Promise.all([
-    conn.query(
-      'SELECT id, name, org_type, onboarding_completed, created_at FROM organizations WHERE id = $1',
-      [orgId]
-    ),
-    conn.query(
-      'SELECT id, email, role, email_verified_at, created_at FROM users WHERE org_id = $1 ORDER BY created_at ASC',
-      [orgId]
-    ),
-    conn.query(
-      `SELECT ${FIELD_NAMES.join(', ')}, source_meta, created_at
-         FROM standardized_data WHERE org_id = $1 ORDER BY period_date ASC`,
-      [orgId]
-    ),
-    conn.query(
-      'SELECT user_id, role, content, created_at FROM chat_messages WHERE org_id = $1 ORDER BY created_at ASC',
-      [orgId]
-    ),
-    conn.query(
-      `SELECT user_id, status, prompt_tokens, completion_tokens, total_tokens, iterations, created_at
-         FROM ascendai_usage WHERE org_id = $1 ORDER BY created_at ASC`,
-      [orgId]
-    ),
-    conn.query(
-      `SELECT email, role, invited_by_user_id, expires_at, accepted_at, created_at
-         FROM invitations WHERE org_id = $1 ORDER BY created_at ASC`,
-      [orgId]
-    ),
-  ]);
+  const [org, members, standardizedData, mappingCache, chatMessages, ascendaiUsage, invitations] =
+    await Promise.all([
+      conn.query(
+        `SELECT id, name, org_type, onboarding_completed, ascendai_enabled, created_at
+           FROM organizations WHERE id = $1`,
+        [orgId]
+      ),
+      conn.query(
+        `SELECT id, email, role, email_verified_at, tos_accepted_at, created_at
+           FROM users WHERE org_id = $1 ORDER BY created_at ASC`,
+        [orgId]
+      ),
+      conn.query(
+        `SELECT ${FIELD_NAMES.join(', ')}, source_meta, created_at
+           FROM standardized_data WHERE org_id = $1 ORDER BY period_date ASC`,
+        [orgId]
+      ),
+      conn.query(
+        'SELECT header_hash, mapping_json, created_at FROM mapping_cache WHERE org_id = $1 ORDER BY created_at ASC',
+        [orgId]
+      ),
+      conn.query(
+        'SELECT user_id, role, content, created_at FROM chat_messages WHERE org_id = $1 ORDER BY created_at ASC',
+        [orgId]
+      ),
+      conn.query(
+        `SELECT user_id, status, prompt_tokens, completion_tokens, total_tokens, iterations, created_at
+           FROM ascendai_usage WHERE org_id = $1 ORDER BY created_at ASC`,
+        [orgId]
+      ),
+      conn.query(
+        `SELECT email, role, invited_by_user_id, expires_at, accepted_at, created_at
+           FROM invitations WHERE org_id = $1 ORDER BY created_at ASC`,
+        [orgId]
+      ),
+    ]);
   return {
     exportedAt: new Date().toISOString(),
     organization: org.rows[0] || null,
     members: members.rows,
     standardizedData: standardizedData.rows,
+    mappingCache: mappingCache.rows,
     chatMessages: chatMessages.rows,
     ascendaiUsage: ascendaiUsage.rows,
     invitations: invitations.rows,

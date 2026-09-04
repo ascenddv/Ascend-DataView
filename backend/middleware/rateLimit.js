@@ -35,6 +35,8 @@ const {
   UPLOAD_RATE_WINDOW_MS,
   INVITE_RATE_LIMIT,
   INVITE_RATE_WINDOW_MS,
+  EXPORT_RATE_LIMIT,
+  EXPORT_RATE_WINDOW_MS,
 } = require('../config/thresholds');
 
 const authLimiter = rateLimit({
@@ -96,6 +98,13 @@ const inviteLimiter = hardLimiter({
   error: 'Too many invitations sent in a short time. Please wait a few minutes and try again.',
 });
 
+const exportLimiter = hardLimiter({
+  prefix: 'export:',
+  limit: EXPORT_RATE_LIMIT,
+  windowMs: EXPORT_RATE_WINDOW_MS,
+  error: 'Too many data exports in a short time. Please wait a few minutes and try again.',
+});
+
 // AscendAI chat burst — a per-minute ceiling distinct from the per-org DAILY
 // cap enforced in routes/ascendai.js. A hit here does NOT surface as a 429:
 // the chat UI already renders { ok: true, status: 'rate_limited', reply }, so a
@@ -128,4 +137,5 @@ module.exports = {
   pdfLimiter,
   uploadLimiter,
   inviteLimiter,
+  exportLimiter,
 };

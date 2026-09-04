@@ -83,8 +83,12 @@ router.delete('/organizations/:id/data', sameOrg, requireRole('owner'), async (r
 /**
  * Permanently delete the whole organization — every user, dataset, chat, usage
  * row and invitation, via the cascade FKs. Owner + verified, typed-name
- * confirmation, and the session cookie is cleared on the way out (all of the
- * org's sessions are dead the moment its users are gone).
+ * confirmation. The delete is one atomic `DELETE FROM organizations` statement:
+ * the cascades to all child tables are all-or-nothing (a non-CASCADE FK would
+ * make the whole statement fail and change nothing — see the Phase 22 gate's
+ * "every FK is ON DELETE CASCADE" check). The session cookie is cleared on the
+ * way out; every other session dies on its next request once its user row is
+ * gone (requireAuth's getUserById returns null).
  */
 router.delete('/organizations/:id', sameOrg, requireRole('owner'), requireVerified, async (req, res, next) => {
   try {

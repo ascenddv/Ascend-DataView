@@ -134,12 +134,25 @@ try {
   await clearLimits();
   await ownerA.req('POST', '/api/auth/forgot-password', { body: { email: A.email } }); // password_resets row
 
-  // org B gets its own data so we can prove it survives
+  // org B gets its own data so we can prove it survives — with a SENTINEL
+  // revenue value that can never appear in the fixture, so org A's export
+  // leaking a B row would be unmistakable.
   await clearLimits();
   await ownerB.req('POST', '/api/upload', { form: fileForm('fixture_rich_v2.csv') });
+  const B_SENTINEL_REVENUE = 987654321;
+  await db.getDb().query('UPDATE standardized_data SET revenue = $2 WHERE org_id = $1',
+    [B.org.id, B_SENTINEL_REVENUE]);
   const bMemberEmail = `p27_Bmember_${Date.now()}@t.co`;
   await clearLimits();
   await ownerB.req('POST', `/api/organizations/${B.org.id}/invitations`, { body: { email: bMemberEmail } });
+
+  // org A's actual rows, straight from the DB, to compare the export against.
+  const aRevenues = (await db.getDb().query(
+    'SELECT revenue FROM standardized_data WHERE org_id = $1 ORDER BY period_date ASC', [A.org.id]
+  )).rows.map((r) => r.revenue);
+  const aMemberEmails = (await db.getDb().query(
+    'SELECT email FROM users WHERE org_id = $1 ORDER BY email', [A.org.id]
+  )).rows.map((r) => r.email);
 
   const preCounts = {};
   for (const t of ORG_TABLES) preCounts[t] = await countOrg(t, A.org.id);
@@ -160,13 +173,38 @@ try {
     /application\/json/.test(exp.headers.get('content-type') || '') &&
     /attachment; filename="ascenddv-export-org\d+-\d{4}-\d{2}-\d{2}\.json"/.test(exp.headers.get('content-disposition') || ''),
     `${exp.status} ${exp.headers.get('content-disposition')}`);
-  check('the bundle is org A, with its members, periods and invitation',
+  check('the bundle is org A: right org, 2 members, periods, an invitation, mappings',
     bundle.organization.id === A.org.id &&
     bundle.members.length === 2 &&
     bundle.standardizedData.length > 0 &&
-    bundle.invitations.length >= 1);
+    bundle.invitations.length >= 1 &&
+    Array.isArray(bundle.mappingCache) && bundle.mappingCache.length >= 1,
+    JSON.stringify({ members: bundle.members.length, periods: bundle.standardizedData.length, mappings: bundle.mappingCache && bundle.mappingCache.length }));
+
   check('no password hash anywhere in the export', !/password_hash|"\$2[aby]\$/.test(raw));
-  check('no row from org B leaks into A’s export', !raw.includes(bMemberEmail));
+
+  // --- cross-org: the export is EXACTLY org A's rows, nothing from org B ---
+  const exportedRevenues = bundle.standardizedData.map((r) => r.revenue);
+  check('standardizedData is exactly org A\'s DB rows (values match, in order)',
+    JSON.stringify(exportedRevenues) === JSON.stringify(aRevenues),
+    `export ${JSON.stringify(exportedRevenues.slice(0, 3))}… vs A ${JSON.stringify(aRevenues.slice(0, 3))}…`);
+  check('org B\'s SENTINEL revenue never appears in org A\'s export',
+    !exportedRevenues.includes(B_SENTINEL_REVENUE) && !raw.includes(String(B_SENTINEL_REVENUE)));
+  const exportedEmails = bundle.members.map((m) => m.email).sort();
+  check('members is EXACTLY org A\'s member emails — no org B user',
+    JSON.stringify(exportedEmails) === JSON.stringify(aMemberEmails) &&
+      !exportedEmails.includes(B.email) && !exportedEmails.includes(bMemberEmail),
+    JSON.stringify({ exported: exportedEmails, expected: aMemberEmails }));
+  check('org B\'s owner + invitee emails are absent from the whole export blob',
+    !raw.includes(B.email) && !raw.includes(bMemberEmail));
+
+  // --- widened export includes the Phase 28/30 fields ---
+  check('export carries organization.ascendai_enabled', typeof bundle.organization.ascendai_enabled === 'boolean');
+  check('export carries members[].tos_accepted_at (Phase 30 consent record)',
+    bundle.members.every((m) => m.tos_accepted_at != null));
+
+  check('export response is Cache-Control: no-store',
+    /no-store/.test(exp.headers.get('cache-control') || ''), exp.headers.get('cache-control'));
 
   const memberExport = await member.req('GET', '/api/account/export');
   check('a member cannot export -> 403', memberExport.status === 403, `-> ${memberExport.status}`);
