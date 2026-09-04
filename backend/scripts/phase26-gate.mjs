@@ -11,12 +11,13 @@
 import { spawn } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
+import { fileURLToPath } from 'node:url';
 
 const require = createRequire(import.meta.url);
 const db = require('../db');
 const { ASCENDAI_DAILY_MESSAGE_LIMIT_PER_ORG } = require('../config/thresholds');
 
-const ROOT = 'C:/Ascend-DataView';
+const ROOT = fileURLToPath(new URL('../../', import.meta.url)).replace(/[\\/]+$/, '');
 const PORT = 3141;
 const BASE = `http://localhost:${PORT}`;
 const LOCAL_PG = process.env.DATABASE_URL || 'postgresql://postgres@127.0.0.1:5433/ascenddv';

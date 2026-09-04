@@ -21,6 +21,7 @@ import { spawn } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { createRequire } from 'node:module';
+import { fileURLToPath } from 'node:url';
 
 const require = createRequire(import.meta.url);
 const db = require('../db');
@@ -29,7 +30,7 @@ const {
   ASCENDAI_CHAT_BURST_LIMIT: BURST,
 } = require('../config/thresholds');
 
-const ROOT = 'C:/Ascend-DataView';
+const ROOT = fileURLToPath(new URL('../../', import.meta.url)).replace(/[\\/]+$/, '');
 const OFF = 'http://localhost:3161';
 const ON = 'http://localhost:3162';
 const STUBBED = 'http://localhost:3163';

@@ -13,13 +13,14 @@
 import { readFileSync } from 'node:fs';
 import { spawn } from 'node:child_process';
 import { createRequire } from 'node:module';
+import { fileURLToPath } from 'node:url';
 
 const require = createRequire(import.meta.url);
 const db = require('../db');
 const { hashHeaders } = require('../services/mapColumns');
 const { ASCENDAI_DAILY_MESSAGE_LIMIT_PER_ORG } = require('../config/thresholds');
 
-const ROOT = 'C:/Ascend-DataView';
+const ROOT = fileURLToPath(new URL('../../', import.meta.url)).replace(/[\\/]+$/, '');
 const A = 'http://localhost:3101';
 const B = 'http://localhost:3102';
 // Pin BOTH spawned backends and this script to the local dev Postgres, so the

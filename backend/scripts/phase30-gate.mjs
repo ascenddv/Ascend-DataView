@@ -14,11 +14,12 @@
 
 import { spawn } from 'node:child_process';
 import { createRequire } from 'node:module';
+import { fileURLToPath } from 'node:url';
 
 const require = createRequire(import.meta.url);
 const db = require('../db');
 
-const ROOT = 'C:/Ascend-DataView';
+const ROOT = fileURLToPath(new URL('../../', import.meta.url)).replace(/[\\/]+$/, '');
 const APP = 'http://localhost:3181';
 const BAD = 'http://localhost:3182';
 const LOCAL_PG = process.env.DATABASE_URL || 'postgresql://postgres@127.0.0.1:5433/ascenddv';

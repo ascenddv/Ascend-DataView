@@ -68,6 +68,9 @@ jobs:
       - name: Install backend deps
         working-directory: backend
         run: npm ci
+      - name: Install frontend deps
+        working-directory: frontend
+        run: npm ci
       - name: Apply migrations
         run: npm run migrate
       - name: Serverless durability gate

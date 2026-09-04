@@ -12,11 +12,12 @@
 import { spawn, spawnSync } from 'node:child_process';
 import { readdirSync } from 'node:fs';
 import { createRequire } from 'node:module';
+import { fileURLToPath } from 'node:url';
 
 const require = createRequire(import.meta.url);
 const { Client } = require('pg');
 
-const ROOT = 'C:/Ascend-DataView';
+const ROOT = fileURLToPath(new URL('../../', import.meta.url)).replace(/[\\/]+$/, '');
 
 // The set of migrations on disk, in numeric order — the gate checks the ledger
 // against this rather than a hardcoded list, so later phases don't break it.
@@ -50,7 +51,7 @@ const check = (label, cond, detail = '') => {
 };
 const runMigrate = () =>
   spawnSync(process.execPath, ['db/migrate.js'], {
-    cwd: 'C:/Ascend-DataView/backend',
+    cwd: `${ROOT}/backend`,
     env: { ...process.env, DATABASE_URL: TESTDB_URL },
     encoding: 'utf8',
   });
