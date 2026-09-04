@@ -145,7 +145,7 @@ try {
   const uid = await userIdForOrg(orgA.id);
   let used = await db.countAscendaiUsageSince(orgA.id, startOfUtcDayIso());
   for (; used < ASCENDAI_DAILY_MESSAGE_LIMIT_PER_ORG; used += 1) {
-    await db.recordAscendaiUsage(orgA.id, uid, { status: 'seed', totalTokens: 0 });
+    await db.recordAscendaiUsage(orgA.id, uid, { status: 'ok', totalTokens: 0 });
   }
   // The chat request goes to instance B, which has served no chat turns for this org.
   const chat = await cb.req('POST', '/api/ascendai/chat', { body: { message: 'anything?' } });

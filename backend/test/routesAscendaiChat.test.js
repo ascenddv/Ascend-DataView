@@ -214,7 +214,7 @@ test('the global ASCENDAI_ENABLED=false flag -> 200 { status: "unavailable" }, p
   assert.equal(calls.recordAscendaiUsage.length, 0);
 });
 
-test('the per-org toggle off -> 200 { status: "unavailable" }, provider not called', async () => {
+test('the per-org toggle off -> 200 { status: "unavailable" }, provider not called, no usage row', async () => {
   reset();
   state.orgAscendaiEnabled = false;
   const r = await post('/api/ascendai/chat', { message: 'hi' });
@@ -223,6 +223,8 @@ test('the per-org toggle off -> 200 { status: "unavailable" }, provider not call
   assert.equal(j.status, 'unavailable');
   assert.match(j.reason, /turned off for your organization/i);
   assert.equal(state.askInput, null);
+  assert.equal(calls.recordAscendaiUsage.length, 0, 'a switch-blocked turn writes no usage row');
+  assert.equal(calls.insertChatMessage.length, 0);
 });
 
 test('GET /api/ascendai/usage reports today\'s count, the limit, tokens and enabled', async () => {

@@ -124,7 +124,7 @@ try {
     "INSERT INTO mapping_cache (org_id, header_hash, mapping_json) VALUES ($1, 'h27', '{}') ON CONFLICT DO NOTHING", [A.org.id]);
   await db.getDb().query(
     "INSERT INTO chat_messages (org_id, user_id, role, content) VALUES ($1,$2,'user','hello')", [A.org.id, aOwnerId]);
-  await db.recordAscendaiUsage(A.org.id, aOwnerId, { status: 'seed', totalTokens: 1 });
+  await db.recordAscendaiUsage(A.org.id, aOwnerId, { status: 'ok', totalTokens: 1 });
   await db.putPendingUpload(A.org.id, { parsed: { headers: [], rows: [] }, mapping: {}, filename: 'x.csv', source: 'csv_upload' });
   await clearLimits();
   const inviteRes = await ownerA.req('POST', `/api/organizations/${A.org.id}/invitations`, { body: { email: `p27_invitee_${Date.now()}@t.co` } });

@@ -158,10 +158,14 @@ try {
   console.log('\n== 3. usage counts + token totals are accurate ==');
   const uid = (await db.getDb().query("SELECT id FROM users WHERE org_id=$1 AND role='owner' LIMIT 1", [b.org.id])).rows[0].id;
   for (let i = 0; i < 3; i += 1) {
-    await db.recordAscendaiUsage(b.org.id, uid, { status: 'seed', promptTokens: 100, completionTokens: 40, totalTokens: 140 });
+    await db.recordAscendaiUsage(b.org.id, uid, { status: 'ok', promptTokens: 100, completionTokens: 40, totalTokens: 140 });
   }
   const bUsage = await (await b.c.req('GET', '/api/ascendai/usage')).json();
-  check('org B usage: today.count includes the seeded turns', bUsage.today.count >= 3, `count=${bUsage.today.count}`);
+  // org B already ran one real chat turn in §2 that degraded to
+  // status:'unavailable' (no provider key). It must NOT be in this count —
+  // only the 3 status:'ok' rows just seeded are billable turns.
+  check('org B usage: today.count is exactly the 3 billable (status:ok) turns — the earlier failed turn is excluded',
+    bUsage.today.count === 3, `count=${bUsage.today.count}`);
   check('org B usage: token totals add up (>= 3 * 140)',
     bUsage.tokens.total >= 420 && bUsage.tokens.prompt >= 300, JSON.stringify(bUsage.tokens));
   check('org B usage: the limit is the configured daily cap', bUsage.today.limit > 0);
@@ -174,6 +178,45 @@ try {
   check('GET /api/insight (flags on, no key) -> "unavailable" WITHOUT the deployment wording',
     onInsight.status === 200 && onInsightBody.status === 'unavailable' && !/turned off/i.test(onInsightBody.reason || ''),
     JSON.stringify(onInsightBody.reason));
+
+  /* ============================================================ */
+  console.log('\n== 5. an AI outage does not consume the daily cap (failed turns are logged, not counted) ==');
+  // Fresh org C on the flags-on backend. No provider key, so every real chat
+  // turn degrades to status:'unavailable'.
+  const cCtx = await signupVerified(ON, 'orgC');
+  const cUid = (await db.getDb().query("SELECT id FROM users WHERE org_id=$1 AND role='owner' LIMIT 1", [cCtx.org.id])).rows[0].id;
+
+  // Simulate a long outage: CAP failed turns recorded.
+  const { ASCENDAI_DAILY_MESSAGE_LIMIT_PER_ORG: CAP } = require('../config/thresholds');
+  for (let i = 0; i < CAP; i += 1) {
+    await db.recordAscendaiUsage(cCtx.org.id, cUid, { status: 'unavailable', promptTokens: 0, completionTokens: 0, totalTokens: 0 });
+  }
+  const outageRows = (await db.getDb().query(
+    "SELECT count(*)::int AS n FROM ascendai_usage WHERE org_id=$1 AND status='unavailable'", [cCtx.org.id]
+  )).rows[0].n;
+  check(`the ${CAP} failed turns ARE persisted (observability preserved)`, outageRows >= CAP, `rows=${outageRows}`);
+  check('db.countAscendaiUsageSince ignores them — billable count is still 0',
+    (await db.countAscendaiUsageSince(cCtx.org.id, new Date(Date.now() - 3600e3).toISOString())) === 0);
+  const cUsage = await (await cCtx.c.req('GET', '/api/ascendai/usage')).json();
+  check(`GET /api/ascendai/usage: today.count is 0 despite ${CAP} failed turns`, cUsage.today.count === 0, `count=${cUsage.today.count}`);
+
+  await clearLimits();
+  const cChat = await cCtx.c.req('POST', '/api/ascendai/chat', { body: { message: 'still there?' } });
+  const cChatBody = await cChat.json();
+  check('a new turn after the outage is NOT rate_limited — it still reaches the provider path',
+    cChat.status === 200 && cChatBody.status === 'unavailable' && !/message limit|daily limit/i.test(cChatBody.reason || ''),
+    JSON.stringify(cChatBody.reason));
+
+  // Positive control: CAP *billable* turns DO trip the cap.
+  for (let i = 0; i < CAP; i += 1) {
+    await db.recordAscendaiUsage(cCtx.org.id, cUid, { status: 'ok', promptTokens: 10, completionTokens: 5, totalTokens: 15 });
+  }
+  await clearLimits();
+  const cCapped = await cCtx.c.req('POST', '/api/ascendai/chat', { body: { message: 'one more' } });
+  const cCappedBody = await cCapped.json();
+  check(`after ${CAP} status:ok turns the SAME endpoint returns status:rate_limited (cap still works for real usage)`,
+    cCapped.status === 200 && cCappedBody.status === 'rate_limited' && /limit/i.test(cCappedBody.reason || ''),
+    JSON.stringify(cCappedBody.reason));
 
   console.log(`\n${fail === 0 ? 'ALL PHASE 28 CHECKS PASSED' : `${fail} CHECK(S) FAILED`}`);
 } finally {

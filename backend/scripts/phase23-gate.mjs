@@ -239,9 +239,17 @@ try {
   check('the burst reply names the per-minute burst limit (distinct from the daily cap)',
     burst.body && /burst limit/i.test(burst.body.reason || '') && !/daily/i.test(burst.body.reason || ''),
     JSON.stringify(burst.body && burst.body.reason));
-  const usedToday = await db.countAscendaiUsageSince(orgC.id, startOfUtcDayIso());
-  check(`the burst-limited turn never reached the provider or the daily counter (usage = ${ASCENDAI_CHAT_BURST_LIMIT})`,
-    usedToday === ASCENDAI_CHAT_BURST_LIMIT, `ascendai_usage rows today = ${usedToday}`);
+  // Count raw ascendai_usage rows, not db.countAscendaiUsageSince — that helper
+  // now counts only billable (status:'ok') turns, and here every turn degraded
+  // to status:'unavailable' (no provider key). The property under test is that
+  // the burst-limited 9th turn wrote NOTHING: exactly ASCENDAI_CHAT_BURST_LIMIT
+  // rows, one per turn that actually reached the route.
+  const rowsToday = (await db.getDb().query(
+    'SELECT count(*)::int AS n FROM ascendai_usage WHERE org_id = $1 AND created_at >= $2',
+    [orgC.id, startOfUtcDayIso()]
+  )).rows[0].n;
+  check(`the burst-limited turn never reached the provider or the usage log (rows = ${ASCENDAI_CHAT_BURST_LIMIT})`,
+    rowsToday === ASCENDAI_CHAT_BURST_LIMIT, `ascendai_usage rows today = ${rowsToday}`);
 
   /* ============================================================ */
   console.log('\n== 5. the fixed window RESETS after windowMs (real HTTP -> real PgRateStore SQL) ==');

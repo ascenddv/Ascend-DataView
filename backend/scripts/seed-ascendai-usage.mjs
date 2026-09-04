@@ -23,8 +23,10 @@ if (!rows[0]) {
   process.exit(1);
 }
 const userId = rows[0].id;
+// status:'ok' — the daily cap counts only billable turns, so a realistic
+// "this org has used its quota" seed must look like successful turns.
 for (let i = 0; i < count; i += 1) {
-  await db.recordAscendaiUsage(orgId, userId, { status: 'seed', totalTokens: 0 });
+  await db.recordAscendaiUsage(orgId, userId, { status: 'ok', totalTokens: 0 });
 }
 console.log(`seeded ${count} ascendai_usage rows for org ${orgId} (user ${userId})`);
 await db.closeDb();

@@ -164,6 +164,41 @@ page errors are allowed at any point.
       "Ask AscendAI" launcher is gone, the dashboard is otherwise identical.
       Revert.
 
+### Phase 28 — AI kill-switches: accepted known limitations
+
+These came out of the Stage 21–31 gate-by-gate audit. Each is a deliberate
+choice, not an open bug — recorded here so they're revisited if the assumptions
+change.
+
+- **`chatBurstLimiter` runs *before* the kill-switch checks** on
+  `POST /api/ascendai/chat`. A request to a globally- or org-disabled AscendAI
+  still increments the `chat-burst:` Postgres counter. The only observable
+  effect is that a client hammering a disabled feature past 8/min gets the
+  `status:'rate_limited'` friendly reply instead of the `status:'unavailable'`
+  one — both `{ ok:true }`, no provider call, no spend, no error. The global
+  env-flag check is zero-cost and *could* be hoisted ahead of the limiter; the
+  per-org check needs a DB read and is correctly placed after a DoS guard.
+  Not worth the extra middleware for a cosmetic `reason`-string difference.
+- **`GET /api/insight` is not behind `requireVerified`.** It is the one
+  LLM-spend endpoint an unverified account can still reach (upload, manual
+  entry and AscendAI chat are all gated). Rationale: the insight card is part
+  of the dashboard *view*, and an unverified user is expected to see the
+  dashboard. The ceiling is `insightLimiter` (20 / 10 min per org+user) + the
+  `INSIGHT_ENABLED` kill-switch + Gemini's own quota. **Revisit** if
+  unverified-account Gemini spend ever shows up in the usage logs — the fix is
+  one middleware line.
+- **Chat hot path is 4–5 sequential DB round-trips** before the provider call
+  (`requireAuth`'s `getUserById`, the burst-store read, `getOrganizationById`,
+  `countAscendaiUsageSince`, `getRecentChatMessages`). All are indexed
+  point/range lookups; fold `ascendai_enabled` into the `requireAuth` load or
+  `Promise.all` the independent reads only if p95 latency becomes a problem.
+- **Token totals depend on the provider layer populating `trace.usage`.**
+  `sumUsage()` in `routes/ascendai.js` silently returns zeros if the shape is
+  missing, so cost visibility (not the daily cap, which is row-count based)
+  degrades quietly. No test exercises this against a real DeepSeek response —
+  spot-check `ascendai_usage.total_tokens` is non-zero after the first live
+  multi-turn in §4 above.
+
 ---
 
 ## 5. CI

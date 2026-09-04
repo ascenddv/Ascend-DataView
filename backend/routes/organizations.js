@@ -2,6 +2,7 @@
  * Organization-scoped endpoints.
  *
  *   POST   /api/organizations/:id/onboarding-complete   mark first-run done
+ *   PATCH  /api/organizations/:id                       owner org settings — ascendaiEnabled (owner, verified)
  *   DELETE /api/organizations/:id/data                  destructive data reset (owner, verified)
  *   GET    /api/organizations/:id/members               team roster (any member)
  *   DELETE /api/organizations/:id/members/:userId       remove a member (owner)
@@ -114,9 +115,10 @@ router.delete('/organizations/:id', sameOrg, requireRole('owner'), requireVerifi
 
 /**
  * Owner-only org settings. Currently just the per-org AscendAI switch
- * (Phase 28). PATCH with { ascendaiEnabled: boolean }.
+ * (Phase 28). PATCH with { ascendaiEnabled: boolean }. `requireVerified` for
+ * consistency with every other owner-only mutation on this router.
  */
-router.patch('/organizations/:id', sameOrg, requireRole('owner'), async (req, res, next) => {
+router.patch('/organizations/:id', sameOrg, requireRole('owner'), requireVerified, async (req, res, next) => {
   try {
     const { ascendaiEnabled } = req.body || {};
     if (typeof ascendaiEnabled !== 'boolean') {

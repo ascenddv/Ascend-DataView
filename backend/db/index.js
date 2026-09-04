@@ -777,22 +777,34 @@ async function recordAscendaiUsage(orgId, userId, { status, promptTokens = 0, co
   );
 }
 
-/** How many AscendAI turns this ORG (all its users) has run since `sinceIso`. */
+/**
+ * How many *billable* AscendAI turns this ORG (all its users) has run since
+ * `sinceIso` — i.e. turns that actually produced an answer (`status = 'ok'`).
+ * A provider outage records a `status = 'unavailable'` row for observability but
+ * does NOT count toward the daily cap: an AI outage must degrade, never cascade
+ * into a day-long lockout on top of it. Runaway-client protection during an
+ * outage is the burst limiter's job (8/min), not this counter's.
+ */
 async function countAscendaiUsageSince(orgId, sinceIso) {
   assertOrgId(orgId, 'countAscendaiUsageSince');
   const conn = getDb();
   const { rows } = await conn.query(
-    'SELECT count(*)::int AS n FROM ascendai_usage WHERE org_id = $1 AND created_at >= $2',
+    "SELECT count(*)::int AS n FROM ascendai_usage WHERE org_id = $1 AND created_at >= $2 AND status = 'ok'",
     [orgId, sinceIso]
   );
   return rows[0].n;
 }
 
-/** Turn count + token totals for this org since `sinceIso` (Phase 28 usage view). */
+/**
+ * Turn count + token totals for this org since `sinceIso` (Phase 28 usage view).
+ * `count` is billable turns only (`status = 'ok'`), so the "N of 50 today" line
+ * matches exactly what the daily cap in countAscendaiUsageSince enforces. Token
+ * sums are over every row — a failed turn contributes 0 tokens anyway.
+ */
 async function sumAscendaiUsageSince(orgId, sinceIso) {
   assertOrgId(orgId, 'sumAscendaiUsageSince');
   const { rows } = await getDb().query(
-    `SELECT count(*)::int AS count,
+    `SELECT count(*) FILTER (WHERE status = 'ok')::int AS count,
             COALESCE(sum(prompt_tokens), 0)::int      AS prompt_tokens,
             COALESCE(sum(completion_tokens), 0)::int  AS completion_tokens,
             COALESCE(sum(total_tokens), 0)::int       AS total_tokens

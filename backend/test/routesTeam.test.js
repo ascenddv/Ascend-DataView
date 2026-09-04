@@ -222,3 +222,10 @@ test('PATCH /organizations/:id — a member -> 403; a non-boolean body -> 400; a
   assert.equal((await call('PATCH', `/api/organizations/999`, { body: { ascendaiEnabled: true } })).status, 403);
   assert.equal(state.aiToggles.length, 0);
 });
+
+test('PATCH /organizations/:id — an unverified owner -> 403 needsVerification, nothing toggled', async () => {
+  const r = await call('PATCH', `/api/organizations/${ORG}`, { unverified: true, body: { ascendaiEnabled: false } });
+  assert.equal(r.status, 403);
+  assert.equal((await r.json()).needsVerification, true);
+  assert.equal(state.aiToggles.length, 0);
+});

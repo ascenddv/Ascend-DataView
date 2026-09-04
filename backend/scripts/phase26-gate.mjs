@@ -149,7 +149,7 @@ try {
   const startOfDay = new Date(); startOfDay.setUTCHours(0, 0, 0, 0);
   let used = await db.countAscendaiUsageSince(A.org.id, startOfDay.toISOString());
   for (; used < ASCENDAI_DAILY_MESSAGE_LIMIT_PER_ORG; used += 1) {
-    await db.recordAscendaiUsage(A.org.id, uid, { status: 'seed', totalTokens: 0 });
+    await db.recordAscendaiUsage(A.org.id, uid, { status: 'ok', totalTokens: 0 });
   }
   await clearLimits();
   const memberChat = await member.req('POST', '/api/ascendai/chat', { body: { message: 'hi' } });
