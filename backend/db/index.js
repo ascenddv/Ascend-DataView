@@ -338,6 +338,48 @@ async function consumePasswordReset(token) {
   return rows[0] ? { userId: rows[0].user_id } : null;
 }
 
+/**
+ * Apply a password reset atomically: claim the token (single-use, unexpired),
+ * then in the SAME transaction set the new hash, bump token_version (killing
+ * every existing session), and stamp email_verified_at if it wasn't already
+ * (clicking the reset link proves mailbox control, same as the verify link).
+ * All-or-nothing — there is no "password changed but sessions alive" or
+ * "sessions dead but password unchanged" window. Returns { userId } or null.
+ */
+async function applyPasswordReset(token, passwordHash) {
+  if (typeof token !== 'string' || !token) return null;
+  const client = await getDb().connect();
+  try {
+    await client.query('BEGIN');
+    const { rows } = await client.query(
+      `UPDATE password_resets SET used_at = now()
+       WHERE token = $1 AND used_at IS NULL AND expires_at > now()
+       RETURNING user_id`,
+      [token]
+    );
+    if (!rows[0]) {
+      await client.query('ROLLBACK');
+      return null;
+    }
+    const userId = rows[0].user_id;
+    await client.query(
+      `UPDATE users
+          SET password_hash = $2,
+              token_version = token_version + 1,
+              email_verified_at = COALESCE(email_verified_at, now())
+        WHERE id = $1`,
+      [userId, passwordHash]
+    );
+    await client.query('COMMIT');
+    return { userId };
+  } catch (err) {
+    await client.query('ROLLBACK').catch(() => {});
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
 /* -------------------------------------------------------------------------- */
 /* team: invitations + member roster — org-scoped                             */
 /* -------------------------------------------------------------------------- */
@@ -829,6 +871,7 @@ module.exports = {
   consumeEmailVerification,
   createPasswordReset,
   consumePasswordReset,
+  applyPasswordReset,
   createInvitation,
   listPendingInvitations,
   getInvitationByToken,

@@ -6,7 +6,7 @@
  * POST /api/auth/verify-email         — consume a verification token
  * POST /api/auth/resend-verification  — email a fresh verification link (auth'd)
  * POST /api/auth/forgot-password      — email a reset link (always 200, no enumeration)
- * POST /api/auth/reset-password       — consume a reset token, set a new password, kill sessions
+ * POST /api/auth/reset-password       — consume a reset token: set the hash, kill sessions, verify the email (one txn)
  * GET  /api/auth/me                   — current session's user + org (authenticated:false if none)
  */
 
@@ -29,11 +29,10 @@ const {
   getUserById,
   getOrganizationById,
   bumpTokenVersion,
-  updateUserPassword,
   createEmailVerification,
   consumeEmailVerification,
   createPasswordReset,
-  consumePasswordReset,
+  applyPasswordReset,
   getInvitationByToken,
   acceptInvitation,
 } = require('../db');
@@ -185,19 +184,30 @@ router.post('/resend-verification', authLimiter, requireAuth, async (req, res, n
 });
 
 // Always 200 with the same body, whether or not the email maps to an account —
-// the response must not tell an attacker which addresses are registered.
+// the response must not tell an attacker which addresses are registered, by
+// body OR by timing. The real branch's token INSERT + email send therefore run
+// AFTER the response is sent (fire-and-forget), so both branches return right
+// after the same getUserByEmail lookup.
+//
+// Serverless note: on a platform that may freeze the function once the response
+// is flushed (Vercel), wrap the background block in `waitUntil()` from the
+// platform adapter so it is guaranteed to finish. Without it, a lost reset
+// email is low-severity — the user simply requests another link. See
+// DEPLOY_CHECKLIST.md.
 router.post('/forgot-password', authLimiter, async (req, res, next) => {
   try {
     const { email } = req.body || {};
     const user = email ? await getUserByEmail(email) : null;
     if (user) {
-      try {
-        const token = newToken();
-        await createPasswordReset(user.id, token, PASSWORD_RESET_TTL_HOURS);
-        await sendEmail(passwordResetEmail(user.email, token));
-      } catch (err) {
-        console.error(`password reset email failed for user ${user.id}: ${err.message}`);
-      }
+      (async () => {
+        try {
+          const token = newToken();
+          await createPasswordReset(user.id, token, PASSWORD_RESET_TTL_HOURS);
+          await sendEmail(passwordResetEmail(user.email, token));
+        } catch (err) {
+          console.error(`password reset email failed for user ${user.id}: ${err.message}`);
+        }
+      })();
     }
     res.json({ ok: true });
   } catch (err) {
@@ -220,7 +230,9 @@ router.post('/reset-password', authLimiter, async (req, res, next) => {
       return res.status(400).json({ ok: false, error: BREACHED_MSG });
     }
 
-    const claim = await consumePasswordReset(String(token || ''));
+    // One transaction: claim the token, set the new hash, bump token_version
+    // (kills every session), and stamp email_verified_at. All-or-nothing.
+    const claim = await applyPasswordReset(String(token || ''), await hashPassword(String(password)));
     if (!claim) {
       return res.status(400).json({
         ok: false,
@@ -228,8 +240,6 @@ router.post('/reset-password', authLimiter, async (req, res, next) => {
       });
     }
 
-    await updateUserPassword(claim.userId, await hashPassword(String(password)));
-    await bumpTokenVersion(claim.userId); // every existing session is now dead
     res.clearCookie(COOKIE_NAME, { ...cookieOptions(), maxAge: undefined });
     res.json({ ok: true });
   } catch (err) {

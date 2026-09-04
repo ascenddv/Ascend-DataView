@@ -127,6 +127,12 @@ try {
   check('POST /api/ascendai/chat -> 403 needsVerification',
     chatBlocked.status === 403 && (await chatBlocked.json())?.needsVerification === true,
     `-> ${chatBlocked.status}`);
+  const meBlocked = await c.req('POST', '/api/manual-entry', { body: { values: { period_date: '2025-01-31', revenue: 1 } } });
+  check('POST /api/manual-entry -> 403 needsVerification (was an unverified-add hole)',
+    meBlocked.status === 403 && (await meBlocked.json())?.needsVerification === true, `-> ${meBlocked.status}`);
+  const resetBlocked = await c.req('DELETE', `/api/organizations/${suBody?.org?.id ?? 0}/data`, { body: { confirm: 'x' } });
+  check('DELETE /api/organizations/:id/data -> 403 needsVerification (was an unverified-destroy hole)',
+    resetBlocked.status === 403 && (await resetBlocked.json())?.needsVerification === true, `-> ${resetBlocked.status}`);
   const meUnverified = await c.req('GET', '/api/auth/me');
   check('GET /api/auth/me reports user.emailVerified:false',
     (await meUnverified.json())?.user?.emailVerified === false);
@@ -205,6 +211,28 @@ try {
   check('signup with a breached password -> 400 (mentions the breach)',
     breachedSignup.status === 400 && /breach/i.test((await breachedSignup.json())?.error || ''),
     `-> ${breachedSignup.status}`);
+
+  await clearLimits();
+  /* ============================================================ */
+  console.log('\n== 9. expired tokens are rejected (verification + reset) ==');
+  const uid = (await db.getDb().query('SELECT id FROM users WHERE email = $1', [email])).rows[0].id;
+  const evTok = `p25-expired-verify-${Date.now()}`;
+  const prTok = `p25-expired-reset-${Date.now()}`;
+  await db.getDb().query(
+    "INSERT INTO email_verifications (token, user_id, expires_at) VALUES ($1, $2, now() - interval '1 hour')",
+    [evTok, uid]
+  );
+  await db.getDb().query(
+    "INSERT INTO password_resets (token, user_id, expires_at) VALUES ($1, $2, now() - interval '1 hour')",
+    [prTok, uid]
+  );
+  const expiredVerify = await c.req('POST', '/api/auth/verify-email', { body: { token: evTok } });
+  check('an expired verification token -> 400', expiredVerify.status === 400, `-> ${expiredVerify.status}`);
+  const expiredReset = await c.req('POST', '/api/auth/reset-password', { body: { token: prTok, password: STRONG_PW } });
+  check('an expired reset token -> 400 (and the row is untouched — still unused)',
+    expiredReset.status === 400 &&
+      (await db.getDb().query('SELECT used_at FROM password_resets WHERE token = $1', [prTok])).rows[0].used_at === null,
+    `-> ${expiredReset.status}`);
 
   console.log(`\n${fail === 0 ? 'ALL PHASE 25 CHECKS PASSED' : `${fail} CHECK(S) FAILED`}`);
 } finally {

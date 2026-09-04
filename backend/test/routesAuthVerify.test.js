@@ -102,6 +102,17 @@ require.cache[dbId] = {
       row.used = true;
       return { userId: row.userId };
     },
+    applyPasswordReset: async (token, passwordHash) => {
+      const row = store.resets.get(token);
+      if (!row || row.used || row.expired) return null;
+      const u = store.users.get(row.userId);
+      if (!u) return null;
+      row.used = true;
+      u.password_hash = passwordHash;
+      u.token_version += 1;
+      if (!u.email_verified_at) u.email_verified_at = new Date().toISOString();
+      return { userId: row.userId };
+    },
     getInvitationByToken: async (token) => {
       const row = store.invitations.get(token);
       if (!row || row.accepted) return null;
@@ -121,10 +132,15 @@ require.cache[dbId] = {
     },
   },
 };
+let emailDelayMs = 0; // simulate a slow provider for the timing test
 require.cache[emailId] = {
   id: emailId, filename: emailId, loaded: true, children: [], paths: [],
   exports: {
-    sendEmail: async (msg) => { sent.push(msg); return { ok: true, dev: true }; },
+    sendEmail: async (msg) => {
+      sent.push(msg);
+      if (emailDelayMs) await new Promise((r) => setTimeout(r, emailDelayMs));
+      return { ok: true, dev: true };
+    },
     verificationEmail: (to, token) => ({ to, subject: 'Verify your email', kind: 'verify', token, text: `link ${token}` }),
     passwordResetEmail: (to, token) => ({ to, subject: 'Reset your password', kind: 'reset', token, text: `link ${token}` }),
   },
@@ -229,6 +245,29 @@ test('forgot-password: always 200, only emails a real account', async () => {
   assert.equal(store.resets.size, 1);
 });
 
+test('forgot-password: no timing side-channel — the response does not wait for the email send', async () => {
+  await signup('timing@org.co');
+  emailDelayMs = 250; // a slow email provider
+  try {
+    const t0 = Date.now();
+    const known = await post('/api/auth/forgot-password', { email: 'timing@org.co' });
+    const knownMs = Date.now() - t0;
+
+    const t1 = Date.now();
+    const unknown = await post('/api/auth/forgot-password', { email: 'nobody@nowhere.co' });
+    const unknownMs = Date.now() - t1;
+
+    assert.equal(known.status, 200);
+    assert.equal(unknown.status, 200);
+    // the known-email response returned BEFORE the 250ms send resolved
+    assert.ok(knownMs < 150, `known-email response must not block on the send (took ${knownMs}ms)`);
+    assert.ok(Math.abs(knownMs - unknownMs) < 120,
+      `known (${knownMs}ms) and unknown (${unknownMs}ms) must be indistinguishable`);
+  } finally {
+    emailDelayMs = 0;
+  }
+});
+
 test('reset-password: weak new password is rejected and the token is NOT consumed', async () => {
   await signup('u@org.co');
   await post('/api/auth/forgot-password', { email: 'u@org.co' });
@@ -314,16 +353,21 @@ test('accept-invite: invalid/revoked token -> 400; reused token -> 400; weak or 
   assert.equal(reuse.status, 400);
 });
 
-test('reset-password: success updates the hash, bumps token_version, clears the cookie, token is single-use', async () => {
+test('reset-password: one txn — hash + token_version bump + email_verified_at + cookie clear + single-use', async () => {
   await signup('u@org.co');
-  const beforeHash = store.users.get(1).password_hash;
+  const before = store.users.get(1);
+  const beforeHash = before.password_hash;
+  assert.equal(before.email_verified_at, null); // unverified at signup
+
   await post('/api/auth/forgot-password', { email: 'u@org.co' });
   const token = [...store.resets.keys()][0];
 
   const ok = await post('/api/auth/reset-password', { token, password: 'brand-new-strong-pass-4410' });
   assert.equal(ok.status, 200);
-  assert.notEqual(store.users.get(1).password_hash, beforeHash);
-  assert.equal(store.users.get(1).token_version, 1);
+  const after = store.users.get(1);
+  assert.notEqual(after.password_hash, beforeHash);
+  assert.equal(after.token_version, 1);
+  assert.ok(after.email_verified_at != null, 'clicking the reset link proves mailbox control -> email marked verified');
   assert.match(ok.headers.get('set-cookie') || '', /ascenddv_token=;/); // cleared
 
   const reuse = await post('/api/auth/reset-password', { token, password: 'yet-another-strong-pass-5521' });

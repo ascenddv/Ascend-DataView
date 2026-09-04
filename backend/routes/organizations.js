@@ -2,7 +2,7 @@
  * Organization-scoped endpoints.
  *
  *   POST   /api/organizations/:id/onboarding-complete   mark first-run done
- *   DELETE /api/organizations/:id/data                  destructive data reset (owner)
+ *   DELETE /api/organizations/:id/data                  destructive data reset (owner, verified)
  *   GET    /api/organizations/:id/members               team roster (any member)
  *   DELETE /api/organizations/:id/members/:userId       remove a member (owner)
  *   POST   /api/organizations/:id/invitations           invite someone (owner, verified)
@@ -59,7 +59,7 @@ router.post('/organizations/:id/onboarding-complete', sameOrg, async (req, res, 
   }
 });
 
-router.delete('/organizations/:id/data', sameOrg, requireRole('owner'), async (req, res, next) => {
+router.delete('/organizations/:id/data', sameOrg, requireRole('owner'), requireVerified, async (req, res, next) => {
   try {
     const orgId = req.auth.orgId;
     const org = await getOrganizationById(orgId);

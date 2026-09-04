@@ -6,7 +6,7 @@
  *                            POST /api/upload/confirm.
  * POST /api/upload/confirm — finish a paused upload with confirmed/corrected
  *                            mappings.
- * POST /api/manual-entry   — a single period entered by hand (also merges).
+ * POST /api/manual-entry   — a single period entered by hand, verified users only (also merges).
  * GET  /api/data           — the current standardized dataset (for inspection).
  *
  * All route through the one ingestion pipeline in services/ingest.js and are
@@ -197,7 +197,7 @@ router.post('/upload/confirm', requireVerified, uploadLimiter, async (req, res, 
   }
 });
 
-router.post('/manual-entry', async (req, res, next) => {
+router.post('/manual-entry', requireVerified, async (req, res, next) => {
   try {
     const orgId = req.auth.orgId;
     const values = (req.body && req.body.values) || req.body || {};
