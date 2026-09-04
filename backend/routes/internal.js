@@ -12,6 +12,7 @@ const express = require('express');
 
 const { pruneOldRows } = require('../db');
 const { captureError } = require('../services/observability');
+const { timingSafeStrEqual } = require('../services/safeCompare');
 
 const router = express.Router();
 
@@ -20,7 +21,12 @@ function authorized(req) {
   if (!secret) return false;
   const bearer = (req.get('authorization') || '').replace(/^Bearer\s+/i, '');
   const header = req.get('x-cron-secret') || '';
-  return bearer === secret || header === secret;
+  // Constant-time: a plain `=== secret` would leak the secret byte-by-byte via
+  // response timing. Both candidates are always compared (no `||` short-circuit
+  // on the first) so the check's cost is the same however the request is shaped.
+  const okBearer = timingSafeStrEqual(bearer, secret);
+  const okHeader = timingSafeStrEqual(header, secret);
+  return okBearer || okHeader;
 }
 
 async function handlePrune(req, res, next) {

@@ -62,6 +62,11 @@ try {
   console.log('\n== 1. /api/internal/prune is gated by CRON_SECRET ==');
   check('no auth -> 401', (await call(WITH, 'POST')).status === 401);
   check('wrong secret -> 401', (await call(WITH, 'POST', { authorization: 'Bearer nope' })).status === 401);
+  // A near-miss (shares all but the last byte with the real secret) must be
+  // rejected exactly like a random guess — the compare is constant-time and
+  // all-or-nothing (Phase 31 audit: was `=== secret`, a byte-by-byte oracle).
+  check('a near-miss secret (all but the last byte) -> 401',
+    (await call(WITH, 'POST', { authorization: `Bearer ${SECRET.slice(0, -1)}X` })).status === 401);
 
   // seed an expired rate_limits row so the prune has something to remove there
   await db.getDb().query(
@@ -95,13 +100,21 @@ try {
   if (existsSync(assetsDir)) {
     const js = readdirSync(assetsDir).filter((f) => f.endsWith('.js'));
     const entry = js.find((f) => /^index-.*\.js$/.test(f));
-    const entryGz = gzipSync(readFileSync(`${assetsDir}/${entry}`)).length;
+    const entrySrc = readFileSync(`${assetsDir}/${entry}`, 'utf8');
+    const entryGz = gzipSync(Buffer.from(entrySrc)).length;
     check(`entry chunk (${entry}) gzips to ${(entryGz / 1024).toFixed(1)} kB — well under the 150 kB pre-split size`,
       entryGz < 150 * 1024, `${entryGz} bytes`);
 
+    // Not just "a chart chunk exists" — the entry chunk must NOT itself carry
+    // Recharts/d3 (an accidental eager import would balloon it while the
+    // "separate chunk exists" check below still passed).
+    const rechartsFp = /recharts|d3-shape|d3-scale|victory-vendor/i;
+    check('the entry chunk does NOT contain Recharts/d3 (it is genuinely deferred)',
+      !rechartsFp.test(entrySrc));
+
     const chartChunk = js.find((f) => {
       const src = readFileSync(`${assetsDir}/${f}`, 'utf8');
-      return f !== entry && (/recharts/i.test(src) || /Cartesian/i.test(f) || /d3-shape|d3-scale/.test(src));
+      return f !== entry && (rechartsFp.test(src) || /Cartesian/i.test(f));
     });
     check('a separate chart/Recharts chunk exists (loaded on demand, not at boot)', Boolean(chartChunk), chartChunk || 'none found');
 

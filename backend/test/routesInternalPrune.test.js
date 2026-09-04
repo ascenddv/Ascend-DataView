@@ -63,6 +63,15 @@ test('missing or wrong secret -> 401, prune not run', async () => {
   assert.equal(pruneCalls, 0);
 });
 
+test('a near-miss secret (long shared prefix) is still 401 — the compare is all-or-nothing', async () => {
+  process.env.CRON_SECRET = 'cron-secret-9f3a2b1c8d';
+  assert.equal((await hit('POST', { authorization: 'Bearer cron-secret-9f3a2b1c8X' })).status, 401);
+  assert.equal((await hit('POST', { authorization: 'Bearer cron-secret-9f3a2b1c8' })).status, 401); // one short
+  assert.equal(pruneCalls, 0);
+  assert.equal((await hit('POST', { authorization: 'Bearer cron-secret-9f3a2b1c8d' })).status, 200); // exact
+  assert.equal(pruneCalls, 1);
+});
+
 test('no CRON_SECRET on the server -> always 401', async () => {
   delete process.env.CRON_SECRET;
   assert.equal((await hit('POST', { authorization: 'Bearer anything' })).status, 401);
