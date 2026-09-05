@@ -17,6 +17,11 @@ import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import crypto from 'node:crypto';
 
+// Temporary — see the matching TEMPORARY block in services/passwordCheck.js.
+// Turns on read-only timing/state logging for this gate process's own direct
+// isBreachedPassword() calls only (never set by the app itself).
+process.env.HIBP_DEBUG_TIMING = '1';
+
 const require = createRequire(import.meta.url);
 const db = require('../db');
 const { isBreachedPassword } = require('../services/passwordCheck');

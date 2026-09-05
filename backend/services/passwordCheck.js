@@ -35,13 +35,31 @@ async function isBreachedPassword(plain) {
   const prefix = sha1.slice(0, 5);
   const suffix = sha1.slice(5);
 
+  // TEMPORARY, read-only, off by default (HIBP_DEBUG_TIMING unset in every
+  // real deployment) — added to chase a Phase 31 CI mystery: this function
+  // has returned a false negative for a known-breached password in CI while
+  // an equivalent bare fetch succeeded, with no error/timeout signal either
+  // way. Logs the abort-timer's state and elapsed time at each point below;
+  // changes no logic, no return value, no control flow. Remove once resolved.
+  const DEBUG = Boolean(process.env.HIBP_DEBUG_TIMING);
+  const t0 = Date.now();
+  let timerFired = false;
+  const dbg = (label, extra = '') => {
+    if (DEBUG) console.error(`[HIBP_DEBUG_TIMING] ${label} t=${Date.now() - t0}ms timerFired=${timerFired} ${extra}`);
+  };
+
   const ac = new AbortController();
-  const timer = setTimeout(() => ac.abort(), TIMEOUT_MS);
+  const timer = setTimeout(() => {
+    timerFired = true;
+    dbg('abort-timer-fired');
+    ac.abort();
+  }, TIMEOUT_MS);
   try {
     const res = await fetch(HIBP_RANGE_URL + prefix, {
       headers: { 'Add-Padding': 'true' },
       signal: ac.signal,
     });
+    dbg('fetch-resolved', `status=${res.status}`);
     if (!res.ok) {
       // Fail open, but make the degradation visible — a silently-broken breach
       // check should show up in the logs / Sentry, not just vanish.
@@ -49,17 +67,22 @@ async function isBreachedPassword(plain) {
       return false;
     }
     const body = await res.text();
+    dbg('res.text()-resolved', `bodyLength=${body.length}`);
     for (const line of body.split('\n')) {
       const [hashSuffix, countRaw] = line.trim().split(':');
       if (hashSuffix && hashSuffix.toUpperCase() === suffix) {
+        dbg('match-found');
         return Number(countRaw) > 0;
       }
     }
+    dbg('no-match-in-body');
     return false;
   } catch (err) {
+    dbg('caught', `name=${err && err.name} message=${err && err.message}`);
     captureMessage('HIBP_DEGRADED', { reason: err && err.name === 'AbortError' ? 'timeout' : (err && err.message) || 'network error' });
     return false; // network error / timeout / abort — fail open
   } finally {
+    dbg('finally-before-clearTimeout');
     clearTimeout(timer);
   }
 }
