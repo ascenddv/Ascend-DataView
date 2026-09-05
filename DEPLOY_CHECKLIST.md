@@ -30,15 +30,15 @@ a hand-off rather than an automated gate. Work top to bottom.
 
 ### Resend
 - [ ] Verify the sending domain, set `EMAIL_FROM` to an address on it.
-- [ ] **`POST /api/auth/forgot-password` sends its reset email in a
-      fire-and-forget background block** (so the response time is identical for
-      a real vs unknown email — no user enumeration by timing). On Vercel the
-      function *may* be frozen once the response is flushed, which could drop
-      that background work. Before relying on it: wrap the background block in
-      `waitUntil()` from `@vercel/functions` (or move the send to a queue).
-      Until then it's low-severity — a lost email just means the user requests
-      another link — but confirm reset emails actually arrive in the live
-      end-to-end run (§4).
+- [ ] **`POST /api/auth/forgot-password` sends its reset email after the
+      response is flushed** (so the response time is identical for a real vs
+      unknown email — no user enumeration by timing). The background block is
+      registered with Vercel's per-request `waitUntil()` via
+      `services/deferred.js` (dependency-free — reads the same request-context
+      global `@vercel/functions` uses), so the function is not frozen and the
+      email is not dropped. Still confirm reset emails actually arrive in the
+      live end-to-end run (§4), since `waitUntil` availability depends on the
+      Vercel runtime version.
 
 ### Sentry (optional)
 - [ ] Create a project, set `SENTRY_DSN`.

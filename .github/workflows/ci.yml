@@ -13,7 +13,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
       - name: Install backend deps
         working-directory: backend
         run: npm ci
@@ -29,6 +29,13 @@ jobs:
       - name: Frontend production build
         working-directory: frontend
         run: npm run build
+      # --audit-level=high is a deliberate choice, not an oversight: only
+      # high/critical advisories fail the build. MODERATE advisories are
+      # non-blocking here (reviewed manually instead) to keep CI from going red
+      # on transitive-dep noise the app isn't exposed to. Trade-off to be aware
+      # of: the Phase 21 `qs` remediation in this repo was for a MODERATE-
+      # severity issue — this exact setting would not have caught it. Revisit if
+      # dependency risk tolerance changes.
       - name: Dependency audit (backend, prod only)
         working-directory: backend
         run: npm audit --omit=dev --audit-level=high
@@ -64,7 +71,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
       - name: Install backend deps
         working-directory: backend
         run: npm ci
@@ -80,7 +87,7 @@ jobs:
         working-directory: backend
         run: |
           set -e
-          for n in 22 23 24 25 26 27 28 29 30 31; do
+          for n in 21 22 23 24 25 26 27 28 29 30 31; do
             echo "=== phase${n}-gate ==="
             node "scripts/phase${n}-gate.mjs"
           done

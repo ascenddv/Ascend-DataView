@@ -38,6 +38,7 @@ const {
 } = require('../db');
 const { isBreachedPassword } = require('../services/passwordCheck');
 const { sendEmail, verificationEmail, passwordResetEmail } = require('../services/email');
+const { runAfterResponse } = require('../services/deferred');
 const {
   PASSWORD_MIN_LENGTH,
   EMAIL_VERIFICATION_TTL_HOURS,
@@ -192,30 +193,25 @@ router.post('/resend-verification', authLimiter, requireAuth, async (req, res, n
 // Always 200 with the same body, whether or not the email maps to an account —
 // the response must not tell an attacker which addresses are registered, by
 // body OR by timing. The real branch's token INSERT + email send therefore run
-// AFTER the response is sent (fire-and-forget), so both branches return right
-// after the same getUserByEmail lookup.
+// AFTER the response is sent, so both branches return right after the same
+// getUserByEmail lookup.
 //
-// Serverless note: on a platform that may freeze the function once the response
-// is flushed (Vercel), wrap the background block in `waitUntil()` from the
-// platform adapter so it is guaranteed to finish. Without it, a lost reset
-// email is low-severity — the user simply requests another link. See
-// DEPLOY_CHECKLIST.md.
+// runAfterResponse registers that background block with Vercel's per-request
+// waitUntil() when running on Vercel, so the function isn't frozen and the
+// reset email dropped once the response flushes; off Vercel it is a plain
+// detached promise. See services/deferred.js.
 router.post('/forgot-password', authLimiter, async (req, res, next) => {
   try {
     const { email } = req.body || {};
     const user = email ? await getUserByEmail(email) : null;
-    if (user) {
-      (async () => {
-        try {
-          const token = newToken();
-          await createPasswordReset(user.id, token, PASSWORD_RESET_TTL_HOURS);
-          await sendEmail(passwordResetEmail(user.email, token));
-        } catch (err) {
-          console.error(`password reset email failed for user ${user.id}: ${err.message}`);
-        }
-      })();
-    }
     res.json({ ok: true });
+    if (user) {
+      runAfterResponse(async () => {
+        const token = newToken();
+        await createPasswordReset(user.id, token, PASSWORD_RESET_TTL_HOURS);
+        await sendEmail(passwordResetEmail(user.email, token));
+      }, `password reset email for user ${user.id}`);
+    }
   } catch (err) {
     next(err);
   }
