@@ -5,8 +5,12 @@
  * One backend on the local Postgres, RESEND_API_KEY unset so email drops to the
  * dev logger — the gate scrapes the verify / reset links straight off the
  * backend's stdout, the same way a developer would read them locally.
- * HIBP_CHECK_ENABLED is left ON: the breached-password checks hit the real
- * Have I Been Pwned range API.
+ *
+ * The spawned backend is started with an explicit HIBP_CHECK_ENABLED='1', so
+ * the route-level breach-rejection checks (§6, §8) always hit the real Have I
+ * Been Pwned range API. The two DIRECT isBreachedPassword() calls in §8 run in
+ * this gate process instead, so they honour whatever HIBP_CHECK_ENABLED this
+ * process inherited and self-skip when it is off (e.g. the CI gates job).
  *
  *   node scripts/phase25-gate.mjs
  */
@@ -15,16 +19,11 @@ import { spawn } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
-import crypto from 'node:crypto';
-
-// Temporary — see the matching TEMPORARY block in services/passwordCheck.js.
-// Turns on read-only timing/state logging for this gate process's own direct
-// isBreachedPassword() calls only (never set by the app itself).
-process.env.HIBP_DEBUG_TIMING = '1';
 
 const require = createRequire(import.meta.url);
 const db = require('../db');
 const { isBreachedPassword } = require('../services/passwordCheck');
+const { flagIsOff } = require('../config/envFlags');
 
 const ROOT = fileURLToPath(new URL('../../', import.meta.url)).replace(/[\\/]+$/, '');
 const PORT = 3131;
@@ -85,34 +84,6 @@ const fileForm = (f) => {
 // The auth limiter is 10 / 15 min / IP; this gate makes far more auth calls than
 // that from one IP, so clear the shared counter between sections.
 const clearLimits = () => db.getDb().query('DELETE FROM rate_limits');
-
-/**
- * Diagnostic only — fires ONLY when isBreachedPassword() unexpectedly returns
- * false for a password we know is breached. Replicates services/passwordCheck
- * .js's own request (same hash, same 'Add-Padding' header) so we can see what
- * api.pwnedpasswords.com actually sent back, instead of guessing from the
- * absence of other signals. Does not touch, wrap, or change passwordCheck.js.
- */
-async function diagnoseHibpMismatch(plain) {
-  const sha1 = crypto.createHash('sha1').update(String(plain), 'utf8').digest('hex').toUpperCase();
-  const prefix = sha1.slice(0, 5);
-  const suffix = sha1.slice(5);
-  console.log(`  [diag] sha1=${sha1} prefix=${prefix} suffix=${suffix}`);
-  try {
-    const res = await fetch(`https://api.pwnedpasswords.com/range/${prefix}`, {
-      headers: { 'Add-Padding': 'true' },
-    });
-    const body = await res.text();
-    const lines = body.split('\n').filter(Boolean);
-    const matchLine = lines.find((l) => l.trim().split(':')[0]?.toUpperCase() === suffix);
-    console.log(`  [diag] HTTP ${res.status}, content-type=${res.headers.get('content-type')}, ${lines.length} lines in body`);
-    console.log(`  [diag] suffix ${matchLine ? 'FOUND: ' + matchLine.trim() : 'NOT FOUND anywhere in the raw body'}`);
-    console.log(`  [diag] first 15 lines of body:\n${lines.slice(0, 15).map((l) => '    ' + l).join('\n')}`);
-    if (lines.length === 0) console.log('  [diag] body was completely empty');
-  } catch (err) {
-    console.log(`  [diag] the diagnostic fetch itself threw: ${err && err.name} ${err && err.message}`);
-  }
-}
 
 let proc;
 try {
@@ -238,44 +209,29 @@ try {
   await clearLimits();
   /* ============================================================ */
   console.log('\n== 8. breached-password rejection on signup (live HIBP) ==');
-  // A throwaway call was added here on the theory that this process's first
-  // live HTTPS request pays for cold DNS/TLS and can miss the 2500ms budget.
-  // Kept (harmless), but a real CI run reproduced the failure again WITH the
-  // warm-up in place, and with no HIBP_DEGRADED signal at all — meaning the
-  // call got a normal 200, not a timeout or error. So the cold-start theory
-  // is not the (or not the whole) explanation.
-  await isBreachedPassword('warm-up-not-asserted-0000');
-
-  // UNRESOLVED, not diagnosed — this is a documented workaround for an
-  // observed pattern, not a fix for a known cause. Do not "fix" this comment
-  // by asserting a root cause unless someone actually confirms one.
+  // The two direct isBreachedPassword() calls below run in THIS process, which
+  // inherits the environment as-is. When HIBP_CHECK_ENABLED is a disable word
+  // (the CI `gates` job sets it to '0' job-wide), isBreachedPassword() is
+  // designed to short-circuit to `false` with no network call — so asserting
+  // it returns `true` here would be asserting a deliberately-disabled function
+  // is active, which it never will be. Skip the direct calls in that case.
   //
-  // Across 3 independent real CI runs, the call below has returned false for
-  // a password HIBP unambiguously has on record (password123 — one of HIBP's
-  // own documentation examples: SHA-1 CBFDAC60…, count in the millions). A
-  // diagnostic fetch run immediately after, replicating the exact same
-  // request, found the correct match every time (HTTP 200, full body) — and
-  // no HIBP_DEGRADED signal was logged for either call in any run. The CI log
-  // shows well under 1ms between the failing call and the diagnostic's
-  // success, which is too fast for a real network round trip — but that could
-  // mean either (a) a genuine first-call anomaly in the fetch/AbortController
-  // path that doesn't take any of isBreachedPassword's own error branches, or
-  // (b) GitHub's log streaming batches console.log timestamps closely enough
-  // that the sub-millisecond gap isn't a trustworthy measurement, and the real
-  // call actually did take longer than it looks. We do not know which.
+  // This is not a coverage gap: the breach REJECTION behaviour is still
+  // exercised end to end every run by the route-level checks just below (and
+  // §6's reset-password check), which go through the backend this gate spawns
+  // with an explicit HIBP_CHECK_ENABLED='1' override, hitting the real HIBP
+  // API regardless of the outer job's setting.
   //
-  // What IS established, 3-for-3: retrying the identical call once resolves
-  // it. This retry is that workaround. If it ever needs a SECOND retry to
-  // pass, that is a signal this explanation is wrong — investigate fresh,
-  // don't escalate to a bigger workaround.
-  let breachedCheck = await isBreachedPassword(BREACHED_PW);
-  if (breachedCheck !== true) {
-    await diagnoseHibpMismatch(BREACHED_PW);
-    breachedCheck = await isBreachedPassword(BREACHED_PW);
-    console.log(`  [diag] retry result: ${breachedCheck}`);
+  // (History: this chased four red CI runs and several wrong theories —
+  // AbortController truncation, cold DNS, CDN inconsistency — before timing
+  // instrumentation showed isBreachedPassword() was simply returning at its
+  // own `flagIsOff(HIBP_CHECK_ENABLED)` guard, having never made a request.)
+  if (flagIsOff(process.env.HIBP_CHECK_ENABLED)) {
+    console.log('  SKIP  direct isBreachedPassword() checks — HIBP_CHECK_ENABLED is off in this process');
+  } else {
+    check('HIBP flags "password123" as breached', (await isBreachedPassword(BREACHED_PW)) === true);
+    check('HIBP does NOT flag the strong gate password', (await isBreachedPassword(STRONG_PW)) === false);
   }
-  check('HIBP flags "password123" as breached', breachedCheck === true);
-  check('HIBP does NOT flag the strong gate password', (await isBreachedPassword(STRONG_PW)) === false);
   const breachedSignup = await c.req('POST', '/api/auth/signup', {
     body: { email: `p25b_${Date.now()}@t.co`, password: BREACHED_PW, orgName: 'P25 breached', acceptTos: true },
   });
