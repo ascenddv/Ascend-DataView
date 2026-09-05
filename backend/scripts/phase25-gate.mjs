@@ -204,6 +204,14 @@ try {
   await clearLimits();
   /* ============================================================ */
   console.log('\n== 8. breached-password rejection on signup (live HIBP) ==');
+  // Throwaway call, result discarded: on a fresh CI runner this process's
+  // FIRST live HTTPS request pays for cold DNS resolution + a TLS handshake to
+  // api.pwnedpasswords.com, which can miss isBreachedPassword's 2500ms budget
+  // and fail open — not because the HIBP check is flaky, but because nothing
+  // has warmed that path yet. Pay that cost here, on a value we don't assert,
+  // so the real checks below run over an already-warm connection like every
+  // subsequent call in this process does.
+  await isBreachedPassword('warm-up-not-asserted-0000');
   check('HIBP flags "password123" as breached', (await isBreachedPassword(BREACHED_PW)) === true);
   check('HIBP does NOT flag the strong gate password', (await isBreachedPassword(STRONG_PW)) === false);
   const breachedSignup = await c.req('POST', '/api/auth/signup', {
