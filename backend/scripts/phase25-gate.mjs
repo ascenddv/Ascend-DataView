@@ -15,6 +15,7 @@ import { spawn } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
+import crypto from 'node:crypto';
 
 const require = createRequire(import.meta.url);
 const db = require('../db');
@@ -79,6 +80,34 @@ const fileForm = (f) => {
 // The auth limiter is 10 / 15 min / IP; this gate makes far more auth calls than
 // that from one IP, so clear the shared counter between sections.
 const clearLimits = () => db.getDb().query('DELETE FROM rate_limits');
+
+/**
+ * Diagnostic only — fires ONLY when isBreachedPassword() unexpectedly returns
+ * false for a password we know is breached. Replicates services/passwordCheck
+ * .js's own request (same hash, same 'Add-Padding' header) so we can see what
+ * api.pwnedpasswords.com actually sent back, instead of guessing from the
+ * absence of other signals. Does not touch, wrap, or change passwordCheck.js.
+ */
+async function diagnoseHibpMismatch(plain) {
+  const sha1 = crypto.createHash('sha1').update(String(plain), 'utf8').digest('hex').toUpperCase();
+  const prefix = sha1.slice(0, 5);
+  const suffix = sha1.slice(5);
+  console.log(`  [diag] sha1=${sha1} prefix=${prefix} suffix=${suffix}`);
+  try {
+    const res = await fetch(`https://api.pwnedpasswords.com/range/${prefix}`, {
+      headers: { 'Add-Padding': 'true' },
+    });
+    const body = await res.text();
+    const lines = body.split('\n').filter(Boolean);
+    const matchLine = lines.find((l) => l.trim().split(':')[0]?.toUpperCase() === suffix);
+    console.log(`  [diag] HTTP ${res.status}, content-type=${res.headers.get('content-type')}, ${lines.length} lines in body`);
+    console.log(`  [diag] suffix ${matchLine ? 'FOUND: ' + matchLine.trim() : 'NOT FOUND anywhere in the raw body'}`);
+    console.log(`  [diag] first 15 lines of body:\n${lines.slice(0, 15).map((l) => '    ' + l).join('\n')}`);
+    if (lines.length === 0) console.log('  [diag] body was completely empty');
+  } catch (err) {
+    console.log(`  [diag] the diagnostic fetch itself threw: ${err && err.name} ${err && err.message}`);
+  }
+}
 
 let proc;
 try {
@@ -204,15 +233,17 @@ try {
   await clearLimits();
   /* ============================================================ */
   console.log('\n== 8. breached-password rejection on signup (live HIBP) ==');
-  // Throwaway call, result discarded: on a fresh CI runner this process's
-  // FIRST live HTTPS request pays for cold DNS resolution + a TLS handshake to
-  // api.pwnedpasswords.com, which can miss isBreachedPassword's 2500ms budget
-  // and fail open — not because the HIBP check is flaky, but because nothing
-  // has warmed that path yet. Pay that cost here, on a value we don't assert,
-  // so the real checks below run over an already-warm connection like every
-  // subsequent call in this process does.
+  // A throwaway call was added here on the theory that this process's first
+  // live HTTPS request pays for cold DNS/TLS and can miss the 2500ms budget.
+  // Kept (harmless), but a real CI run reproduced the failure again WITH the
+  // warm-up in place, and with no HIBP_DEGRADED signal at all — meaning the
+  // call got a normal 200, not a timeout or error. So the cold-start theory
+  // is not the (or not the whole) explanation. Diagnosing for real below
+  // instead of guessing again.
   await isBreachedPassword('warm-up-not-asserted-0000');
-  check('HIBP flags "password123" as breached', (await isBreachedPassword(BREACHED_PW)) === true);
+  const breachedCheck = await isBreachedPassword(BREACHED_PW);
+  if (breachedCheck !== true) await diagnoseHibpMismatch(BREACHED_PW);
+  check('HIBP flags "password123" as breached', breachedCheck === true);
   check('HIBP does NOT flag the strong gate password', (await isBreachedPassword(STRONG_PW)) === false);
   const breachedSignup = await c.req('POST', '/api/auth/signup', {
     body: { email: `p25b_${Date.now()}@t.co`, password: BREACHED_PW, orgName: 'P25 breached', acceptTos: true },
