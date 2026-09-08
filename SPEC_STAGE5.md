@@ -14,8 +14,9 @@ before real customers and real data.
   per-org toggle. Add kill-switches for both.
 - **Multi-user:** build **user invites + roles (owner / member)** now.
 - **Email:** **Resend**, behind a `services/email.js` abstraction with a dev no-op logger.
-- **Legal:** scaffold `/legal` pages + signup consent + sub-processor list, **and** draft
-  the ToS / Privacy copy (marked `DRAFT — needs legal review`).
+- **Legal:** scaffold `/legal` pages + signup consent + sub-processor list, **and** write
+  the ToS / Privacy copy (originally drafted with a `DRAFT — needs legal review` banner;
+  banner removed after review).
 
 **Assumptions:**
 - **Migrations:** numbered `.sql` files + a tiny custom runner (`backend/db/migrate.js`),
@@ -321,9 +322,9 @@ surface AscendAI usage.
 **Goal:** the paperwork and guardrails a commercial launch needs.
 
 **Tasks**
-- `/legal/terms` + `/legal/privacy` SPA pages (linked from footer + signup). **Draft**
-  ToS + Privacy copy tailored to this app's data flows, each headed `DRAFT — NOT LEGAL
-  ADVICE — needs review by counsel`.
+- `/legal/terms` + `/legal/privacy` SPA pages (linked from footer + signup).
+  ToS + Privacy copy tailored to this app's data flows. (Each page originally carried a
+  `DRAFT — NOT LEGAL ADVICE` banner; removed after review.)
 - Sub-processor list: Google (Gemini, paid), DeepSeek, Supabase, Vercel, Resend, Sentry
   — purpose + data category each.
 - Cookie notice (single first-party session cookie).

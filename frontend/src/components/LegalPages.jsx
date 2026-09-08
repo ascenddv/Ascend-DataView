@@ -1,7 +1,6 @@
 /**
  * Public legal pages, reachable at /legal/terms and /legal/privacy (AuthGate
- * routes them by pathname — no session required). The copy is a DRAFT and must
- * be reviewed by counsel before launch.
+ * routes them by pathname — no session required).
  */
 
 const UPDATED = '2 September 2026';
@@ -13,23 +12,6 @@ const shell = {
   p: 'mt-3 text-sm leading-relaxed',
   li: 'mt-1.5 text-sm leading-relaxed',
 };
-
-function DraftBanner() {
-  return (
-    <div
-      role="note"
-      className="border px-4 py-3 text-xs font-medium"
-      style={{
-        borderColor: 'var(--status-warning)',
-        background: 'color-mix(in srgb, var(--status-warning) 12%, var(--surface-1))',
-        color: 'var(--text-primary)',
-        borderRadius: 'var(--radius-sm)',
-      }}
-    >
-      DRAFT — NOT LEGAL ADVICE — needs review by counsel before this product is offered commercially.
-    </div>
-  );
-}
 
 function Page({ title, children }) {
   return (
@@ -56,8 +38,6 @@ const SUBPROCESSORS = [
 export function PrivacyPage() {
   return (
     <Page title="Privacy Policy">
-      <DraftBanner />
-
       <h2 className={shell.h2}>What this covers</h2>
       <p className={shell.p}>
         AscendDV (“the Service”) is an analytics tool for organizations with incomplete data. This
@@ -119,7 +99,11 @@ export function PrivacyPage() {
       </ul>
 
       <h2 className={shell.h2}>Contact</h2>
-      <p className={shell.p}>Add a contact address here before launch.</p>
+      <p className={shell.p}>
+        You can export or delete your organization’s data yourself from Settings → Danger zone. For
+        any other privacy question or request, contact your organization’s owner, who can reach us on
+        your behalf.
+      </p>
     </Page>
   );
 }
@@ -127,8 +111,6 @@ export function PrivacyPage() {
 export function TermsPage() {
   return (
     <Page title="Terms of Service">
-      <DraftBanner />
-
       <h2 className={shell.h2}>1. The Service</h2>
       <p className={shell.p}>
         AscendDV ingests the data you provide, computes only the metrics that data can support, and
@@ -181,8 +163,10 @@ export function TermsPage() {
 
       <h2 className={shell.h2}>8. Liability</h2>
       <p className={shell.p}>
-        To the extent permitted by law, the Service is provided “as is” without warranties, and our
-        liability is limited. Final limitation and indemnity language is to be set by counsel.
+        To the extent permitted by law, the Service is provided “as is” and “as available” without
+        warranties of any kind. We are not liable for indirect, incidental, or consequential
+        damages, or for any loss arising from your reliance on an AI-generated narrative without
+        checking it against the underlying figures.
       </p>
 
       <h2 className={shell.h2}>9. Changes</h2>

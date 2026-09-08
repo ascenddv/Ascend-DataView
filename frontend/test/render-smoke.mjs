@@ -441,15 +441,17 @@ test('AuthPage offers a "Forgot password?" affordance and links to the legal pag
   assert.ok(html.includes('/legal/terms') && html.includes('/legal/privacy'), 'footer must link to Terms + Privacy');
 });
 
-test('the legal pages carry the DRAFT banner and the required disclosures', () => {
+test('the legal pages carry the required disclosures and no draft markers', () => {
   const terms = renderLegal('terms');
   assertClean(terms, 'terms');
   assert.ok(terms.includes('Terms of Service'));
-  assert.ok(/DRAFT .* needs review by counsel/i.test(terms), 'terms must be marked a draft');
+  assert.ok(!/draft|needs review by counsel|before launch|to be set by counsel/i.test(terms),
+    'terms must not carry draft / placeholder language');
 
   const privacy = renderLegal('privacy');
   assertClean(privacy, 'privacy');
-  assert.ok(/DRAFT .* needs review by counsel/i.test(privacy), 'privacy must be marked a draft');
+  assert.ok(!/draft|needs review by counsel|before launch|add a contact address/i.test(privacy),
+    'privacy must not carry draft / placeholder language');
   // sub-processor list
   for (const name of ['Google', 'DeepSeek', 'Supabase', 'Vercel', 'Resend', 'Sentry']) {
     assert.ok(privacy.includes(name), `sub-processor "${name}" missing from the privacy page`);
@@ -462,7 +464,6 @@ test('AuthGate routes /legal/terms and /legal/privacy by pathname (real routing,
   const terms = renderAuthGateAt('/legal/terms');
   assertClean(terms, 'authgate-terms');
   assert.ok(terms.includes('Terms of Service'), 'AuthGate did not render the Terms page for /legal/terms');
-  assert.ok(/DRAFT .* needs review by counsel/i.test(terms));
   assert.ok(!terms.includes('app-shell-children'), 'the app shell must not render on a legal route');
 
   const privacy = renderAuthGateAt('/legal/privacy');
@@ -472,7 +473,8 @@ test('AuthGate routes /legal/terms and /legal/privacy by pathname (real routing,
 
   // a non-legal path falls through to the app (loading/auth), NOT a legal page
   const other = renderAuthGateAt('/');
-  assert.ok(!/DRAFT — NOT LEGAL ADVICE/i.test(other), 'a non-legal path must not render a legal page');
+  assert.ok(!other.includes('Sub-processors') && !other.includes('Last updated'),
+    'a non-legal path must not render a legal page');
 });
 
 test('the marketing landing page renders cleanly with its CTAs and legal links', () => {
