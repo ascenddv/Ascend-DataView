@@ -22,5 +22,8 @@
       "Bash(git clean -f *)",
       "Bash(git push *)"
     ]
+  },
+  "enabledPlugins": {
+    "ui-ux-pro-max@ui-ux-pro-max-skill": true
   }
 }
