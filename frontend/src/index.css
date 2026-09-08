@@ -4,57 +4,86 @@
  * ─────────────────────────────────────────────────────────────────────────────
  * AscendDV design tokens
  * ─────────────────────────────────────────────────────────────────────────────
- * Role-based custom properties consumed from Tailwind arbitrary values
- * (e.g. bg-[var(--surface-1)]) and from Recharts props, so a light/dark or
- * density change happens in exactly one place. The data-viz colour steps are
- * the validated reference palette from the dataviz skill; the surrounding
- * surface / shape / elevation / density scale is the Minimalism & Swiss +
- * Data-Dense Dashboard system for this product.
+ * Role-based custom properties, consumed as Tailwind arbitrary values
+ * (bg-[var(--surface-1)]), inline style props, and Recharts props — so a
+ * light/dark, density, or brand change happens in one place.
+ *
+ * Palette: a deep spruce-green brand hue (#091413 → #217A5E → #B0E4CC) over
+ * near-neutral, faintly green-cooled surfaces. The semantic status ramp is the
+ * validated dataviz reference set, kept distinct from the green accent.
  *
  * Theme resolution:
- *   :root                                   → light (OS light or unset)
- *   @media (prefers-color-scheme: dark)     → dark, UNLESS the user forced light
- *   :root[data-theme="dark"]                → dark, always (Settings override)
- *   :root[data-theme="light"]              → light, always (Settings override)
+ *   :root                                 → light (OS light, or unset)
+ *   @media (prefers-color-scheme: dark)   → dark, unless the user forced light
+ *   :root[data-theme="dark"]              → dark, always (Settings override)
+ *   :root[data-theme="light"]             → light, always (Settings override)
+ *
+ * The two dark blocks below are byte-identical ON PURPOSE — plain CSS cannot
+ * share one declaration list across a media query and a plain selector. Edit
+ * both, or neither. Search tag: DARK-TOKENS.
  */
 
 :root {
-  /* Typography */
+  /* Type */
   --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI",
     Roboto, Helvetica, Arial, sans-serif;
+  --font-display: "Geist", "Inter", ui-sans-serif, system-ui, -apple-system,
+    "Segoe UI", Roboto, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas,
+    "Liberation Mono", monospace;
+
+  --text-xs:   0.75rem;    /* 12 */
+  --text-sm:   0.8125rem;  /* 13 */
+  --text-base: 0.9375rem;  /* 15 */
+  --text-lg:   1.0625rem;  /* 17 */
+  --text-xl:   1.3125rem;  /* 21 */
+  --text-2xl:  1.625rem;   /* 26 */
+  --text-3xl:  2rem;       /* 32 */
 
   /* Surfaces & text */
-  --page:            #f9f9f7;
-  --surface-1:       #fcfcfb;
+  --page:            #f6f8f7;
+  --surface-1:       #fbfcfb;
   --surface-2:       #ffffff;
-  --surface-hover:   rgba(11, 11, 11, 0.04);
-  --text-primary:    #0b0b0b;
-  --text-secondary:  #52514e;
-  --text-muted:      #898781;
-  --gridline:        #e1e0d9;
-  --baseline:        #c3c2b7;
-  --border:          rgba(11, 11, 11, 0.10);
-  --border-strong:   rgba(11, 11, 11, 0.16);
+  --surface-sunken:  #eef2f0;
+  --surface-hover:   rgba(9, 20, 19, 0.045);
+  --text-primary:    #0b1a17;
+  --text-secondary:  #45524e;
+  --text-muted:      #7b8a85;
+  --gridline:        #e3e9e6;
+  --baseline:        #c5cfca;
+  --border:          rgba(9, 20, 19, 0.10);
+  --border-strong:   rgba(9, 20, 19, 0.17);
 
-  /* Accent (single hue — trend lines, comparison bars, active nav/tabs, CTAs) */
-  --series-1:        #2a78d6;
-  --accent:          #2a78d6;
-  --accent-weak:     rgba(42, 120, 214, 0.10);
+  /* Accent — single spruce-green hue: trend lines, comparison bars, active
+     nav/tabs, primary CTAs. `series-1` is the charting alias of `accent`. */
+  --accent:          #217a5e;
+  --accent-strong:   #1a6550;
+  --accent-weak:     rgba(33, 122, 94, 0.10);
   --accent-contrast: #ffffff;
+  --series-1:        #217a5e;
 
-  /* Status / semantic */
+  /* Status / semantic — validated ramp, kept clear of the green accent */
   --status-good:     #0ca30c;
-  --status-warning:  #fab219;
+  --status-warning:  #f6a609;
   --status-serious:  #ec835a;
   --status-critical: #d03b3b;
-  --delta-up:        #006300;
+  --delta-up:        #0a7a3d;
 
   /* Shape & elevation */
   --radius-sm: 8px;
   --radius:    12px;
   --radius-lg: 16px;
-  --shadow-sm: 0 1px 2px rgba(11, 11, 11, 0.05), 0 4px 14px rgba(11, 11, 11, 0.06);
-  --shadow-md: 0 4px 12px rgba(11, 11, 11, 0.08), 0 16px 40px rgba(11, 11, 11, 0.10);
+  --radius-xl: 22px;
+  --shadow-sm: 0 1px 2px rgba(9, 20, 19, 0.05), 0 3px 10px rgba(9, 20, 19, 0.05);
+  --shadow-md: 0 4px 12px rgba(9, 20, 19, 0.08), 0 16px 40px rgba(9, 20, 19, 0.10);
+  --shadow-lg: 0 14px 34px rgba(9, 20, 19, 0.12), 0 34px 68px rgba(9, 20, 19, 0.14);
+
+  /* Motion — consumed by the .adv-* helpers and component transitions */
+  --ease-out:    cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --dur-fast: 120ms;
+  --dur:      200ms;
+  --dur-slow: 380ms;
 
   /* Density (overridden under [data-density="compact"]) */
   --card-pad:  20px;
@@ -66,54 +95,68 @@
   --sidebar-w: 244px;
 }
 
-/* ── Auto dark: follow the OS unless the user forced light ─────────────────── */
+/* ── DARK-TOKENS · auto: follow the OS unless the user forced light ────────── */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --surface-1:       #1a1a19;
-    --surface-2:       #232322;
-    --surface-hover:   rgba(255, 255, 255, 0.05);
-    --page:            #0d0d0d;
-    --text-primary:    #ffffff;
-    --text-secondary:  #c3c2b7;
-    --text-muted:      #898781;
-    --gridline:        #2c2c2a;
-    --baseline:        #383835;
-    --border:          rgba(255, 255, 255, 0.10);
-    --border-strong:   rgba(255, 255, 255, 0.16);
+    --page:            #0a1613;
+    --surface-1:       #0f1e1a;
+    --surface-2:       #152824;
+    --surface-sunken:  #0b1815;
+    --surface-hover:   rgba(176, 228, 204, 0.06);
+    --text-primary:    #eef3f1;
+    --text-secondary:  #b2c3be;
+    --text-muted:      #7e918c;
+    --gridline:        #223330;
+    --baseline:        #2f423d;
+    --border:          rgba(176, 228, 204, 0.12);
+    --border-strong:   rgba(176, 228, 204, 0.20);
 
-    --series-1:        #3987e5;
-    --accent:          #3987e5;
-    --accent-weak:     rgba(57, 135, 229, 0.16);
+    --accent:          #5cbfa0;
+    --accent-strong:   #7bd0b5;
+    --accent-weak:     rgba(92, 191, 160, 0.16);
+    --series-1:        #5cbfa0;
 
-    --delta-up:        #0ca30c;
+    --status-good:     #2bb972;
+    --status-warning:  #f6b93b;
+    --status-serious:  #f0996f;
+    --status-critical: #e5615f;
+    --delta-up:        #3fb872;
 
     --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.40), 0 8px 24px rgba(0, 0, 0, 0.45);
     --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.45), 0 24px 60px rgba(0, 0, 0, 0.55);
+    --shadow-lg: 0 20px 48px rgba(0, 0, 0, 0.55), 0 48px 96px rgba(0, 0, 0, 0.6);
   }
 }
 
-/* ── Forced dark: Settings override, wins over the OS ─────────────────────── */
+/* ── DARK-TOKENS · forced: Settings override, wins over the OS ─────────────── */
 :root[data-theme="dark"] {
-  --surface-1:       #1a1a19;
-  --surface-2:       #232322;
-  --surface-hover:   rgba(255, 255, 255, 0.05);
-  --page:            #0d0d0d;
-  --text-primary:    #ffffff;
-  --text-secondary:  #c3c2b7;
-  --text-muted:      #898781;
-  --gridline:        #2c2c2a;
-  --baseline:        #383835;
-  --border:          rgba(255, 255, 255, 0.10);
-  --border-strong:   rgba(255, 255, 255, 0.16);
+  --page:            #0a1613;
+  --surface-1:       #0f1e1a;
+  --surface-2:       #152824;
+  --surface-sunken:  #0b1815;
+  --surface-hover:   rgba(176, 228, 204, 0.06);
+  --text-primary:    #eef3f1;
+  --text-secondary:  #b2c3be;
+  --text-muted:      #7e918c;
+  --gridline:        #223330;
+  --baseline:        #2f423d;
+  --border:          rgba(176, 228, 204, 0.12);
+  --border-strong:   rgba(176, 228, 204, 0.20);
 
-  --series-1:        #3987e5;
-  --accent:          #3987e5;
-  --accent-weak:     rgba(57, 135, 229, 0.16);
+  --accent:          #5cbfa0;
+  --accent-strong:   #7bd0b5;
+  --accent-weak:     rgba(92, 191, 160, 0.16);
+  --series-1:        #5cbfa0;
 
-  --delta-up:        #0ca30c;
+  --status-good:     #2bb972;
+  --status-warning:  #f6b93b;
+  --status-serious:  #f0996f;
+  --status-critical: #e5615f;
+  --delta-up:        #3fb872;
 
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.40), 0 8px 24px rgba(0, 0, 0, 0.45);
   --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.45), 0 24px 60px rgba(0, 0, 0, 0.55);
+  --shadow-lg: 0 20px 48px rgba(0, 0, 0, 0.55), 0 48px 96px rgba(0, 0, 0, 0.6);
 }
 
 /* ── Compact density: Settings override ──────────────────────────────────── */
@@ -131,6 +174,7 @@ html {
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
   color-scheme: light dark;
+  scroll-behavior: smooth;
 }
 
 html, body {
@@ -138,13 +182,56 @@ html, body {
   color: var(--text-primary);
 }
 
+h1, h2, h3, h4 {
+  font-family: var(--font-display);
+  letter-spacing: -0.02em;
+}
+
+::selection {
+  background: var(--accent-weak);
+}
+
 :focus-visible {
-  outline: 2px solid var(--series-1);
+  outline: 2px solid var(--accent);
   outline-offset: 2px;
   border-radius: 3px;
 }
 
-/* ── Reduced motion: honour the OS setting AND the explicit Settings toggle ─ */
+/* ── Motion helpers ─────────────────────────────────────────────────────────
+ * Small, composable entrance animations. Everything here is disabled wholesale
+ * by the reduced-motion rules at the bottom of the file. Stagger children with
+ * inline `style={{ animationDelay: ... }}` or the --adv-delay custom prop.
+ */
+@keyframes adv-fade-in   { from { opacity: 0; } to { opacity: 1; } }
+@keyframes adv-fade-up   { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@keyframes adv-fade-down { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: none; } }
+@keyframes adv-scale-in  { from { opacity: 0; transform: scale(0.96); } to { opacity: 1; transform: none; } }
+@keyframes adv-slide-in-right { from { opacity: 0; transform: translateX(16px); } to { opacity: 1; transform: none; } }
+@keyframes adv-shimmer   { from { background-position: -180% 0; } to { background-position: 180% 0; } }
+@keyframes adv-spin      { to { transform: rotate(360deg); } }
+@keyframes adv-pulse-soft { 0%, 100% { opacity: 1; } 50% { opacity: 0.55; } }
+@keyframes adv-typing    { 0%, 60%, 100% { transform: translateY(0); opacity: 0.4; } 30% { transform: translateY(-3px); opacity: 1; } }
+
+.adv-fade-in       { animation: adv-fade-in    var(--dur) var(--ease-out) both; animation-delay: var(--adv-delay, 0ms); }
+.adv-fade-up       { animation: adv-fade-up    var(--dur-slow) var(--ease-out) both; animation-delay: var(--adv-delay, 0ms); }
+.adv-fade-down     { animation: adv-fade-down  var(--dur-slow) var(--ease-out) both; animation-delay: var(--adv-delay, 0ms); }
+.adv-scale-in      { animation: adv-scale-in   var(--dur) var(--ease-out) both; animation-delay: var(--adv-delay, 0ms); }
+.adv-slide-in-right { animation: adv-slide-in-right var(--dur-slow) var(--ease-out) both; }
+
+.adv-skeleton {
+  background: linear-gradient(
+    100deg,
+    var(--surface-sunken) 30%,
+    color-mix(in srgb, var(--surface-sunken) 55%, var(--surface-2)) 50%,
+    var(--surface-sunken) 70%
+  );
+  background-size: 220% 100%;
+  animation: adv-shimmer 1.6s ease-in-out infinite;
+}
+
+.adv-spin { animation: adv-spin 0.7s linear infinite; }
+
+/* ── Reduced motion: OS setting AND the explicit Settings toggle ──────────── */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.01ms !important;
