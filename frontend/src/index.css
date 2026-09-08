@@ -8,9 +8,11 @@
  * (bg-[var(--surface-1)]), inline style props, and Recharts props — so a
  * light/dark, density, or brand change happens in one place.
  *
- * Palette: a deep spruce-green brand hue (#091413 → #217A5E → #B0E4CC) over
- * near-neutral, faintly green-cooled surfaces. The semantic status ramp is the
- * validated dataviz reference set, kept distinct from the green accent.
+ * Palette: a slate "ink" (#252A34) for anything that would otherwise be black —
+ * text, dark surfaces, the logo tile — over plain cool-neutral light surfaces.
+ * Green (#217A5E / #5CBFA0) is an ACCENT ONLY: primary actions, active nav,
+ * links, focus, chart series. It is deliberately kept off decorative chrome.
+ * The semantic status ramp is the validated dataviz reference set.
  *
  * Theme resolution:
  *   :root                                 → light (OS light, or unset)
@@ -40,19 +42,19 @@
   --text-2xl:  1.625rem;   /* 26 */
   --text-3xl:  2rem;       /* 32 */
 
-  /* Surfaces & text */
-  --page:            #f6f8f7;
-  --surface-1:       #fbfcfb;
+  /* Surfaces & text — cool neutral, no colour cast */
+  --page:            #f6f7f8;
+  --surface-1:       #fbfbfc;
   --surface-2:       #ffffff;
-  --surface-sunken:  #eef2f0;
-  --surface-hover:   rgba(9, 20, 19, 0.045);
-  --text-primary:    #0b1a17;
-  --text-secondary:  #45524e;
-  --text-muted:      #7b8a85;
-  --gridline:        #e3e9e6;
-  --baseline:        #c5cfca;
-  --border:          rgba(9, 20, 19, 0.10);
-  --border-strong:   rgba(9, 20, 19, 0.17);
+  --surface-sunken:  #eef0f2;
+  --surface-hover:   rgba(37, 42, 52, 0.045);
+  --text-primary:    #1b2027;
+  --text-secondary:  #49505b;
+  --text-muted:      #7c828d;
+  --gridline:        #e6e8eb;
+  --baseline:        #c7cbd1;
+  --border:          rgba(37, 42, 52, 0.10);
+  --border-strong:   rgba(37, 42, 52, 0.16);
 
   /* Accent — single spruce-green hue: trend lines, comparison bars, active
      nav/tabs, primary CTAs. `series-1` is the charting alias of `accent`. */
@@ -74,9 +76,9 @@
   --radius:    12px;
   --radius-lg: 16px;
   --radius-xl: 22px;
-  --shadow-sm: 0 1px 2px rgba(9, 20, 19, 0.05), 0 3px 10px rgba(9, 20, 19, 0.05);
-  --shadow-md: 0 4px 12px rgba(9, 20, 19, 0.08), 0 16px 40px rgba(9, 20, 19, 0.10);
-  --shadow-lg: 0 14px 34px rgba(9, 20, 19, 0.12), 0 34px 68px rgba(9, 20, 19, 0.14);
+  --shadow-sm: 0 1px 2px rgba(20, 24, 31, 0.05), 0 3px 10px rgba(20, 24, 31, 0.05);
+  --shadow-md: 0 4px 12px rgba(20, 24, 31, 0.08), 0 16px 40px rgba(20, 24, 31, 0.10);
+  --shadow-lg: 0 14px 34px rgba(20, 24, 31, 0.12), 0 34px 68px rgba(20, 24, 31, 0.14);
 
   /* Motion — consumed by the .adv-* helpers and component transitions */
   --ease-out:    cubic-bezier(0.22, 1, 0.36, 1);
@@ -98,18 +100,18 @@
 /* ── DARK-TOKENS · auto: follow the OS unless the user forced light ────────── */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --page:            #0a1613;
-    --surface-1:       #0f1e1a;
-    --surface-2:       #152824;
-    --surface-sunken:  #0b1815;
-    --surface-hover:   rgba(176, 228, 204, 0.06);
-    --text-primary:    #eef3f1;
-    --text-secondary:  #b2c3be;
-    --text-muted:      #7e918c;
-    --gridline:        #223330;
-    --baseline:        #2f423d;
-    --border:          rgba(176, 228, 204, 0.12);
-    --border-strong:   rgba(176, 228, 204, 0.20);
+    --page:            #1f232b;
+    --surface-1:       #262b34;
+    --surface-2:       #2c313c;
+    --surface-sunken:  #191d24;
+    --surface-hover:   rgba(255, 255, 255, 0.055);
+    --text-primary:    #eceef1;
+    --text-secondary:  #aab1bd;
+    --text-muted:      #79818e;
+    --gridline:        #353c47;
+    --baseline:        #434b57;
+    --border:          rgba(255, 255, 255, 0.10);
+    --border-strong:   rgba(255, 255, 255, 0.18);
 
     --accent:          #5cbfa0;
     --accent-strong:   #7bd0b5;
@@ -130,18 +132,18 @@
 
 /* ── DARK-TOKENS · forced: Settings override, wins over the OS ─────────────── */
 :root[data-theme="dark"] {
-  --page:            #0a1613;
-  --surface-1:       #0f1e1a;
-  --surface-2:       #152824;
-  --surface-sunken:  #0b1815;
-  --surface-hover:   rgba(176, 228, 204, 0.06);
-  --text-primary:    #eef3f1;
-  --text-secondary:  #b2c3be;
-  --text-muted:      #7e918c;
-  --gridline:        #223330;
-  --baseline:        #2f423d;
-  --border:          rgba(176, 228, 204, 0.12);
-  --border-strong:   rgba(176, 228, 204, 0.20);
+  --page:            #1f232b;
+  --surface-1:       #262b34;
+  --surface-2:       #2c313c;
+  --surface-sunken:  #191d24;
+  --surface-hover:   rgba(255, 255, 255, 0.055);
+  --text-primary:    #eceef1;
+  --text-secondary:  #aab1bd;
+  --text-muted:      #79818e;
+  --gridline:        #353c47;
+  --baseline:        #434b57;
+  --border:          rgba(255, 255, 255, 0.10);
+  --border-strong:   rgba(255, 255, 255, 0.18);
 
   --accent:          #5cbfa0;
   --accent-strong:   #7bd0b5;

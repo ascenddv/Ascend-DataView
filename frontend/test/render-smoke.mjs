@@ -478,7 +478,7 @@ test('AuthGate routes /legal/terms and /legal/privacy by pathname (real routing,
 test('the marketing landing page renders cleanly with its CTAs and legal links', () => {
   const html = renderLanding();
   assertClean(html, 'landing');
-  assert.ok(html.includes('Only the metrics your data can support'), 'landing: hero headline missing');
+  assert.ok(html.includes('Understand what your data is telling you'), 'landing: hero headline missing');
   assert.ok(html.includes('href="/login?mode=signup"'), 'landing: Get started CTA missing');
   assert.ok(html.includes('href="/login"'), 'landing: Sign in link missing');
   assert.ok(html.includes('/legal/terms') && html.includes('/legal/privacy'), 'landing: legal links missing');

@@ -4,8 +4,8 @@
   "description": "Analytics for organizations with messy or incomplete data — only the metrics your data can support.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#f5f8f6",
-  "theme_color": "#091413",
+  "background_color": "#f6f7f8",
+  "theme_color": "#252a34",
   "icons": [
     { "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml" },
     { "src": "/maskable.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }

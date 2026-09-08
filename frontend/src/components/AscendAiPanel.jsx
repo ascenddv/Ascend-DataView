@@ -143,7 +143,7 @@ export default function AscendAiPanel({ initialOpen = false, initialMessages = n
     <>
       <div
         className="adv-fade-in fixed inset-0 z-40"
-        style={{ background: 'rgba(4, 12, 10, 0.28)' }}
+        style={{ background: 'rgba(15, 18, 23, 0.32)' }}
         onClick={() => setOpen(false)}
       />
       <section
@@ -204,7 +204,7 @@ export default function AscendAiPanel({ initialOpen = false, initialMessages = n
           <div className="adv-fade-up mt-10 flex flex-col items-center px-6 text-center">
             <span
               className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl"
-              style={{ background: 'var(--accent-weak)', color: 'var(--accent)' }}
+              style={{ background: 'var(--surface-sunken)', color: 'var(--text-secondary)' }}
             >
               <IconSparkles size={18} />
             </span>

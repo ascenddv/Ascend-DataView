@@ -109,7 +109,7 @@ function ProductVignette() {
           <div className="grid grid-cols-2 gap-3">
             <div
               className="border p-3"
-              style={{ borderColor: 'var(--border)', borderRadius: 'var(--radius)', borderLeft: '3px solid var(--accent)' }}
+              style={{ borderColor: 'var(--border)', borderRadius: 'var(--radius)', borderLeft: '3px solid var(--border-strong)' }}
             >
               <div className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
                 Finance health
@@ -117,7 +117,7 @@ function ProductVignette() {
               <div className="mt-1 text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
                 78<span className="text-sm font-normal" style={{ color: 'var(--text-muted)' }}> / 100</span>
               </div>
-              <div className="mt-1 text-xs font-medium" style={{ color: 'var(--accent)' }}>Stable</div>
+              <div className="mt-1 text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>Stable</div>
             </div>
             <div className="border p-3" style={{ borderColor: 'var(--border)', borderRadius: 'var(--radius)' }}>
               <div className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
@@ -160,7 +160,7 @@ function Step({ n, title, children }) {
     <div className="flex gap-3">
       <span
         className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold"
-        style={{ background: 'var(--accent)', color: 'var(--accent-contrast)' }}
+        style={{ background: 'var(--text-primary)', color: 'var(--surface-2)' }}
       >
         {n}
       </span>
@@ -195,21 +195,21 @@ export default function LandingPage() {
           <div>
             <p
               className="text-xs font-semibold uppercase tracking-[0.14em]"
-              style={{ color: 'var(--accent)' }}
+              style={{ color: 'var(--text-muted)' }}
             >
-              Analytics for imperfect data
+              Analytics for real-world data
             </p>
             <h1
               className="mt-3 text-4xl font-bold leading-[1.08] sm:text-5xl"
               style={{ color: 'var(--text-primary)' }}
             >
-              Only the metrics your data can support.
+              Understand what your data is telling you.
             </h1>
             <p className="mt-4 max-w-xl text-base leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
-              AscendDV turns messy, incomplete data into a dashboard of what your
-              organization can actually measure. No empty charts. No invented
-              numbers. When the data is thin, you get a smaller, honest picture —
-              never an error.
+              AscendDV reads whatever data you already have — even patchy exports —
+              and turns it into health scores, trends, risks, and plain-language
+              insight you can act on. When the data is thin, the picture gets
+              smaller, never wrong.
             </p>
             <div className="mt-7 flex flex-wrap items-center gap-3">
               <Button as="a" href={GET_STARTED} size="lg">Get started</Button>
@@ -227,11 +227,12 @@ export default function LandingPage() {
         <div className="mx-auto max-w-5xl px-5 py-14">
           <Reveal>
             <h2 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
-              Graceful degradation, by design
+              Insight you can actually trust
             </h2>
             <p className="mt-2 max-w-2xl text-sm leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
-              Most analytics tools assume clean, complete data and break when they
-              don&rsquo;t get it. AscendDV is built the other way around.
+              Most analytics tools assume clean, complete data and break — or worse,
+              guess — when they don&rsquo;t get it. AscendDV is built the other way
+              around, so every number on screen is one it can stand behind.
             </p>
           </Reveal>
           <div className="mt-8 grid gap-4 sm:grid-cols-3">
@@ -242,7 +243,7 @@ export default function LandingPage() {
             ].map(([t, d], i) => (
               <Reveal key={t} delay={i * 70}>
                 <div className="flex gap-2.5">
-                  <span style={{ color: 'var(--accent)' }} className="mt-0.5 shrink-0">
+                  <span style={{ color: 'var(--text-primary)' }} className="mt-0.5 shrink-0">
                     <IconCheck size={16} />
                   </span>
                   <div>
@@ -298,7 +299,7 @@ export default function LandingPage() {
           <Reveal className="sm:flex-1">
             <span
               className="mb-3 inline-flex h-10 w-10 items-center justify-center rounded-xl"
-              style={{ background: 'var(--accent-weak)', color: 'var(--accent)' }}
+              style={{ background: 'var(--surface-sunken)', color: 'var(--text-secondary)' }}
             >
               <IconSparkles size={20} />
             </span>

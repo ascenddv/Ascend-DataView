@@ -3,7 +3,7 @@
  * fade encodes graceful degradation, under a fixed top rule) plus the Geist wordmark.
  *
  *   variant  'lockup' (glyph + wordmark, default) | 'glyph'
- *   tone     'solid'  — filled #091413 tile, for light surfaces (default)
+ *   tone     'solid'  — filled #252A34 slate tile, for light surfaces (default)
  *            'onDark' — outlined tile + mint marks, for dark surfaces / hero art
  *   size     glyph edge length in px; the wordmark scales from it
  *
@@ -19,7 +19,7 @@ const BARS = [
 
 function Glyph({ size, tone }) {
   const onDark = tone === 'onDark';
-  const mark = onDark ? '#B0E4CC' : '#B0E4CC';
+  const mark = '#B0E4CC';
   const rule = '#408A71';
   return (
     <svg
@@ -33,7 +33,7 @@ function Glyph({ size, tone }) {
       {onDark ? (
         <rect x="5" y="5" width="90" height="90" rx="12" fill="none" stroke="#B0E4CC" strokeOpacity="0.32" strokeWidth="4" />
       ) : (
-        <rect x="4" y="4" width="92" height="92" rx="12" fill="#091413" />
+        <rect x="4" y="4" width="92" height="92" rx="12" fill="#252A34" />
       )}
       {BARS.map((b) => (
         <rect key={b.x} x={b.x} y={b.y} width="13" height={b.h} fill={mark} opacity={b.opacity} />

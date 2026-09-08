@@ -25,7 +25,7 @@ export default function EmptyState({ icon, title, children, action, className = 
     >
       <span
         className="mb-3 flex h-11 w-11 items-center justify-center rounded-xl"
-        style={{ background: 'var(--accent-weak)', color: 'var(--accent)' }}
+        style={{ background: 'var(--surface-sunken)', color: 'var(--text-muted)' }}
       >
         {icon || DefaultIcon}
       </span>
