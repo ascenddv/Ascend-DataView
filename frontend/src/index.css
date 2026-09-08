@@ -234,6 +234,7 @@ h1, h2, h3, h4 {
 }
 
 .adv-spin { animation: adv-spin 0.7s linear infinite; }
+.adv-pulse { animation: adv-pulse-soft 1.5s ease-in-out infinite; }
 
 /* Dashboard card surface: soft elevation, a quiet lift on hover. */
 .adv-card {

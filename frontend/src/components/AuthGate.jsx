@@ -3,6 +3,7 @@ import { getMe, logout as apiLogout, logoutAll as apiLogoutAll } from '../lib/ap
 import AuthPage from './AuthPage.jsx';
 import { VerifyEmailPage, ResetPasswordPage, AcceptInvitePage } from './AuthTokenPages.jsx';
 import { TermsPage, PrivacyPage } from './LegalPages.jsx';
+import Logo from './Logo.jsx';
 
 /**
  * Wraps the app: first handles the two token landing pages (/verify-email and
@@ -57,8 +58,14 @@ export default function AuthGate({ children }) {
 
   if (state.status === 'loading') {
     return (
-      <div className="flex min-h-screen items-center justify-center" style={{ background: 'var(--page)' }}>
-        <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
+      <div
+        className="flex min-h-screen flex-col items-center justify-center gap-3"
+        style={{ background: 'var(--page)' }}
+      >
+        <span className="adv-pulse">
+          <Logo variant="glyph" size={40} />
+        </span>
+        <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
           Loading…
         </p>
       </div>

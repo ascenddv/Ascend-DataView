@@ -3,11 +3,8 @@ export default function DashboardSkeleton() {
   return (
     <section aria-busy="true" aria-label="Loading dashboard">
       <div className="mb-4">
-        <div className="h-6 w-32 animate-pulse rounded" style={{ background: 'var(--gridline)' }} />
-        <div
-          className="mt-2 h-4 w-56 animate-pulse rounded"
-          style={{ background: 'var(--gridline)' }}
-        />
+        <div className="adv-skeleton h-6 w-32 rounded" />
+        <div className="adv-skeleton mt-2 h-4 w-56 rounded" />
       </div>
       <div
         className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
@@ -16,12 +13,8 @@ export default function DashboardSkeleton() {
         {Array.from({ length: 6 }).map((_, i) => (
           <div
             key={i}
-            className="h-32 animate-pulse border"
-            style={{
-              background: 'var(--surface-1)',
-              borderColor: 'var(--border)',
-              borderRadius: 'var(--radius)',
-            }}
+            className="adv-skeleton h-32"
+            style={{ borderRadius: 'var(--radius-lg)', animationDelay: `${i * 90}ms` }}
           />
         ))}
       </div>

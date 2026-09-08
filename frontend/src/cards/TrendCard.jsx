@@ -1,5 +1,6 @@
 import { LineChart, Line, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import CardShell, { CardLabel } from './CardShell.jsx';
+import { prefersReducedMotion } from '../lib/motion.js';
 import {
   formatValue,
   formatPercent,
@@ -80,7 +81,9 @@ export default function TrendCard({
               stroke="var(--series-1)"
               strokeWidth={2}
               dot={false}
-              isAnimationActive={false}
+              isAnimationActive={!prefersReducedMotion()}
+              animationDuration={650}
+              animationEasing="ease-out"
             />
           </LineChart>
         </ResponsiveContainer>

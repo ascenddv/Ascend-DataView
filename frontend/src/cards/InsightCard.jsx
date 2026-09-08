@@ -14,9 +14,27 @@ export default function InsightCard({ state, insight }) {
     return (
       <CardShell>
         <CardLabel>Insight</CardLabel>
-        <p className="mt-2 text-sm" style={{ color: 'var(--text-muted)' }}>
-          Generating insight…
-        </p>
+        <div className="mt-2 flex items-center gap-2 text-sm" style={{ color: 'var(--text-muted)' }}>
+          <span>Generating insight</span>
+          <span className="inline-flex items-center gap-1">
+            {[0, 1, 2].map((i) => (
+              <span
+                key={i}
+                aria-hidden="true"
+                className="inline-block h-1 w-1 rounded-full"
+                style={{
+                  background: 'currentColor',
+                  animation: 'adv-typing 1.1s ease-in-out infinite',
+                  animationDelay: `${i * 160}ms`,
+                }}
+              />
+            ))}
+          </span>
+        </div>
+        <div className="mt-3 grid gap-3 sm:grid-cols-2">
+          <div className="adv-skeleton h-16 rounded" />
+          <div className="adv-skeleton h-16 rounded" />
+        </div>
       </CardShell>
     );
   }

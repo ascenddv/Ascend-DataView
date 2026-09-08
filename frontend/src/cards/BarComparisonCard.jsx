@@ -9,6 +9,7 @@ import {
 } from 'recharts';
 import CardShell, { CardLabel } from './CardShell.jsx';
 import { formatValue } from '../lib/format.js';
+import { prefersReducedMotion } from '../lib/motion.js';
 
 /**
  * Bar Comparison card — magnitude of one measure across a handful of categories
@@ -60,7 +61,9 @@ export default function BarComparisonCard({
               dataKey="value"
               fill="var(--series-1)"
               radius={[4, 4, 4, 4]}
-              isAnimationActive={false}
+              isAnimationActive={!prefersReducedMotion()}
+              animationDuration={650}
+              animationEasing="ease-out"
             >
               <LabelList
                 dataKey="value"

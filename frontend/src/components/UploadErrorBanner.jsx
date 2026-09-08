@@ -4,10 +4,11 @@ export default function UploadErrorBanner({ message, onDismiss }) {
   return (
     <div
       role="alert"
-      className="flex items-start justify-between gap-4 rounded-xl border p-4"
+      className="adv-fade-down flex items-start justify-between gap-4 border p-4"
       style={{
         borderColor: 'var(--status-critical)',
         background: 'color-mix(in srgb, var(--status-critical) 6%, var(--surface-1))',
+        borderRadius: 'var(--radius-lg)',
       }}
     >
       <div className="flex items-start gap-2">

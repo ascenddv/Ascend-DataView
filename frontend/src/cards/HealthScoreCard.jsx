@@ -1,5 +1,6 @@
 import CardShell, { CardLabel } from './CardShell.jsx';
 import { healthBand } from '../lib/healthBands.js';
+import { useCountUp } from '../hooks/useCountUp.js';
 
 /**
  * Health Score card — a large 0–100 score with a qualitative label.
@@ -18,6 +19,7 @@ export default function HealthScoreCard({
 }) {
   const { label, color } = healthBand(score);
   const signalCount = subScores.length;
+  const shownScore = useCountUp(score);
 
   return (
     <CardShell accent={color} tint confidence={confidence} definition={definition}>
@@ -25,7 +27,7 @@ export default function HealthScoreCard({
 
       <div className="mt-2 flex items-end gap-2">
         <span className="text-4xl font-bold leading-none" style={{ color: 'var(--text-primary)' }}>
-          {score}
+          {shownScore}
         </span>
         <span className="text-sm" style={{ color: 'var(--text-muted)' }}>
           / 100
