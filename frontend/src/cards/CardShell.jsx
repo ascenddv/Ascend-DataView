@@ -11,9 +11,11 @@ export default function CardShell({
 }) {
   const style = {
     background: tint && accent
-      ? `color-mix(in srgb, ${accent} 5%, var(--surface-1))`
+      ? `color-mix(in srgb, ${accent} 6%, var(--surface-1))`
       : 'var(--surface-1)',
     borderColor: 'var(--border)',
+    borderRadius: 'var(--radius)',
+    padding: 'var(--card-pad)',
     ...(accent ? { borderLeftColor: accent, borderLeftWidth: '3px' } : null),
   };
 
@@ -21,9 +23,7 @@ export default function CardShell({
 
   return (
     <div
-      className={`relative flex h-full flex-col rounded-xl border p-4 ${
-        hasChrome ? 'pr-20' : ''
-      } ${className}`}
+      className={`relative flex h-full flex-col border ${hasChrome ? 'pr-16' : ''} ${className}`}
       style={style}
     >
       <CardChrome confidence={confidence} definition={definition} />
@@ -35,7 +35,7 @@ export default function CardShell({
 export function CardLabel({ children }) {
   return (
     <div
-      className="text-xs font-semibold uppercase tracking-wide"
+      className="text-[11px] font-semibold uppercase tracking-wider"
       style={{ color: 'var(--text-muted)' }}
     >
       {children}

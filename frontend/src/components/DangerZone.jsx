@@ -75,8 +75,12 @@ export default function DangerZone({ org, onReset }) {
 
   return (
     <section
-      className="mt-10 rounded-xl border p-4"
-      style={{ borderColor: 'var(--border)', background: 'var(--surface-1)' }}
+      className="border p-4"
+      style={{
+        borderColor: 'var(--border)',
+        background: 'var(--surface-1)',
+        borderRadius: 'var(--radius)',
+      }}
     >
       <button
         type="button"

@@ -9,12 +9,19 @@ export default function DashboardSkeleton() {
           style={{ background: 'var(--gridline)' }}
         />
       </div>
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div
+        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
+        style={{ gap: 'var(--grid-gap)' }}
+      >
         {Array.from({ length: 6 }).map((_, i) => (
           <div
             key={i}
-            className="h-32 animate-pulse rounded-xl border"
-            style={{ background: 'var(--surface-1)', borderColor: 'var(--border)' }}
+            className="h-32 animate-pulse border"
+            style={{
+              background: 'var(--surface-1)',
+              borderColor: 'var(--border)',
+              borderRadius: 'var(--radius)',
+            }}
           />
         ))}
       </div>

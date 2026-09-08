@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { fetchChatHistory, sendChatMessage, clearChat, fetchAscendaiUsage } from '../lib/api.js';
+import { registerAscendAiOpener } from '../lib/ascendai-bus.js';
+import { IconSparkles, IconClose } from '../lib/icons.jsx';
 
 /**
  * AscendAI — a slide-out chat panel available from every dashboard view.
@@ -23,6 +25,9 @@ export default function AscendAiPanel({ initialOpen = false, initialMessages = n
   const [usage, setUsage] = useState(initialUsage);
   const listRef = useRef(null);
   const inputRef = useRef(null);
+
+  // Let a nav control elsewhere in the shell open the panel.
+  useEffect(() => registerAscendAiOpener(() => setOpen(true)), []);
 
   // Feature state + today's count. If it comes back disabled the panel renders
   // nothing at all (no launcher).
@@ -124,10 +129,10 @@ export default function AscendAiPanel({ initialOpen = false, initialMessages = n
         type="button"
         onClick={() => setOpen(true)}
         aria-label="Ask AscendAI"
-        className="fixed bottom-5 right-5 z-40 inline-flex items-center gap-2 rounded-full px-4 py-2.5 text-sm font-semibold text-white shadow-lg"
-        style={{ background: 'var(--series-1)' }}
+        className="fixed bottom-5 right-5 z-40 inline-flex items-center gap-2 rounded-full px-4 py-2.5 text-sm font-semibold"
+        style={{ background: 'var(--series-1)', color: 'var(--accent-contrast)', boxShadow: 'var(--shadow-md)' }}
       >
-        <span aria-hidden="true">✦</span>
+        <IconSparkles size={16} />
         Ask AscendAI
       </button>
     );
@@ -138,8 +143,8 @@ export default function AscendAiPanel({ initialOpen = false, initialMessages = n
       role="dialog"
       aria-modal="true"
       aria-label="AscendAI chat"
-      className="fixed inset-y-0 right-0 z-40 flex w-full max-w-md flex-col border-l shadow-2xl"
-      style={{ background: 'var(--surface-1)', borderColor: 'var(--border)' }}
+      className="fixed inset-y-0 right-0 z-40 flex w-full max-w-md flex-col border-l"
+      style={{ background: 'var(--surface-2)', borderColor: 'var(--border)', boxShadow: 'var(--shadow-md)' }}
     >
       <header
         className="flex items-start justify-between gap-3 border-b p-4"
@@ -147,8 +152,8 @@ export default function AscendAiPanel({ initialOpen = false, initialMessages = n
       >
         <div>
           <div className="flex items-center gap-1.5">
-            <span aria-hidden="true" style={{ color: 'var(--series-1)' }}>
-              ✦
+            <span style={{ color: 'var(--series-1)' }}>
+              <IconSparkles size={15} />
             </span>
             <h2 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
               AscendAI
@@ -179,10 +184,10 @@ export default function AscendAiPanel({ initialOpen = false, initialMessages = n
             type="button"
             onClick={() => setOpen(false)}
             aria-label="Close AscendAI"
-            className="rounded-lg px-2 py-1 text-sm"
+            className="rounded-lg p-1.5 hover:bg-[var(--surface-hover)]"
             style={{ color: 'var(--text-muted)' }}
           >
-            ✕
+            <IconClose size={16} />
           </button>
         </div>
       </header>

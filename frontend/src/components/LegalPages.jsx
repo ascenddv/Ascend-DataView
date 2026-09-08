@@ -18,8 +18,13 @@ function DraftBanner() {
   return (
     <div
       role="note"
-      className="rounded-lg border px-4 py-3 text-xs font-medium"
-      style={{ borderColor: 'var(--status-warning, #b45309)', background: 'var(--surface-2, #fffbeb)', color: 'var(--text-primary)' }}
+      className="border px-4 py-3 text-xs font-medium"
+      style={{
+        borderColor: 'var(--status-warning)',
+        background: 'color-mix(in srgb, var(--status-warning) 12%, var(--surface-1))',
+        color: 'var(--text-primary)',
+        borderRadius: 'var(--radius-sm)',
+      }}
     >
       DRAFT — NOT LEGAL ADVICE — needs review by counsel before this product is offered commercially.
     </div>

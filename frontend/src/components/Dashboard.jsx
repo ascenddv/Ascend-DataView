@@ -34,7 +34,10 @@ function CardGridInner({ cards }) {
   for (const c of cards) if (!(c.type in firstOfType)) firstOfType[c.type] = c.key;
 
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+    <div
+      className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
+      style={{ gap: 'var(--grid-gap)' }}
+    >
       {cards.map(({ key, span, type, props }) => {
         const Component = COMPONENT_FOR_TYPE[type];
         // The tour highlights the first card of each type.
@@ -54,14 +57,19 @@ function CardGrid({ cards }) {
     <Suspense
       fallback={
         <div
-          className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3"
+          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
+          style={{ gap: 'var(--grid-gap)' }}
           aria-hidden="true"
         >
           {cards.map(({ key, span }) => (
             <div
               key={key}
-              className={`h-40 animate-pulse rounded-xl border ${span === 2 ? 'sm:col-span-2' : ''}`}
-              style={{ background: 'var(--surface-1)', borderColor: 'var(--border)' }}
+              className={`h-40 animate-pulse border ${span === 2 ? 'sm:col-span-2' : ''}`}
+              style={{
+                background: 'var(--surface-1)',
+                borderColor: 'var(--border)',
+                borderRadius: 'var(--radius)',
+              }}
             />
           ))}
         </div>
@@ -105,8 +113,12 @@ export default function Dashboard({
   if (!dataset.periodCount) {
     return (
       <section
-        className="rounded-xl border p-10 text-center"
-        style={{ background: 'var(--surface-1)', borderColor: 'var(--border)' }}
+        className="border p-10 text-center"
+        style={{
+          background: 'var(--surface-1)',
+          borderColor: 'var(--border)',
+          borderRadius: 'var(--radius)',
+        }}
       >
         <h2 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>
           No data yet
@@ -132,9 +144,9 @@ export default function Dashboard({
         <ViewTabs views={views} active={active} onChange={setView} />
       </div>
 
-      <header className="mb-4 flex items-start justify-between gap-4">
+      <header className="mb-5 flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 className="text-xl font-semibold" style={{ color: 'var(--text-primary)' }}>
+          <h2 className="text-xl font-semibold tracking-tight" style={{ color: 'var(--text-primary)' }}>
             {isOverview ? 'Overview' : active}
           </h2>
           <p className="mt-0.5 text-sm" style={{ color: 'var(--text-secondary)' }}>
@@ -142,12 +154,16 @@ export default function Dashboard({
           </p>
         </div>
         {isOverview && (
-          <div className="flex items-center gap-2">
+          <div className="flex shrink-0 items-center gap-2">
             <button
               type="button"
               onClick={() => setShowTour(true)}
-              className="rounded-lg border px-3 py-1.5 text-sm font-medium"
-              style={{ borderColor: 'var(--border)', color: 'var(--text-primary)' }}
+              className="whitespace-nowrap border px-3 py-1.5 text-sm font-medium hover:bg-[var(--surface-hover)]"
+              style={{
+                borderColor: 'var(--border)',
+                color: 'var(--text-primary)',
+                borderRadius: 'var(--radius-sm)',
+              }}
             >
               Take a tour
             </button>
@@ -175,8 +191,12 @@ export default function Dashboard({
         <CardGrid cards={cards} />
       ) : (
         <section
-          className="rounded-xl border p-10 text-center"
-          style={{ background: 'var(--surface-1)', borderColor: 'var(--border)' }}
+          className="border p-10 text-center"
+          style={{
+            background: 'var(--surface-1)',
+            borderColor: 'var(--border)',
+            borderRadius: 'var(--radius)',
+          }}
         >
           <h3 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>
             Nothing to show for {active} yet

@@ -45,8 +45,13 @@ export default function OnboardingWizard({ onComplete, onSkip }) {
   return (
     <section
       aria-label="Get started with AscendDV"
-      className="rounded-xl border p-6"
-      style={{ background: 'var(--surface-1)', borderColor: 'var(--border)' }}
+      className="border p-6"
+      style={{
+        background: 'var(--surface-2)',
+        borderColor: 'var(--border)',
+        borderRadius: 'var(--radius)',
+        boxShadow: 'var(--shadow-sm)',
+      }}
       data-testid="onboarding-wizard"
     >
       <div className="flex items-center justify-between">

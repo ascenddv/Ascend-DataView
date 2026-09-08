@@ -141,8 +141,14 @@ export default function DashboardTour({ metrics, onClose }) {
       )}
 
       <div
-        className="rounded-xl border p-4 shadow-xl"
-        style={{ ...cardStyle, background: 'var(--surface-1)', borderColor: 'var(--border)' }}
+        className="border p-4"
+        style={{
+          ...cardStyle,
+          background: 'var(--surface-2)',
+          borderColor: 'var(--border)',
+          borderRadius: 'var(--radius)',
+          boxShadow: 'var(--shadow-md)',
+        }}
       >
         <div className="flex items-center justify-between">
           <span className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>

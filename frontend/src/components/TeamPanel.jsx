@@ -96,7 +96,14 @@ export default function TeamPanel({ org, currentUser }) {
   }
 
   return (
-    <section className="rounded-xl border" style={{ borderColor: 'var(--border)', background: 'var(--surface-1)' }}>
+    <section
+      className="border"
+      style={{
+        borderColor: 'var(--border)',
+        background: 'var(--surface-1)',
+        borderRadius: 'var(--radius)',
+      }}
+    >
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}

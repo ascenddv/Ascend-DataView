@@ -49,10 +49,15 @@ export default function AuthPage({ onAuthed }) {
       style={{ background: 'var(--page)' }}
     >
       <div
-        className="w-full max-w-sm rounded-xl border p-6"
-        style={{ background: 'var(--surface-1)', borderColor: 'var(--border)' }}
+        className="w-full max-w-sm border p-6"
+        style={{
+          background: 'var(--surface-2)',
+          borderColor: 'var(--border)',
+          borderRadius: 'var(--radius)',
+          boxShadow: 'var(--shadow-sm)',
+        }}
       >
-        <h1 className="text-xl font-semibold" style={{ color: 'var(--text-primary)' }}>
+        <h1 className="text-xl font-semibold tracking-tight" style={{ color: 'var(--text-primary)' }}>
           AscendDV
         </h1>
         <p className="mt-0.5 text-sm" style={{ color: 'var(--text-secondary)' }}>

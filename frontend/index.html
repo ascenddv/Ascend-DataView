@@ -4,6 +4,26 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>AscendDV</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+    />
+    <script>
+      // Apply saved visual preferences before first paint so the theme never flashes.
+      (function () {
+        try {
+          var p = JSON.parse(localStorage.getItem("ascenddv.prefs") || "{}");
+          var el = document.documentElement;
+          if (p.theme === "light" || p.theme === "dark")
+            el.setAttribute("data-theme", p.theme);
+          if (p.density === "compact") el.setAttribute("data-density", "compact");
+          if (p.reduceMotion === true)
+            el.setAttribute("data-reduce-motion", "true");
+        } catch (e) {}
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

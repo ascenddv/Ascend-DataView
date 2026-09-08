@@ -36,8 +36,13 @@ export default class ErrorBoundary extends React.Component {
         style={{ background: 'var(--page)' }}
       >
         <div
-          className="w-full max-w-md rounded-xl border p-6 text-center"
-          style={{ background: 'var(--surface-1)', borderColor: 'var(--border)' }}
+          className="w-full max-w-md border p-6 text-center"
+          style={{
+            background: 'var(--surface-2)',
+            borderColor: 'var(--border)',
+            borderRadius: 'var(--radius)',
+            boxShadow: 'var(--shadow-sm)',
+          }}
         >
           <h1 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>
             Something went wrong

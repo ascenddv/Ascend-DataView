@@ -1,17 +1,64 @@
-import { Suspense, lazy, useState } from 'react';
+import { Suspense, lazy, useEffect, useState } from 'react';
 import AuthGate from './components/AuthGate.jsx';
+import { PreferencesProvider } from './components/PreferencesProvider.jsx';
+import AppShell from './components/AppShell.jsx';
 import Uploader from './components/Uploader.jsx';
 import ManualEntry from './components/ManualEntry.jsx';
 import IngestionSummary from './components/IngestionSummary.jsx';
 import MappingConfirmation from './components/MappingConfirmation.jsx';
 import UploadErrorBanner from './components/UploadErrorBanner.jsx';
 import Overview from './components/Overview.jsx';
-import DangerZone from './components/DangerZone.jsx';
+import SettingsPage from './components/SettingsPage.jsx';
 const OnboardingWizard = lazy(() => import('./components/OnboardingWizard.jsx'));
 import AscendAiPanel from './components/AscendAiPanel.jsx';
 import VerifyEmailBanner from './components/VerifyEmailBanner.jsx';
-import TeamPanel from './components/TeamPanel.jsx';
 import { completeOnboarding } from './lib/api.js';
+
+const SECTIONS = ['dashboard', 'data', 'settings'];
+
+function sectionFromHash() {
+  if (typeof window === 'undefined') return 'dashboard';
+  const m = /^#\/([a-z]+)/.exec(window.location.hash || '');
+  return m && SECTIONS.includes(m[1]) ? m[1] : 'dashboard';
+}
+
+function stackStyle() {
+  return { display: 'flex', flexDirection: 'column', gap: 'var(--stack-gap)' };
+}
+
+/** The Data section — the upload / manual-entry inputs, on their own tab. */
+function DataSection({
+  pendingMapping,
+  onResult,
+  onError,
+  onNeedsConfirmation,
+  onCancelMapping,
+  onEntered,
+}) {
+  return (
+    <div style={stackStyle()}>
+      <div>
+        <h1 className="text-xl font-semibold" style={{ color: 'var(--text-primary)' }}>
+          Add data
+        </h1>
+        <p className="mt-0.5 text-sm" style={{ color: 'var(--text-secondary)' }}>
+          Upload a CSV or Excel export, or add a single period by hand. Uploads merge into your
+          stored history — they never replace it.
+        </p>
+      </div>
+      {pendingMapping ? (
+        <MappingConfirmation
+          pending={pendingMapping}
+          onConfirmed={onResult}
+          onCancel={onCancelMapping}
+        />
+      ) : (
+        <Uploader onResult={onResult} onError={onError} onNeedsConfirmation={onNeedsConfirmation} />
+      )}
+      <ManualEntry onEntered={onEntered} />
+    </div>
+  );
+}
 
 function Workspace({ user, org, onLogout, onLogoutAll }) {
   const [report, setReport] = useState(null);
@@ -20,6 +67,26 @@ function Workspace({ user, org, onLogout, onLogoutAll }) {
   const [dataVersion, setDataVersion] = useState(0);
   const [onboarded, setOnboarded] = useState(org.onboardingCompleted === true);
   const [autoTour, setAutoTour] = useState(false);
+  const [section, setSection] = useState(sectionFromHash);
+
+  useEffect(() => {
+    const onHash = () => setSection(sectionFromHash());
+    window.addEventListener('hashchange', onHash);
+    return () => window.removeEventListener('hashchange', onHash);
+  }, []);
+
+  function go(next) {
+    setSection(next);
+    if (typeof window === 'undefined') return;
+    // Only ever touch the hash — the path is reserved for AuthGate's email-link routing.
+    if (next === 'dashboard') {
+      if (window.location.hash) {
+        window.history.replaceState(null, '', window.location.pathname + window.location.search);
+      }
+    } else if (window.location.hash !== `#/${next}`) {
+      window.history.replaceState(null, '', `#/${next}`);
+    }
+  }
 
   // Persist onboarding as done. Per the spec this happens ONLY on tour
   // completion, an explicit tour skip, or an explicit wizard skip — never just
@@ -36,6 +103,7 @@ function Workspace({ user, org, onLogout, onLogoutAll }) {
     setPendingMapping(null);
     setReport(json);
     setDataVersion((v) => v + 1);
+    go('dashboard');
   }
 
   function handleNeedsConfirmation(json) {
@@ -46,104 +114,114 @@ function Workspace({ user, org, onLogout, onLogoutAll }) {
 
   function handleWizardComplete(result) {
     // Leave the wizard and start the tour, but DON'T persist onboarding yet —
-    // that waits until the tour is finished or skipped. If the user closes the
-    // tab now, next login re-runs onboarding so the tour still gets shown.
+    // that waits until the tour is finished or skipped.
     setOnboarded(true);
     setAutoTour(true);
     handleResult(result.report);
   }
 
-  return (
-    <div className="min-h-screen" style={{ background: 'var(--page)' }}>
-      <div className="mx-auto max-w-6xl space-y-6 px-6 py-10">
-        <header className="flex items-start justify-between gap-4">
-          <div>
-            <h1
-              className="text-2xl font-semibold tracking-tight"
+  if (!onboarded) {
+    return (
+      <div className="min-h-screen" style={{ background: 'var(--page)' }}>
+        <div className="mx-auto max-w-2xl px-6 py-10" style={stackStyle()}>
+          <header className="flex items-center justify-between">
+            <span
+              className="text-lg font-semibold tracking-tight"
               style={{ color: 'var(--text-primary)' }}
             >
               AscendDV
-            </h1>
-            <p className="mt-0.5 text-sm" style={{ color: 'var(--text-secondary)' }}>
-              {org.name} · {user.email}
-            </p>
-          </div>
-          <div className="flex flex-col items-end gap-1">
+            </span>
             <button
               type="button"
               onClick={onLogout}
-              className="rounded-lg border px-3 py-1.5 text-sm"
-              style={{ borderColor: 'var(--border)', color: 'var(--text-secondary)' }}
-            >
-              Sign out
-            </button>
-            <button
-              type="button"
-              onClick={onLogoutAll}
               className="text-xs underline"
               style={{ color: 'var(--text-muted)' }}
             >
-              Sign out of all devices
+              Sign out
             </button>
-          </div>
-        </header>
+          </header>
 
-        {user.emailVerified === false && <VerifyEmailBanner email={user.email} />}
+          {user.emailVerified === false && <VerifyEmailBanner email={user.email} />}
 
-        {!onboarded ? (
           <Suspense fallback={null}>
             <OnboardingWizard onComplete={handleWizardComplete} onSkip={markOnboardingDone} />
           </Suspense>
-        ) : (
-          <>
-            <Uploader
-              onResult={handleResult}
-              onError={setUploadError}
-              onNeedsConfirmation={handleNeedsConfirmation}
-            />
-            <ManualEntry onEntered={() => setDataVersion((v) => v + 1)} />
+
+          <footer className="pt-2 text-center text-xs" style={{ color: 'var(--text-muted)' }}>
+            <a href="/legal/terms" style={{ textDecoration: 'underline' }}>
+              Terms
+            </a>
+            {' · '}
+            <a href="/legal/privacy" style={{ textDecoration: 'underline' }}>
+              Privacy
+            </a>
+          </footer>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <AppShell
+        user={user}
+        org={org}
+        section={section}
+        onSection={go}
+        onLogout={onLogout}
+        onLogoutAll={onLogoutAll}
+        banner={
+          user.emailVerified === false ? <VerifyEmailBanner email={user.email} /> : null
+        }
+      >
+        {section === 'dashboard' && (
+          <div style={stackStyle()}>
             <UploadErrorBanner message={uploadError} onDismiss={() => setUploadError(null)} />
-            {pendingMapping && (
-              <MappingConfirmation
-                pending={pendingMapping}
-                onConfirmed={handleResult}
-                onCancel={() => setPendingMapping(null)}
-              />
-            )}
             {report && <IngestionSummary report={report} onDismiss={() => setReport(null)} />}
-
-            <main>
-              <Overview
-                key={dataVersion}
-                autoStartTour={autoTour}
-                onTourDone={() => {
-                  setAutoTour(false);
-                  markOnboardingDone();
-                }}
-              />
-            </main>
-
-            <TeamPanel org={org} currentUser={user} />
-
-            {user.role === 'owner' && (
-              <DangerZone org={org} onReset={() => setDataVersion((v) => v + 1)} />
-            )}
-          </>
+            <Overview
+              key={dataVersion}
+              autoStartTour={autoTour}
+              onTourDone={() => {
+                setAutoTour(false);
+                markOnboardingDone();
+              }}
+            />
+          </div>
         )}
 
-        <footer className="pt-6 text-center text-xs" style={{ color: 'var(--text-muted)' }}>
-          <a href="/legal/terms" style={{ textDecoration: 'underline' }}>Terms</a>
-          {' · '}
-          <a href="/legal/privacy" style={{ textDecoration: 'underline' }}>Privacy</a>
-        </footer>
-      </div>
+        {section === 'data' && (
+          <DataSection
+            pendingMapping={pendingMapping}
+            onResult={handleResult}
+            onError={setUploadError}
+            onNeedsConfirmation={handleNeedsConfirmation}
+            onCancelMapping={() => setPendingMapping(null)}
+            onEntered={() => {
+              setDataVersion((v) => v + 1);
+              go('dashboard');
+            }}
+          />
+        )}
 
-      {/* AscendAI — available from every dashboard view once past onboarding */}
-      {onboarded && <AscendAiPanel />}
-    </div>
+        {section === 'settings' && (
+          <SettingsPage
+            org={org}
+            currentUser={user}
+            onReset={() => setDataVersion((v) => v + 1)}
+          />
+        )}
+      </AppShell>
+
+      {/* AscendAI — available from every section once past onboarding */}
+      <AscendAiPanel />
+    </>
   );
 }
 
 export default function App() {
-  return <AuthGate>{(auth) => <Workspace {...auth} />}</AuthGate>;
+  return (
+    <PreferencesProvider>
+      <AuthGate>{(auth) => <Workspace {...auth} />}</AuthGate>
+    </PreferencesProvider>
+  );
 }

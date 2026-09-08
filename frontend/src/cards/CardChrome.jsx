@@ -35,10 +35,12 @@ function Popover({ open, children }) {
     <div
       role="tooltip"
       hidden={!open}
-      className="absolute right-0 top-full z-10 mt-1 w-60 rounded-lg border p-3 text-left text-xs shadow-lg"
+      className="absolute right-0 top-full z-10 mt-1 w-60 border p-3 text-left text-xs"
       style={{
-        background: 'var(--surface-1)',
+        background: 'var(--surface-2)',
         borderColor: 'var(--border)',
+        borderRadius: 'var(--radius-sm)',
+        boxShadow: 'var(--shadow-sm)',
         color: 'var(--text-secondary)',
       }}
     >

@@ -23,8 +23,13 @@ export default function VerifyEmailBanner({ email }) {
   return (
     <div
       role="status"
-      className="flex flex-wrap items-center justify-between gap-3 rounded-lg border px-4 py-3 text-sm"
-      style={{ borderColor: 'var(--status-warning, #b45309)', background: 'var(--surface-2, #fffbeb)', color: 'var(--text-primary)' }}
+      className="flex flex-wrap items-center justify-between gap-3 border px-4 py-3 text-sm"
+      style={{
+        borderColor: 'var(--status-warning)',
+        background: 'color-mix(in srgb, var(--status-warning) 12%, var(--surface-1))',
+        color: 'var(--text-primary)',
+        borderRadius: 'var(--radius-sm)',
+      }}
     >
       <span>
         Verify your email{email ? ` (${email})` : ''} to enable uploads, AscendAI and team invites.

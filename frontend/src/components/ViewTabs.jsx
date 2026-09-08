@@ -4,7 +4,7 @@ import { OVERVIEW } from '../cards/registry.js';
 export default function ViewTabs({ views, active, onChange }) {
   return (
     <nav
-      className="mb-4 flex gap-1 overflow-x-auto border-b pb-px"
+      className="mb-5 flex gap-1 overflow-x-auto border-b pb-px"
       style={{ borderColor: 'var(--border)' }}
       aria-label="Dashboard views"
     >
@@ -17,10 +17,13 @@ export default function ViewTabs({ views, active, onChange }) {
             type="button"
             onClick={() => onChange(v)}
             aria-current={isActive ? 'page' : undefined}
-            className="whitespace-nowrap px-3 py-2 text-sm font-medium"
+            className={`whitespace-nowrap px-3 py-2.5 text-sm font-medium transition-colors ${
+              isActive ? '' : 'hover:text-[var(--text-primary)]'
+            }`}
             style={{
-              color: isActive ? 'var(--series-1)' : 'var(--text-secondary)',
+              color: isActive ? 'var(--series-1)' : 'var(--text-muted)',
               borderBottom: `2px solid ${isActive ? 'var(--series-1)' : 'transparent'}`,
+              marginBottom: '-1px',
             }}
           >
             {label}

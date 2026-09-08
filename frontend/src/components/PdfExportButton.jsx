@@ -31,8 +31,12 @@ export default function PdfExportButton() {
       type="button"
       onClick={run}
       disabled={status === 'busy'}
-      className="rounded-lg border px-3 py-1.5 text-sm font-medium disabled:opacity-60"
-      style={{ borderColor: 'var(--border)', color: 'var(--text-primary)' }}
+      className="border px-3 py-1.5 text-sm font-medium hover:bg-[var(--surface-hover)] disabled:opacity-60"
+      style={{
+        borderColor: 'var(--border)',
+        color: 'var(--text-primary)',
+        borderRadius: 'var(--radius-sm)',
+      }}
     >
       {status === 'busy'
         ? 'Preparing PDF…'

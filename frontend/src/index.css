@@ -1,48 +1,164 @@
 @import "tailwindcss";
 
 /*
- * Data-viz + surface palette — the validated reference palette from the dataviz
- * skill (light steps, plus the skill's hand-picked dark steps). Referenced by
- * role from both Tailwind arbitrary values and Recharts props, so light/dark
- * swap in exactly one place.
+ * ─────────────────────────────────────────────────────────────────────────────
+ * AscendDV design tokens
+ * ─────────────────────────────────────────────────────────────────────────────
+ * Role-based custom properties consumed from Tailwind arbitrary values
+ * (e.g. bg-[var(--surface-1)]) and from Recharts props, so a light/dark or
+ * density change happens in exactly one place. The data-viz colour steps are
+ * the validated reference palette from the dataviz skill; the surrounding
+ * surface / shape / elevation / density scale is the Minimalism & Swiss +
+ * Data-Dense Dashboard system for this product.
+ *
+ * Theme resolution:
+ *   :root                                   → light (OS light or unset)
+ *   @media (prefers-color-scheme: dark)     → dark, UNLESS the user forced light
+ *   :root[data-theme="dark"]                → dark, always (Settings override)
+ *   :root[data-theme="light"]              → light, always (Settings override)
  */
+
 :root {
+  /* Typography */
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI",
+    Roboto, Helvetica, Arial, sans-serif;
+
+  /* Surfaces & text */
   --page:            #f9f9f7;
   --surface-1:       #fcfcfb;
+  --surface-2:       #ffffff;
+  --surface-hover:   rgba(11, 11, 11, 0.04);
   --text-primary:    #0b0b0b;
   --text-secondary:  #52514e;
   --text-muted:      #898781;
   --gridline:        #e1e0d9;
   --baseline:        #c3c2b7;
   --border:          rgba(11, 11, 11, 0.10);
+  --border-strong:   rgba(11, 11, 11, 0.16);
 
-  --series-1:        #2a78d6;   /* single-hue charts: trend line, comparison bars */
+  /* Accent (single hue — trend lines, comparison bars, active nav/tabs, CTAs) */
+  --series-1:        #2a78d6;
+  --accent:          #2a78d6;
+  --accent-weak:     rgba(42, 120, 214, 0.10);
+  --accent-contrast: #ffffff;
 
+  /* Status / semantic */
   --status-good:     #0ca30c;
   --status-warning:  #fab219;
   --status-serious:  #ec835a;
   --status-critical: #d03b3b;
-  --delta-up:        #006300;   /* "up is good" text, light surface */
+  --delta-up:        #006300;
+
+  /* Shape & elevation */
+  --radius-sm: 8px;
+  --radius:    12px;
+  --radius-lg: 16px;
+  --shadow-sm: 0 1px 2px rgba(11, 11, 11, 0.05), 0 4px 14px rgba(11, 11, 11, 0.06);
+  --shadow-md: 0 4px 12px rgba(11, 11, 11, 0.08), 0 16px 40px rgba(11, 11, 11, 0.10);
+
+  /* Density (overridden under [data-density="compact"]) */
+  --card-pad:  20px;
+  --grid-gap:  16px;
+  --shell-pad: 32px;
+  --stack-gap: 24px;
+
+  /* Shell */
+  --sidebar-w: 244px;
 }
 
+/* ── Auto dark: follow the OS unless the user forced light ─────────────────── */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --page:            #0d0d0d;
     --surface-1:       #1a1a19;
+    --surface-2:       #232322;
+    --surface-hover:   rgba(255, 255, 255, 0.05);
+    --page:            #0d0d0d;
     --text-primary:    #ffffff;
     --text-secondary:  #c3c2b7;
     --text-muted:      #898781;
     --gridline:        #2c2c2a;
     --baseline:        #383835;
     --border:          rgba(255, 255, 255, 0.10);
+    --border-strong:   rgba(255, 255, 255, 0.16);
 
     --series-1:        #3987e5;
+    --accent:          #3987e5;
+    --accent-weak:     rgba(57, 135, 229, 0.16);
 
     --delta-up:        #0ca30c;
+
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.40), 0 8px 24px rgba(0, 0, 0, 0.45);
+    --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.45), 0 24px 60px rgba(0, 0, 0, 0.55);
   }
+}
+
+/* ── Forced dark: Settings override, wins over the OS ─────────────────────── */
+:root[data-theme="dark"] {
+  --surface-1:       #1a1a19;
+  --surface-2:       #232322;
+  --surface-hover:   rgba(255, 255, 255, 0.05);
+  --page:            #0d0d0d;
+  --text-primary:    #ffffff;
+  --text-secondary:  #c3c2b7;
+  --text-muted:      #898781;
+  --gridline:        #2c2c2a;
+  --baseline:        #383835;
+  --border:          rgba(255, 255, 255, 0.10);
+  --border-strong:   rgba(255, 255, 255, 0.16);
+
+  --series-1:        #3987e5;
+  --accent:          #3987e5;
+  --accent-weak:     rgba(57, 135, 229, 0.16);
+
+  --delta-up:        #0ca30c;
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.40), 0 8px 24px rgba(0, 0, 0, 0.45);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.45), 0 24px 60px rgba(0, 0, 0, 0.55);
+}
+
+/* ── Compact density: Settings override ──────────────────────────────────── */
+:root[data-density="compact"] {
+  --card-pad:  14px;
+  --grid-gap:  12px;
+  --shell-pad: 20px;
+  --stack-gap: 16px;
+}
+
+/* ── Base ───────────────────────────────────────────────────────────────── */
+html {
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  color-scheme: light dark;
 }
 
 html, body {
   background: var(--page);
   color: var(--text-primary);
+}
+
+:focus-visible {
+  outline: 2px solid var(--series-1);
+  outline-offset: 2px;
+  border-radius: 3px;
+}
+
+/* ── Reduced motion: honour the OS setting AND the explicit Settings toggle ─ */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+:root[data-reduce-motion="true"] *,
+:root[data-reduce-motion="true"] *::before,
+:root[data-reduce-motion="true"] *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
 }
