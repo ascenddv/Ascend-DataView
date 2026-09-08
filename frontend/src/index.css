@@ -100,16 +100,16 @@
 /* ── DARK-TOKENS · auto: follow the OS unless the user forced light ────────── */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --page:            #1f232b;
-    --surface-1:       #262b34;
-    --surface-2:       #2c313c;
+    --page:            #101317;
+    --surface-1:       #14171b;
+    --surface-2:       #0d0e11;
     --surface-sunken:  #191d24;
     --surface-hover:   rgba(255, 255, 255, 0.055);
     --text-primary:    #eceef1;
     --text-secondary:  #aab1bd;
     --text-muted:      #79818e;
     --gridline:        #353c47;
-    --baseline:        #434b57;
+    --baseline:        #1d2125;
     --border:          rgba(255, 255, 255, 0.10);
     --border-strong:   rgba(255, 255, 255, 0.18);
 
@@ -132,16 +132,16 @@
 
 /* ── DARK-TOKENS · forced: Settings override, wins over the OS ─────────────── */
 :root[data-theme="dark"] {
-  --page:            #1f232b;
-  --surface-1:       #262b34;
-  --surface-2:       #2c313c;
+  --page:            #101317;
+  --surface-1:       #14171b;
+  --surface-2:       #0d0e11;
   --surface-sunken:  #191d24;
   --surface-hover:   rgba(255, 255, 255, 0.055);
   --text-primary:    #eceef1;
   --text-secondary:  #aab1bd;
   --text-muted:      #79818e;
   --gridline:        #353c47;
-  --baseline:        #434b57;
+  --baseline:        #1d2125;
   --border:          rgba(255, 255, 255, 0.10);
   --border-strong:   rgba(255, 255, 255, 0.18);
 
