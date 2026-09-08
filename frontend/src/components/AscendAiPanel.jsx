@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { fetchChatHistory, sendChatMessage, clearChat, fetchAscendaiUsage } from '../lib/api.js';
 import { registerAscendAiOpener } from '../lib/ascendai-bus.js';
 import { IconSparkles, IconClose } from '../lib/icons.jsx';
+import { Button } from './ui/primitives.jsx';
 
 /**
  * AscendAI — a slide-out chat panel available from every dashboard view.
@@ -129,8 +130,8 @@ export default function AscendAiPanel({ initialOpen = false, initialMessages = n
         type="button"
         onClick={() => setOpen(true)}
         aria-label="Ask AscendAI"
-        className="fixed bottom-5 right-5 z-40 inline-flex items-center gap-2 rounded-full px-4 py-2.5 text-sm font-semibold"
-        style={{ background: 'var(--series-1)', color: 'var(--accent-contrast)', boxShadow: 'var(--shadow-md)' }}
+        className="adv-fade-up fixed bottom-5 right-5 z-40 inline-flex items-center gap-2 rounded-full px-4 py-2.5 text-sm font-semibold transition-transform duration-[140ms] ease-out hover:-translate-y-0.5"
+        style={{ background: 'var(--accent)', color: 'var(--accent-contrast)', boxShadow: 'var(--shadow-md)' }}
       >
         <IconSparkles size={16} />
         Ask AscendAI
@@ -139,13 +140,19 @@ export default function AscendAiPanel({ initialOpen = false, initialMessages = n
   }
 
   return (
-    <section
-      role="dialog"
-      aria-modal="true"
-      aria-label="AscendAI chat"
-      className="fixed inset-y-0 right-0 z-40 flex w-full max-w-md flex-col border-l"
-      style={{ background: 'var(--surface-2)', borderColor: 'var(--border)', boxShadow: 'var(--shadow-md)' }}
-    >
+    <>
+      <div
+        className="adv-fade-in fixed inset-0 z-40"
+        style={{ background: 'rgba(4, 12, 10, 0.28)' }}
+        onClick={() => setOpen(false)}
+      />
+      <section
+        role="dialog"
+        aria-modal="true"
+        aria-label="AscendAI chat"
+        className="adv-slide-in-right fixed inset-y-0 right-0 z-40 flex w-full max-w-md flex-col border-l"
+        style={{ background: 'var(--surface-2)', borderColor: 'var(--border)', boxShadow: 'var(--shadow-lg)' }}
+      >
       <header
         className="flex items-start justify-between gap-3 border-b p-4"
         style={{ borderColor: 'var(--border)' }}
@@ -253,19 +260,30 @@ export default function AscendAiPanel({ initialOpen = false, initialMessages = n
         })}
 
         {pending && (
-          <div className="w-full">
+          <div className="adv-fade-up w-full">
             <div
               className="mb-1 text-[10px] font-semibold uppercase tracking-wide"
               style={{ color: 'var(--text-muted)' }}
             >
               AscendAI
             </div>
-            <div className="inline-flex items-center gap-2 text-sm" style={{ color: 'var(--text-muted)' }}>
-              <span
-                className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-current border-t-transparent"
-                aria-hidden="true"
-              />
-              Thinking&hellip;
+            <div
+              className="inline-flex items-center gap-1.5 rounded-2xl rounded-bl-sm border px-3 py-2.5"
+              style={{ background: 'var(--page)', borderColor: 'var(--border)' }}
+              aria-label="AscendAI is thinking"
+            >
+              {[0, 1, 2].map((i) => (
+                <span
+                  key={i}
+                  aria-hidden="true"
+                  className="inline-block h-1.5 w-1.5 rounded-full"
+                  style={{
+                    background: 'var(--text-muted)',
+                    animation: 'adv-typing 1.1s ease-in-out infinite',
+                    animationDelay: `${i * 160}ms`,
+                  }}
+                />
+              ))}
             </div>
           </div>
         )}
@@ -280,19 +298,15 @@ export default function AscendAiPanel({ initialOpen = false, initialMessages = n
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={onKeyDown}
             placeholder="Ask about your data…"
-            className="max-h-32 flex-1 resize-none rounded-lg border px-3 py-2 text-sm outline-none"
-            style={{ borderColor: 'var(--border)', background: 'var(--page)', color: 'var(--text-primary)' }}
+            className="max-h-32 flex-1 resize-none rounded-[10px] border px-3 py-2 text-sm outline-none transition-[border-color,box-shadow] duration-[120ms] focus:border-[var(--accent)] focus:shadow-[0_0_0_3px_var(--accent-weak)]"
+            style={{ borderColor: 'var(--border-strong)', background: 'var(--surface-2)', color: 'var(--text-primary)' }}
           />
-          <button
-            type="submit"
-            disabled={!input.trim() || pending}
-            className="rounded-lg px-3 py-2 text-sm font-semibold text-white disabled:opacity-50"
-            style={{ background: 'var(--series-1)' }}
-          >
+          <Button type="submit" disabled={!input.trim() || pending}>
             Send
-          </button>
+          </Button>
         </div>
       </form>
-    </section>
+      </section>
+    </>
   );
 }

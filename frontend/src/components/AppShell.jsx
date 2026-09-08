@@ -36,13 +36,13 @@ export default function AppShell({
       {navOpen && (
         <div className="fixed inset-0 z-50 md:hidden">
           <div
-            className="absolute inset-0"
+            className="adv-fade-in absolute inset-0"
             style={{ background: 'rgba(0, 0, 0, 0.45)' }}
             onClick={() => setNavOpen(false)}
           />
           <div
-            className="absolute inset-y-0 left-0"
-            style={{ width: 'var(--sidebar-w)', boxShadow: 'var(--shadow-md)' }}
+            className="adv-slide-in-left absolute inset-y-0 left-0"
+            style={{ width: 'var(--sidebar-w)', boxShadow: 'var(--shadow-lg)' }}
           >
             <Sidebar
               section={section}

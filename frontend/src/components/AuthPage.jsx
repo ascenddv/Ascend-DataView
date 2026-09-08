@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { login, signup, forgotPassword } from '../lib/api.js';
 import Logo from './Logo.jsx';
+import { Button, Input, Field } from './ui/primitives.jsx';
 
 /** Login / signup / forgot-password screen shown when there is no valid session. */
 export default function AuthPage({ onAuthed }) {
@@ -41,21 +42,18 @@ export default function AuthPage({ onAuthed }) {
     }
   }
 
-  const field =
-    'mt-1 w-full rounded-lg border px-3 py-2 text-sm outline-none';
-
   return (
     <div
       className="flex min-h-screen items-center justify-center px-6"
       style={{ background: 'var(--page)' }}
     >
       <div
-        className="w-full max-w-sm border p-6"
+        className="adv-scale-in w-full max-w-sm border p-7"
         style={{
           background: 'var(--surface-2)',
           borderColor: 'var(--border)',
-          borderRadius: 'var(--radius)',
-          boxShadow: 'var(--shadow-sm)',
+          borderRadius: 'var(--radius-lg)',
+          boxShadow: 'var(--shadow-md)',
         }}
       >
         <h1>
@@ -87,46 +85,31 @@ export default function AuthPage({ onAuthed }) {
         ) : (
         <form onSubmit={submit} className="mt-5 space-y-3">
           {mode === 'signup' && (
-            <label className="block text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
-              Organization name
-              <input
-                className={field}
-                style={{ borderColor: 'var(--border)', background: 'var(--page)', color: 'var(--text-primary)' }}
-                value={orgName}
-                onChange={(e) => setOrgName(e.target.value)}
-                required
-              />
-            </label>
+            <Field label="Organization name">
+              <Input value={orgName} onChange={(e) => setOrgName(e.target.value)} required />
+            </Field>
           )}
-          <label className="block text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
-            Email
-            <input
+          <Field label="Email">
+            <Input
               type="email"
-              className={field}
-              style={{ borderColor: 'var(--border)', background: 'var(--page)', color: 'var(--text-primary)' }}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
             />
-          </label>
+          </Field>
           {mode !== 'forgot' && (
-            <label className="block text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
-              Password
-              <input
+            <Field
+              label="Password"
+              hint={mode === 'signup' ? 'At least 10 characters. Breached passwords are rejected.' : undefined}
+            >
+              <Input
                 type="password"
-                className={field}
-                style={{ borderColor: 'var(--border)', background: 'var(--page)', color: 'var(--text-primary)' }}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 minLength={mode === 'signup' ? 10 : undefined}
                 required
               />
-              {mode === 'signup' && (
-                <span className="mt-1 block font-normal" style={{ color: 'var(--text-muted)' }}>
-                  At least 10 characters. Breached passwords are rejected.
-                </span>
-              )}
-            </label>
+            </Field>
           )}
 
           {mode === 'login' && (
@@ -169,12 +152,7 @@ export default function AuthPage({ onAuthed }) {
             </p>
           )}
 
-          <button
-            type="submit"
-            disabled={busy}
-            className="w-full rounded-lg px-3 py-2 text-sm font-semibold text-white disabled:opacity-60"
-            style={{ background: 'var(--series-1)' }}
-          >
+          <Button type="submit" disabled={busy} size="lg" className="w-full">
             {busy
               ? 'Working…'
               : mode === 'login'
@@ -182,7 +160,7 @@ export default function AuthPage({ onAuthed }) {
                 : mode === 'signup'
                   ? 'Create account'
                   : 'Email me a reset link'}
-          </button>
+          </Button>
         </form>
         )}
 

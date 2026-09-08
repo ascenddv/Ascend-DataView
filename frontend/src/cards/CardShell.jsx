@@ -11,10 +11,8 @@ export default function CardShell({
 }) {
   const style = {
     background: tint && accent
-      ? `color-mix(in srgb, ${accent} 6%, var(--surface-1))`
+      ? `color-mix(in srgb, ${accent} 7%, var(--surface-1))`
       : 'var(--surface-1)',
-    borderColor: 'var(--border)',
-    borderRadius: 'var(--radius)',
     padding: 'var(--card-pad)',
     ...(accent ? { borderLeftColor: accent, borderLeftWidth: '3px' } : null),
   };
@@ -23,7 +21,7 @@ export default function CardShell({
 
   return (
     <div
-      className={`relative flex h-full flex-col border ${hasChrome ? 'pr-16' : ''} ${className}`}
+      className={`adv-card relative flex h-full flex-col ${hasChrome ? 'pr-16' : ''} ${className}`}
       style={style}
     >
       <CardChrome confidence={confidence} definition={definition} />

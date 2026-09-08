@@ -1,5 +1,6 @@
 import { usePreferencesContext } from './PreferencesProvider.jsx';
 import { IconMenu, IconSun, IconMoon, IconMonitor } from '../lib/icons.jsx';
+import { Button, IconButton } from './ui/primitives.jsx';
 
 const NEXT_THEME = { system: 'light', light: 'dark', dark: 'system' };
 const THEME_ICON = { system: IconMonitor, light: IconSun, dark: IconMoon };
@@ -16,40 +17,32 @@ export default function Topbar({ title, onMenu, onLogoutAll }) {
 
   return (
     <header
-      className="sticky top-0 z-30 flex items-center justify-between gap-4 border-b py-3"
+      className="adv-frost sticky top-0 z-30 flex items-center justify-between gap-4 border-b py-3"
       style={{
-        background: 'var(--surface-2)',
         borderColor: 'var(--border)',
         paddingLeft: 'var(--shell-pad)',
         paddingRight: 'var(--shell-pad)',
       }}
     >
       <div className="flex items-center gap-3">
-        <button
-          type="button"
-          onClick={onMenu}
-          aria-label="Open menu"
-          className="rounded-md p-1 md:hidden"
-          style={{ color: 'var(--text-secondary)' }}
-        >
+        <IconButton onClick={onMenu} label="Open menu" className="md:hidden">
           <IconMenu />
-        </button>
+        </IconButton>
         <h1 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
           {title}
         </h1>
       </div>
 
       <div className="flex items-center gap-2">
-        <button
-          type="button"
+        <Button
+          variant="secondary"
+          size="sm"
           onClick={() => setTheme(NEXT_THEME[theme])}
           aria-label={`Theme: ${THEME_LABEL[theme]}. Switch to ${THEME_LABEL[NEXT_THEME[theme]]}.`}
-          className="inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium hover:bg-[var(--surface-hover)]"
-          style={{ borderColor: 'var(--border)', color: 'var(--text-secondary)' }}
         >
           <ThemeIcon size={15} />
           {THEME_LABEL[theme]}
-        </button>
+        </Button>
         <button
           type="button"
           onClick={onLogoutAll}

@@ -21,15 +21,22 @@ function NavButton({ active, onClick, children, ariaCurrent }) {
       type="button"
       onClick={onClick}
       aria-current={ariaCurrent}
-      className={`flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium transition-colors ${
+      className={`relative flex w-full items-center gap-2.5 rounded-[10px] px-2.5 py-2 text-sm font-medium transition-[background-color,color] duration-[140ms] ${
         active ? '' : 'hover:bg-[var(--surface-hover)]'
       }`}
       style={
         active
-          ? { background: 'var(--accent-weak)', color: 'var(--series-1)' }
+          ? { background: 'var(--accent-weak)', color: 'var(--accent)' }
           : { color: 'var(--text-secondary)' }
       }
     >
+      {active && (
+        <span
+          aria-hidden="true"
+          className="absolute left-0 top-1/2 h-4 w-[3px] -translate-y-1/2 rounded-full"
+          style={{ background: 'var(--accent)' }}
+        />
+      )}
       {children}
     </button>
   );
