@@ -201,11 +201,20 @@ export default function AscendAiPanel({ initialOpen = false, initialMessages = n
 
       <div ref={listRef} className="flex-1 space-y-3 overflow-y-auto p-4">
         {loadedHistory && messages.length === 0 && !pending && (
-          <p className="mt-6 text-center text-xs leading-relaxed" style={{ color: 'var(--text-muted)' }}>
-            Ask about your health scores, KPIs, trends, or risks.
-            <br />
-            AscendAI only sees this organization&rsquo;s data.
-          </p>
+          <div className="adv-fade-up mt-10 flex flex-col items-center px-6 text-center">
+            <span
+              className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl"
+              style={{ background: 'var(--accent-weak)', color: 'var(--accent)' }}
+            >
+              <IconSparkles size={18} />
+            </span>
+            <p className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
+              Ask about your health scores, KPIs, trends, or risks.
+            </p>
+            <p className="mt-1 text-xs" style={{ color: 'var(--text-muted)' }}>
+              AscendAI only sees this organization&rsquo;s data.
+            </p>
+          </div>
         )}
 
         {messages.map((m, i) => {

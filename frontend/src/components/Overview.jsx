@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { fetchMetrics, fetchInsight } from '../lib/api.js';
 import Dashboard from './Dashboard.jsx';
 import DashboardSkeleton from './DashboardSkeleton.jsx';
+import EmptyState from './ui/EmptyState.jsx';
+import { Button } from './ui/primitives.jsx';
 
 /**
  * Fetches /api/metrics and /api/insight and hands both to the presentational
@@ -36,9 +38,16 @@ export default function Overview({ autoStartTour = false, onTourDone }) {
 
   if (metricsState.status === 'error') {
     return (
-      <p className="text-sm" style={{ color: 'var(--status-critical)' }}>
-        Couldn’t load metrics: {metricsState.error}
-      </p>
+      <EmptyState
+        title="Couldn’t load the dashboard"
+        action={
+          <Button size="sm" variant="secondary" onClick={() => window.location.reload()}>
+            Try again
+          </Button>
+        }
+      >
+        {metricsState.error}
+      </EmptyState>
     );
   }
 

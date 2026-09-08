@@ -12,6 +12,8 @@ import RiskOpportunityCard from '../cards/RiskOpportunityCard.jsx';
 import InsightCard from '../cards/InsightCard.jsx';
 import ViewTabs from './ViewTabs.jsx';
 import PdfExportButton from './PdfExportButton.jsx';
+import EmptyState from './ui/EmptyState.jsx';
+import { Button } from './ui/primitives.jsx';
 import { formatPeriodRange } from '../lib/format.js';
 
 // Recharts is the single heaviest dependency; the two cards that use it and the
@@ -64,12 +66,8 @@ function CardGrid({ cards }) {
           {cards.map(({ key, span }) => (
             <div
               key={key}
-              className={`h-40 animate-pulse border ${span === 2 ? 'sm:col-span-2' : ''}`}
-              style={{
-                background: 'var(--surface-1)',
-                borderColor: 'var(--border)',
-                borderRadius: 'var(--radius)',
-              }}
+              className={`adv-skeleton h-40 ${span === 2 ? 'sm:col-span-2' : ''}`}
+              style={{ borderRadius: 'var(--radius-lg)' }}
             />
           ))}
         </div>
@@ -112,21 +110,16 @@ export default function Dashboard({
 
   if (!dataset.periodCount) {
     return (
-      <section
-        className="border p-10 text-center"
-        style={{
-          background: 'var(--surface-1)',
-          borderColor: 'var(--border)',
-          borderRadius: 'var(--radius)',
-        }}
+      <EmptyState
+        title="No data yet"
+        action={
+          <Button as="a" href="#/data" size="sm">
+            Add data
+          </Button>
+        }
       >
-        <h2 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>
-          No data yet
-        </h2>
-        <p className="mt-1 text-sm" style={{ color: 'var(--text-secondary)' }}>
-          Upload a CSV to see the dashboard.
-        </p>
-      </section>
+        Upload a CSV and AscendDV builds the dashboard from whatever it can measure.
+      </EmptyState>
     );
   }
 
@@ -155,18 +148,15 @@ export default function Dashboard({
         </div>
         {isOverview && (
           <div className="flex shrink-0 items-center gap-2">
-            <button
+            <Button
               type="button"
+              variant="secondary"
+              size="sm"
               onClick={() => setShowTour(true)}
-              className="whitespace-nowrap border px-3 py-1.5 text-sm font-medium hover:bg-[var(--surface-hover)]"
-              style={{
-                borderColor: 'var(--border)',
-                color: 'var(--text-primary)',
-                borderRadius: 'var(--radius-sm)',
-              }}
+              className="whitespace-nowrap"
             >
               Take a tour
-            </button>
+            </Button>
             <PdfExportButton />
           </div>
         )}
@@ -190,22 +180,10 @@ export default function Dashboard({
       {cards.length > 0 ? (
         <CardGrid cards={cards} />
       ) : (
-        <section
-          className="border p-10 text-center"
-          style={{
-            background: 'var(--surface-1)',
-            borderColor: 'var(--border)',
-            borderRadius: 'var(--radius)',
-          }}
-        >
-          <h3 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>
-            Nothing to show for {active} yet
-          </h3>
-          <p className="mx-auto mt-1 max-w-md text-sm" style={{ color: 'var(--text-secondary)' }}>
-            {metrics.healthScores?.[active]?.reason ||
-              `Add ${active}-related fields to your data to populate this view.`}
-          </p>
-        </section>
+        <EmptyState title={`Nothing to show for ${active} yet`}>
+          {metrics.healthScores?.[active]?.reason ||
+            `Add ${active}-related fields to your data to populate this view.`}
+        </EmptyState>
       )}
     </section>
   );
