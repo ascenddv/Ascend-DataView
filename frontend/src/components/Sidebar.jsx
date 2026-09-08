@@ -6,6 +6,7 @@ import {
   IconLogOut,
   IconClose,
 } from '../lib/icons.jsx';
+import Logo from './Logo.jsx';
 import { openAscendAi } from '../lib/ascendai-bus.js';
 
 const NAV = [
@@ -47,9 +48,7 @@ export default function Sidebar({ section, onSection, user, org, onLogout, onClo
       style={{ background: 'var(--surface-2)', borderColor: 'var(--border)' }}
     >
       <div className="flex items-center justify-between px-5 pb-1 pt-5">
-        <span className="text-base font-semibold tracking-tight" style={{ color: 'var(--text-primary)' }}>
-          AscendDV
-        </span>
+        <Logo size={24} />
         {onClose && (
           <button
             type="button"

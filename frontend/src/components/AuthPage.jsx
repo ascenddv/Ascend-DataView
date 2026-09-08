@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { login, signup, forgotPassword } from '../lib/api.js';
+import Logo from './Logo.jsx';
 
 /** Login / signup / forgot-password screen shown when there is no valid session. */
 export default function AuthPage({ onAuthed }) {
@@ -57,10 +58,10 @@ export default function AuthPage({ onAuthed }) {
           boxShadow: 'var(--shadow-sm)',
         }}
       >
-        <h1 className="text-xl font-semibold tracking-tight" style={{ color: 'var(--text-primary)' }}>
-          AscendDV
+        <h1>
+          <Logo size={26} />
         </h1>
-        <p className="mt-0.5 text-sm" style={{ color: 'var(--text-secondary)' }}>
+        <p className="mt-2 text-sm" style={{ color: 'var(--text-secondary)' }}>
           {mode === 'login'
             ? 'Sign in to your organization.'
             : mode === 'signup'

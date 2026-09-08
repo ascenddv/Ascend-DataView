@@ -1,0 +1,8 @@
+{
+  "artboards": [
+    { "file": "Main.dc.html", "x": 0, "y": 0, "w": 520, "h": 560, "title": "Lockup — Space Grotesk (recommended)" },
+    { "file": "FontB.dc.html", "x": 620, "y": 0, "w": 520, "h": 560, "title": "Lockup — Geist (alternate)" },
+    { "file": "Favicon.dc.html", "x": 0, "y": 700, "w": 520, "h": 520, "title": "Favicon & app icon" }
+  ],
+  "launch": { "view": "canvas" }
+}

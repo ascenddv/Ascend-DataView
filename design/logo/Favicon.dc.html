@@ -1,0 +1,70 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap">
+  <style>
+    body { margin: 0; font-family: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; background: #f5f8f6; color: #091413; }
+  </style>
+</helmet>
+<div style="width: 520px; height: 520px; box-sizing: border-box; padding: 36px; display: flex; flex-direction: column; gap: 22px; background: #f5f8f6;">
+
+  <div style="display:flex; flex-direction:column; gap:6px;">
+    <div style="font-size:12px; font-weight:600; letter-spacing:0.08em; text-transform:uppercase; color:#5a726a;">Favicon &amp; app icon</div>
+    <div style="font-size:13px; line-height:1.5; color:#3d5249; max-width:46ch;">The full-colour tile at browser sizes, and a small-size tune where all three bars go solid so the mark still reads at 16&nbsp;px.</div>
+  </div>
+
+  <!-- on light -->
+  <div style="display:flex; align-items:flex-end; gap:20px; padding:16px 18px; background:#ffffff; border:1px solid rgba(9,20,19,0.08); border-radius:12px;">
+    <div style="display:flex; flex-direction:column; align-items:center; gap:6px;">
+      <svg width="48" height="48" viewBox="0 0 100 100"><rect x="4" y="4" width="92" height="92" rx="12" fill="#091413"/><rect x="23" y="58" width="13" height="21" fill="#B0E4CC" opacity="0.5"/><rect x="44" y="46" width="13" height="33" fill="#B0E4CC" opacity="0.75"/><rect x="65" y="29" width="13" height="50" fill="#B0E4CC"/><rect x="23" y="19" width="54" height="6" fill="#408A71"/></svg>
+      <span style="font-size:10px; color:#5a726a;">48</span>
+    </div>
+    <div style="display:flex; flex-direction:column; align-items:center; gap:6px;">
+      <svg width="32" height="32" viewBox="0 0 100 100"><rect x="4" y="4" width="92" height="92" rx="12" fill="#091413"/><rect x="23" y="58" width="13" height="21" fill="#B0E4CC" opacity="0.5"/><rect x="44" y="46" width="13" height="33" fill="#B0E4CC" opacity="0.75"/><rect x="65" y="29" width="13" height="50" fill="#B0E4CC"/><rect x="23" y="19" width="54" height="6" fill="#408A71"/></svg>
+      <span style="font-size:10px; color:#5a726a;">32</span>
+    </div>
+    <div style="display:flex; flex-direction:column; align-items:center; gap:6px;">
+      <svg width="16" height="16" viewBox="0 0 100 100"><rect x="4" y="4" width="92" height="92" rx="12" fill="#091413"/><rect x="23" y="58" width="13" height="21" fill="#B0E4CC" opacity="0.5"/><rect x="44" y="46" width="13" height="33" fill="#B0E4CC" opacity="0.75"/><rect x="65" y="29" width="13" height="50" fill="#B0E4CC"/><rect x="23" y="19" width="54" height="6" fill="#408A71"/></svg>
+      <span style="font-size:10px; color:#5a726a;">16 raw</span>
+    </div>
+    <div style="display:flex; flex-direction:column; align-items:center; gap:6px;">
+      <svg width="16" height="16" viewBox="0 0 100 100"><rect x="4" y="4" width="92" height="92" rx="14" fill="#091413"/><rect x="22" y="56" width="15" height="23" fill="#B0E4CC"/><rect x="43" y="44" width="15" height="35" fill="#B0E4CC"/><rect x="64" y="27" width="15" height="52" fill="#B0E4CC"/><rect x="22" y="17" width="57" height="7" fill="#408A71"/></svg>
+      <span style="font-size:10px; color:#285A48; font-weight:600;">16 tuned</span>
+    </div>
+  </div>
+
+  <!-- on dark -->
+  <div style="display:flex; align-items:flex-end; gap:20px; padding:16px 18px; background:#091413; border-radius:12px;">
+    <div style="display:flex; flex-direction:column; align-items:center; gap:6px;">
+      <svg width="48" height="48" viewBox="0 0 100 100"><rect x="5" y="5" width="90" height="90" rx="12" fill="none" stroke="#B0E4CC" stroke-opacity="0.3" stroke-width="4"/><rect x="23" y="58" width="13" height="21" fill="#B0E4CC" opacity="0.55"/><rect x="44" y="46" width="13" height="33" fill="#B0E4CC" opacity="0.8"/><rect x="65" y="29" width="13" height="50" fill="#B0E4CC"/><rect x="23" y="19" width="54" height="6" fill="#408A71"/></svg>
+      <span style="font-size:10px; color:#5a726a;">48</span>
+    </div>
+    <div style="display:flex; flex-direction:column; align-items:center; gap:6px;">
+      <svg width="32" height="32" viewBox="0 0 100 100"><rect x="5" y="5" width="90" height="90" rx="12" fill="none" stroke="#B0E4CC" stroke-opacity="0.3" stroke-width="4"/><rect x="23" y="58" width="13" height="21" fill="#B0E4CC" opacity="0.55"/><rect x="44" y="46" width="13" height="33" fill="#B0E4CC" opacity="0.8"/><rect x="65" y="29" width="13" height="50" fill="#B0E4CC"/><rect x="23" y="19" width="54" height="6" fill="#408A71"/></svg>
+      <span style="font-size:10px; color:#5a726a;">32</span>
+    </div>
+    <div style="display:flex; flex-direction:column; align-items:center; gap:6px;">
+      <svg width="16" height="16" viewBox="0 0 100 100"><rect x="22" y="56" width="15" height="23" fill="#B0E4CC"/><rect x="43" y="44" width="15" height="35" fill="#B0E4CC"/><rect x="64" y="27" width="15" height="52" fill="#B0E4CC"/><rect x="22" y="17" width="57" height="7" fill="#408A71"/></svg>
+      <span style="font-size:10px; color:#B0E4CC; font-weight:600;">16 tuned</span>
+    </div>
+  </div>
+
+  <!-- maskable safe zone -->
+  <div style="display:flex; align-items:center; gap:18px;">
+    <div style="position:relative; width:120px; height:120px; border-radius:22px; background:#091413; display:flex; align-items:center; justify-content:center;">
+      <div style="position:absolute; inset:12px; border:1px dashed rgba(176,228,204,0.4); border-radius:14px;"></div>
+      <svg width="76" height="76" viewBox="0 0 100 100"><rect x="23" y="58" width="13" height="21" fill="#B0E4CC" opacity="0.5"/><rect x="44" y="46" width="13" height="33" fill="#B0E4CC" opacity="0.75"/><rect x="65" y="29" width="13" height="50" fill="#B0E4CC"/><rect x="23" y="19" width="54" height="6" fill="#408A71"/></svg>
+    </div>
+    <div style="font-size:12px; line-height:1.5; color:#5a726a; max-width:26ch;">Maskable icon (Android / PWA): bars only, no tile edge, kept inside the 80% safe zone so a circular or squircle mask never clips them.</div>
+  </div>
+
+</div>
+</x-dc>
+</body>
+</html>
