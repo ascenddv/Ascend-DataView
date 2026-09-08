@@ -3,6 +3,7 @@ import { getMe, logout as apiLogout, logoutAll as apiLogoutAll } from '../lib/ap
 import AuthPage from './AuthPage.jsx';
 import { VerifyEmailPage, ResetPasswordPage, AcceptInvitePage } from './AuthTokenPages.jsx';
 import { TermsPage, PrivacyPage } from './LegalPages.jsx';
+import LandingPage from './LandingPage.jsx';
 import Logo from './Logo.jsx';
 
 /**
@@ -73,7 +74,19 @@ export default function AuthGate({ children }) {
   }
 
   if (state.status !== 'authed') {
-    return <AuthPage onAuthed={(r) => setState({ status: 'authed', ...r })} />;
+    // Logged-out visitors land on the marketing page at "/"; every other path
+    // (notably /login and /login?mode=signup) goes straight to the auth card.
+    if (path === '/') return <LandingPage />;
+    return (
+      <AuthPage
+        onAuthed={(r) => {
+          if (typeof window !== 'undefined' && window.location.pathname !== '/') {
+            window.history.replaceState(null, '', '/');
+          }
+          setState({ status: 'authed', ...r });
+        }}
+      />
+    );
   }
 
   return children({ user: state.user, org: state.org, onLogout, onLogoutAll });

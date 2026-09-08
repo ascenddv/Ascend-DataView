@@ -4,8 +4,13 @@ import Logo from './Logo.jsx';
 import { Button, Input, Field } from './ui/primitives.jsx';
 
 /** Login / signup / forgot-password screen shown when there is no valid session. */
+function initialMode() {
+  if (typeof window === 'undefined') return 'login';
+  return new URLSearchParams(window.location.search).get('mode') === 'signup' ? 'signup' : 'login';
+}
+
 export default function AuthPage({ onAuthed }) {
-  const [mode, setMode] = useState('login'); // 'login' | 'signup' | 'forgot'
+  const [mode, setMode] = useState(initialMode); // 'login' | 'signup' | 'forgot'
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [orgName, setOrgName] = useState('');
