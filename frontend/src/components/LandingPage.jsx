@@ -1,6 +1,7 @@
 import Logo from './Logo.jsx';
 import { Button } from './ui/primitives.jsx';
 import ThemeToggle from './ThemeToggle.jsx';
+import LandingClients from './LandingClients.jsx';
 import { IconCheck } from '../lib/icons.jsx';
 
 /**
@@ -24,6 +25,7 @@ const NAV = [
   { href: '#principle', label: 'Principles' },
   { href: '#ai', label: 'AscendAI' },
   { href: '#product', label: 'Product' },
+  { href: '#clients', label: 'Clients' },
 ];
 
 const PRINCIPLES = [
@@ -291,6 +293,8 @@ export default function LandingPage() {
             </div>
           </div>
         </section>
+
+        <LandingClients />
 
         {/* Final CTA */}
         <section className={`${shell} py-12 sm:py-14`}>
