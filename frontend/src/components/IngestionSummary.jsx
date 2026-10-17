@@ -1,5 +1,5 @@
 /**
- * Shows the ingestion report from POST /api/upload in the UI — so skipped rows,
+ * Shows the ingestion report from POST /api/upload in the UI, so skipped rows,
  * duplicate handling, column mapping, and subcategory warnings are visible to
  * the user, not just in the API response.
  */
@@ -89,8 +89,8 @@ export default function IngestionSummary({ report, onDismiss }) {
 
   const tone = hasIssues ? 'var(--status-warning)' : 'var(--status-good)';
   const headline = hasIssues
-    ? `Loaded ${filename} — ${mergeSummary}, ${rowsSkipped} row${rowsSkipped === 1 ? '' : 's'} skipped and some notes`
-    : `Loaded ${filename} — ${mergeSummary}`;
+    ? `Loaded ${filename}: ${mergeSummary}, ${rowsSkipped} row${rowsSkipped === 1 ? '' : 's'} skipped and some notes`
+    : `Loaded ${filename}: ${mergeSummary}`;
 
   const mappingRows = Object.entries(columnMapping);
   const renamed = mappingRows.filter(([h, m]) => m.field && m.field !== h);
@@ -149,13 +149,13 @@ export default function IngestionSummary({ report, onDismiss }) {
           : mappingFromCache
           ? 'reused from a previous upload with the same headers'
           : llmError
-            ? 'name-matching only — the AI assist was unavailable'
+            ? 'name-matching only, the AI assist was unavailable'
             : llmUsed
               ? 'AI-assisted for renamed headers'
               : 'exact name match'}
         {renamed.length > 0 && (
           <>
-            {' — '}
+            {': '}
             {renamed
               .map(([h, m]) => `“${h}” → ${m.field}`)
               .join(', ')}

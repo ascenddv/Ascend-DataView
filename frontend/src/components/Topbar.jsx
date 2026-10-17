@@ -17,9 +17,10 @@ export default function Topbar({ title, onMenu, onLogoutAll }) {
 
   return (
     <header
-      className="adv-frost sticky top-0 z-30 flex items-center justify-between gap-4 border-b py-3"
+      className="sticky top-0 z-30 flex h-16 items-center justify-between gap-4 border-b"
       style={{
         borderColor: 'var(--border)',
+        background: 'var(--page)',
         paddingLeft: 'var(--shell-pad)',
         paddingRight: 'var(--shell-pad)',
       }}
@@ -28,7 +29,7 @@ export default function Topbar({ title, onMenu, onLogoutAll }) {
         <IconButton onClick={onMenu} label="Open menu" className="md:hidden">
           <IconMenu />
         </IconButton>
-        <h1 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
+        <h1 className="text-lg font-semibold tracking-tight" style={{ color: 'var(--text-primary)' }}>
           {title}
         </h1>
       </div>

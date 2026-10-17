@@ -1,10 +1,10 @@
 /**
- * GET /api/report.pdf — a point-in-time PDF snapshot of the Overview dashboard
+ * GET /api/report.pdf, a point-in-time PDF snapshot of the Overview dashboard
  * for the authenticated session's organization (Phase 16).
  *
  * No new auth surface and NO org parameter: the org is taken from req.auth,
  * exactly like /api/metrics and /api/insight, so there is nothing to tamper
- * with. Same deterministic buildMetrics() payload as the rest of the app —
+ * with. Same deterministic buildMetrics() payload as the rest of the app -
  * a PDF is just another rendering of it, stamped as a snapshot.
  */
 
@@ -28,7 +28,7 @@ router.get('/report.pdf', pdfLimiter, async (req, res, next) => {
     ]);
     const metrics = buildMetrics(rows);
 
-    // The narrative is optional — a provider failure must not fail the export.
+    // The narrative is optional, a provider failure must not fail the export.
     let insight = null;
     if (metrics.dataset.periodCount > 0) {
       try {

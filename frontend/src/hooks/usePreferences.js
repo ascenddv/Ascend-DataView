@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 
 /**
- * Per-browser visual preferences (Stage 5 UI overhaul). Purely presentational —
+ * Per-browser visual preferences (Stage 5 UI overhaul). Purely presentational -
  * theme, density and reduced-motion are applied as `data-*` attributes on
  * <html>, which the token layer in index.css keys off. There is no backend
  * settings endpoint; this persists to localStorage only. An inline boot script
@@ -54,7 +54,7 @@ export function usePreferences() {
       try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
       } catch {
-        /* private mode / storage disabled — the in-memory value still applies */
+        /* private mode / storage disabled, the in-memory value still applies */
       }
       return next;
     });

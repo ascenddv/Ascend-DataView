@@ -9,6 +9,17 @@ import {
 import Logo from './Logo.jsx';
 import { openAscendAi } from '../lib/ascendai-bus.js';
 
+function initials(name) {
+  return (
+    String(name || '')
+      .split(/s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((p) => p[0].toUpperCase())
+      .join('') || 'A'
+  );
+}
+
 const NAV = [
   { id: 'dashboard', label: 'Dashboard', Icon: IconDashboard },
   { id: 'data', label: 'Data', Icon: IconData },
@@ -21,7 +32,7 @@ function NavButton({ active, onClick, children, ariaCurrent }) {
       type="button"
       onClick={onClick}
       aria-current={ariaCurrent}
-      className={`relative flex w-full items-center gap-2.5 rounded-[10px] px-2.5 py-2 text-sm font-medium transition-[background-color,color] duration-[140ms] ${
+      className={`relative flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-[background-color,color] duration-[140ms] ${
         active ? '' : 'hover:bg-[var(--surface-hover)]'
       }`}
       style={
@@ -52,7 +63,7 @@ export default function Sidebar({ section, onSection, user, org, onLogout, onClo
     <nav
       aria-label="Primary"
       className="flex h-full min-h-screen w-full flex-col border-r"
-      style={{ background: 'var(--surface-2)', borderColor: 'var(--border)' }}
+      style={{ background: 'var(--surface-1)', borderColor: 'var(--border)' }}
     >
       <div className="flex items-center justify-between px-5 pb-1 pt-5">
         <Logo size={24} />
@@ -70,12 +81,6 @@ export default function Sidebar({ section, onSection, user, org, onLogout, onClo
       </div>
 
       <div className="px-3 pt-4">
-        <p
-          className="px-2 pb-1.5 text-[11px] font-semibold uppercase tracking-wider"
-          style={{ color: 'var(--text-muted)' }}
-        >
-          General
-        </p>
         <ul className="space-y-0.5">
           {NAV.map(({ id, label, Icon }) => (
             <li key={id}>
@@ -93,12 +98,6 @@ export default function Sidebar({ section, onSection, user, org, onLogout, onClo
       </div>
 
       <div className="px-3 pt-4">
-        <p
-          className="px-2 pb-1.5 text-[11px] font-semibold uppercase tracking-wider"
-          style={{ color: 'var(--text-muted)' }}
-        >
-          Assistant
-        </p>
         <NavButton
           active={false}
           onClick={() => {
@@ -111,24 +110,34 @@ export default function Sidebar({ section, onSection, user, org, onLogout, onClo
         </NavButton>
       </div>
 
-      <div className="mt-auto px-3 pb-4">
-        <div className="mb-2 rounded-lg border px-3 py-2.5" style={{ borderColor: 'var(--border)' }}>
-          <p className="truncate text-xs font-medium" style={{ color: 'var(--text-primary)' }}>
-            {org.name}
-          </p>
-          <p className="truncate text-xs" style={{ color: 'var(--text-muted)' }}>
-            {user.email}
-          </p>
+      <div className="mt-auto border-t p-3" style={{ borderColor: 'var(--border)' }}>
+        <div className="flex items-center gap-3 rounded-lg px-2 py-2">
+          <span
+            aria-hidden="true"
+            className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-xs font-semibold"
+            style={{ background: 'var(--accent)', color: 'var(--accent-contrast)' }}
+          >
+            {initials(org.name || user.email)}
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+              {org.name}
+            </p>
+            <p className="truncate text-xs" style={{ color: 'var(--text-muted)' }}>
+              {user.email}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onLogout}
+            aria-label="Sign out"
+            title="Sign out"
+            className="grid h-8 w-8 place-items-center rounded-md hover:bg-[var(--surface-hover)]"
+            style={{ color: 'var(--text-muted)' }}
+          >
+            <IconLogOut size={17} />
+          </button>
         </div>
-        <button
-          type="button"
-          onClick={onLogout}
-          className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium hover:bg-[var(--surface-hover)]"
-          style={{ color: 'var(--text-secondary)' }}
-        >
-          <IconLogOut size={16} />
-          Sign out
-        </button>
       </div>
     </nav>
   );

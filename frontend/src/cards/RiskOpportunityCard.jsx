@@ -1,7 +1,7 @@
 import CardShell, { CardLabel } from './CardShell.jsx';
 
 /**
- * Risk / Opportunity card — a fired deterministic rule, narrated. Risk and
+ * Risk / Opportunity card, a fired deterministic rule, narrated. Risk and
  * opportunity are visually distinct (accent colour + word label + icon), never
  * colour alone.
  */

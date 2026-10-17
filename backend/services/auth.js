@@ -1,5 +1,5 @@
 /**
- * Auth primitives — password hashing (bcrypt) and session tokens (JWT).
+ * Auth primitives, password hashing (bcrypt) and session tokens (JWT).
  * No DB access here; routes/auth.js composes these with the db helpers.
  */
 

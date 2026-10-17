@@ -1,4 +1,4 @@
-/** Display formatting helpers. Presentation only — no business logic here. */
+/** Display formatting helpers. Presentation only, no business logic here. */
 
 const currency0 = new Intl.NumberFormat('en-US', {
   style: 'currency',

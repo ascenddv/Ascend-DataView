@@ -1,13 +1,13 @@
 /**
- * POST /api/upload         — CSV or .xlsx upload (multipart). MERGES into the
+ * POST /api/upload        , CSV or .xlsx upload (multipart). MERGES into the
  *                            org's history (upsert by period_date); never wipes.
  *                            If any column mapping is low-confidence the upload
  *                            pauses (Phase 14b) and nothing is stored until
  *                            POST /api/upload/confirm.
- * POST /api/upload/confirm — finish a paused upload with confirmed/corrected
+ * POST /api/upload/confirm, finish a paused upload with confirmed/corrected
  *                            mappings.
- * POST /api/manual-entry   — a single period entered by hand, verified users only (also merges).
- * GET  /api/data           — the current standardized dataset (for inspection).
+ * POST /api/manual-entry  , a single period entered by hand, verified users only (also merges).
+ * GET  /api/data          , the current standardized dataset (for inspection).
  *
  * All route through the one ingestion pipeline in services/ingest.js and are
  * scoped by req.auth.orgId.
@@ -37,7 +37,7 @@ const router = express.Router();
 const XLSX_EXT = /\.xlsx$/i;
 const XLSX_MIME = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 
-// 4 MB — Vercel caps a serverless request body at ~4.5 MB, so anything larger
+// 4 MB, Vercel caps a serverless request body at ~4.5 MB, so anything larger
 // is rejected at the platform edge with an opaque error before this code runs.
 const MAX_UPLOAD_BYTES = 4 * 1024 * 1024;
 
@@ -172,7 +172,7 @@ router.post('/upload/confirm', requireVerified, uploadLimiter, async (req, res, 
         mapping[header] = { ...prev, source: 'user_confirmed' };
         confirmedFields.push(choice);
       } else {
-        // Deliberately re-pointed to a different field — treat as authoritative.
+        // Deliberately re-pointed to a different field, treat as authoritative.
         mapping[header] = { field: choice, confidence: 1, source: 'user_corrected' };
       }
     }
@@ -189,7 +189,7 @@ router.post('/upload/confirm', requireVerified, uploadLimiter, async (req, res, 
     mergeResponse(res, report, periodsAdded, periodsUpdated, {
       confirmedMappingApplied: true,
       // Every low-confidence mapping in this file has now been through the
-      // confirmation step — don't re-nag about it in the summary.
+      // confirmation step, don't re-nag about it in the summary.
       fieldsNeedingConfirmation: [],
     });
   } catch (err) {

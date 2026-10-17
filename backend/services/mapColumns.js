@@ -10,7 +10,7 @@
  *   3. Cache the merged result by a hash of the header row so an identical
  *      re-upload never calls the LLM again.
  *
- * Public surface is a single function `mapColumns(headers)` — callers never see
+ * Public surface is a single function `mapColumns(headers)`, callers never see
  * the provider. The `deps` parameter exists only so tests can inject fakes.
  */
 
@@ -40,7 +40,7 @@ function buildLlmPrompt(headers, knownExact) {
   const dictionary = FIELDS.map(
     (f) =>
       `- ${f.name} (${f.category || 'general'}${f.required ? ', required' : ''})` +
-      (f.notes ? ` — ${f.notes}` : '')
+      (f.notes ? `, ${f.notes}` : '')
   ).join('\n');
 
   const alreadyMapped = Object.entries(knownExact)
@@ -150,7 +150,7 @@ async function mapColumns(headers, deps = {}) {
     }
   }
 
-  // 3. Cache the merged result (even a partial one — a re-upload shouldn't retry
+  // 3. Cache the merged result (even a partial one, a re-upload shouldn't retry
   //    a flaky call automatically; the header hash is the cache key regardless).
   if (!llmError) await cachePut(headerHash, mapping);
 

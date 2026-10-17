@@ -1,5 +1,5 @@
 /**
- * AscendAI chat orchestration (Stage 4, Phase 18) — one grounded chat turn.
+ * AscendAI chat orchestration (Stage 4, Phase 18), one grounded chat turn.
  *
  * Flow: system prompt + user message -> DeepSeek -> if the model asks for tool
  * calls, run the real functions, pass each result through the same PII/identifier
@@ -22,17 +22,17 @@ const { captureError, captureMessage } = require('../observability');
 
 const SYSTEM_PROMPT = `You are AscendAI, the assistant built into the AscendDV dashboard for one specific organization.
 
-SCOPE — this is a hard boundary:
+SCOPE: this is a hard boundary:
 - You answer ONLY questions about THIS organization's own data as it appears in its AscendDV dashboard: health scores, KPIs (revenue, expenses, cash balance, donors), trends, and fired risk/opportunity rules.
-- For anything else — general knowledge, current events, the weather, coding help, other organizations, benchmarking against other nonprofits, or any task unrelated to this dashboard — politely decline in one sentence and do not attempt an answer. Do not answer "partially".
+- For anything else, general knowledge, current events, the weather, coding help, other organizations, benchmarking against other nonprofits, or any task unrelated to this dashboard, politely decline in one sentence and do not attempt an answer. Do not answer "partially".
 - You have no information about any organization other than this one, and no way to get it. Never claim otherwise.
 
 GROUNDING:
 - To answer an in-scope question you MUST call the provided tools to get real figures. Never state a number that did not come from a tool result in this conversation.
-- If a tool reports data is "Unavailable" or not present, say so plainly — do not guess or estimate.
+- If a tool reports data is "Unavailable" or not present, say so plainly, do not guess or estimate.
 - Be concise and concrete. Cite the specific numbers the tools returned. A few sentences is usually enough.
 
-DESCRIBING THE SCORING MECHANICS — state them as fact, not preference:
+DESCRIBING THE SCORING MECHANICS: state them as fact, not preference:
 - The health score is a deterministic formula: each sub-metric's score is 50 + its period-over-period growth rate, and the dimension score is the plain average of those.
 - Some sub-metrics are "inverted" (expense growth, staff turnover): a rising value lowers the score by construction. Say "expense growth is an inverted sub-metric, so its increase lowers the score", NOT "expense growth is higher than the model would like" or anything implying the system has an opinion, wants, or preferences. The system computes; it does not judge.`;
 
@@ -97,7 +97,7 @@ async function askAscendAI({ message, orgId, history = [], deps = {} }) {
         };
       }
 
-      // Assistant turn that requested tools — echo it back, then answer each call.
+      // Assistant turn that requested tools, echo it back, then answer each call.
       messages.push(aiMessage);
       for (const call of toolCalls) {
         const name = call.function && call.function.name;
@@ -108,7 +108,7 @@ async function askAscendAI({ message, orgId, history = [], deps = {} }) {
           args = {};
         }
 
-        // Every tool is scoped by this exact orgId — there is no path for a
+        // Every tool is scoped by this exact orgId, there is no path for a
         // caller (or the model) to point a tool at another organization.
         let result = await runTool(name, args, orgId, toolDeps);
 
@@ -117,7 +117,7 @@ async function askAscendAI({ message, orgId, history = [], deps = {} }) {
         try {
           result = sanitizeForPrompt(result, `$.tool[${name}]`);
         } catch (guardErr) {
-          console.warn(`AscendAI: tool "${name}" result withheld — ${guardErr.message}`);
+          console.warn(`AscendAI: tool "${name}" result withheld, ${guardErr.message}`);
           result = { error: 'This lookup was withheld for safety and could not be returned.' };
         }
 
@@ -133,7 +133,7 @@ async function askAscendAI({ message, orgId, history = [], deps = {} }) {
     return unavailable(trace, 'The assistant took too many steps without finishing.');
   } catch (err) {
     // A 402 / "Insufficient Balance" from DeepSeek is the prepaid balance running
-    // out — a distinct, alertable signal from a generic provider error.
+    // out, a distinct, alertable signal from a generic provider error.
     if (/\b402\b|insufficient balance/i.test(err.message || '')) {
       captureMessage('DEEPSEEK_BALANCE_LOW', { orgId, detail: err.message });
     } else {

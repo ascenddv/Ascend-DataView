@@ -26,7 +26,7 @@ function stackStyle() {
   return { display: 'flex', flexDirection: 'column', gap: 'var(--stack-gap)' };
 }
 
-/** The Data section — the upload / manual-entry inputs, on their own tab. */
+/** The Data section, the upload / manual-entry inputs, on their own tab. */
 function DataSection({
   pendingMapping,
   onResult,
@@ -43,7 +43,7 @@ function DataSection({
         </h1>
         <p className="mt-0.5 text-sm" style={{ color: 'var(--text-secondary)' }}>
           Upload a CSV or Excel export, or add a single period by hand. Uploads merge into your
-          stored history — they never replace it.
+          stored history, they never replace it.
         </p>
       </div>
       {pendingMapping ? (
@@ -78,7 +78,7 @@ function Workspace({ user, org, onLogout, onLogoutAll }) {
   function go(next) {
     setSection(next);
     if (typeof window === 'undefined') return;
-    // Only ever touch the hash — the path is reserved for AuthGate's email-link routing.
+    // Only ever touch the hash, the path is reserved for AuthGate's email-link routing.
     if (next === 'dashboard') {
       if (window.location.hash) {
         window.history.replaceState(null, '', window.location.pathname + window.location.search);
@@ -89,7 +89,7 @@ function Workspace({ user, org, onLogout, onLogoutAll }) {
   }
 
   // Persist onboarding as done. Per the spec this happens ONLY on tour
-  // completion, an explicit tour skip, or an explicit wizard skip — never just
+  // completion, an explicit tour skip, or an explicit wizard skip, never just
   // because a file was uploaded.
   function markOnboardingDone() {
     setOnboarded(true);
@@ -113,7 +113,7 @@ function Workspace({ user, org, onLogout, onLogoutAll }) {
   }
 
   function handleWizardComplete(result) {
-    // Leave the wizard and start the tour, but DON'T persist onboarding yet —
+    // Leave the wizard and start the tour, but DON'T persist onboarding yet -
     // that waits until the tour is finished or skipped.
     setOnboarded(true);
     setAutoTour(true);
@@ -212,7 +212,7 @@ function Workspace({ user, org, onLogout, onLogoutAll }) {
         )}
       </AppShell>
 
-      {/* AscendAI — available from every section once past onboarding */}
+      {/* AscendAI, available from every section once past onboarding */}
       <AscendAiPanel />
     </>
   );

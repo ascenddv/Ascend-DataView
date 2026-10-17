@@ -3,7 +3,7 @@
  *
  * On boot in a production-like environment (VERCEL set, or NODE_ENV=production)
  * this checks the env vars the app cannot safely run without and makes any
- * problem UNMISSABLE — a loud stderr banner plus a CONFIG_GUARD signal to the
+ * problem UNMISSABLE, a loud stderr banner plus a CONFIG_GUARD signal to the
  * observability layer (which forwards to Sentry when configured). It never
  * throws or exits: /api/health must stay up so the deployment is diagnosable.
  */
@@ -15,7 +15,7 @@ function isProdLike(env = process.env) {
 }
 
 // Every env var this guard inspects. Kept in sync with the README
-// "Environment variables" table by test/configDocsMatch.test.js — a mismatch
+// "Environment variables" table by test/configDocsMatch.test.js, a mismatch
 // there fails the build, so this list and the docs cannot silently drift.
 const CHECKED_VARS = [
   'JWT_SECRET',
@@ -73,7 +73,7 @@ function checkProductionConfig(env = process.env) {
   const lines = [
     '',
     '  ############################################################',
-    '  #  PRODUCTION CONFIG PROBLEM — the app is running but is  #',
+    '  #  PRODUCTION CONFIG PROBLEM, the app is running but is  #',
     '  #  not correctly configured for production.               #',
     ...result.missing.map((m) => `  #   MISSING: ${m}`),
     ...result.weak.map((w) => `  #   WEAK:    ${w}`),

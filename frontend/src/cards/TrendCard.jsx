@@ -17,7 +17,7 @@ function rangeGrowth(first, last) {
 }
 
 /**
- * Trend card — headline value + a sparkline over time (single series, one hue,
+ * Trend card, headline value + a sparkline over time (single series, one hue,
  * no legend: the label names it). Only rendered when the Trend card is
  * `Available` (> MIN_PERIODS_FOR_TREND_CARD periods); a `Limited` 3-point series
  * is intentionally not shown.

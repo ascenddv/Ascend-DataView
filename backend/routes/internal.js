@@ -1,7 +1,7 @@
 /**
- * Internal maintenance endpoints — not part of the user API, no session.
+ * Internal maintenance endpoints, not part of the user API, no session.
  *
- * POST (or GET) /api/internal/prune — runs the retention prune (pruneOldRows).
+ * POST (or GET) /api/internal/prune, runs the retention prune (pruneOldRows).
  * Called by the Vercel Cron declared in vercel.json. Vercel automatically sends
  * `Authorization: Bearer <CRON_SECRET>` when CRON_SECRET is set in the project;
  * an `x-cron-secret` header is accepted too for manual runs. Rejects with 401

@@ -1,11 +1,11 @@
 /**
- * Health-score display bands — the single source of truth mapping a 0–100 score
+ * Health-score display bands, the single source of truth mapping a 0–100 score
  * to a qualitative label. DISPLAY LAYER ONLY: the scoring formula
  * (`clamp(50 + growthRate*100)`, averaged per dimension) is locked and lives in
  * the backend; this file never touches it.
  *
  * Thresholds (Phase 12, derived from an actual score-distribution analysis, not
- * guessed — see scripts/analyze-health-bands.mjs and CLAUDE.md):
+ * guessed, see scripts/analyze-health-bands.mjs and CLAUDE.md):
  *
  *   The formula is linear, so a dimension's score ≈ 50 + (avg period-over-period
  *   growth of its sub-metrics) × 100.
@@ -14,9 +14,9 @@
  *     score 53–59 ⟺ +3%…+9%     (typical healthy nonprofit growth)
  *     score 64  ⟺ +14% avg MoM  (sustained, well above typical)
  *
- *   Watch   score < 48   — declining; needs attention
- *   Stable  48 – 63       — holding steady through healthy growth
- *   Strong  score ≥ 64    — sustained growth well above typical
+ *   Watch   score < 48  , declining; needs attention
+ *   Stable  48 – 63      , holding steady through healthy growth
+ *   Strong  score ≥ 64   , sustained growth well above typical
  *
  *   The old 60/80 cutoffs required +10% MoM on *every* sub-metric just to clear
  *   "Watch" and +30% to read "Strong", so ordinary healthy orgs all read Watch.
@@ -32,7 +32,7 @@ export const HEALTH_BANDS = {
   WATCH: {
     label: 'Watch',
     color: 'var(--status-warning)',
-    blurb: 'Declining — worth a closer look.',
+    blurb: 'Declining, worth a closer look.',
   },
   STABLE: {
     label: 'Stable',

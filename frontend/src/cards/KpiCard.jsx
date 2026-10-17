@@ -7,7 +7,7 @@ import {
 } from '../lib/format.js';
 
 /**
- * KPI card — a headline number with a period-over-period change indicator.
+ * KPI card, a headline number with a period-over-period change indicator.
  * `limited` (only one period of data) drops the change indicator rather than
  * showing a fake zero.
  */
@@ -25,7 +25,7 @@ export default function KpiCard({
   const dir = changeDirection(change);
   const arrow = dir === 'up' ? '▲' : dir === 'down' ? '▼' : '■';
 
-  // "up is good" for every KPI we surface (revenue, cash, donors) — expenses is
+  // "up is good" for every KPI we surface (revenue, cash, donors), expenses is
   // shown as a KPI too, but a rising-expense signal is not colored as a loss here;
   // the health score handles that judgement. Neutral tone keeps this factual.
   const tone =
@@ -63,7 +63,7 @@ export default function KpiCard({
 
       {limited && (
         <div className="mt-1 text-sm" style={{ color: 'var(--text-muted)' }}>
-          single period — no change yet
+          single period, no change yet
         </div>
       )}
     </CardShell>

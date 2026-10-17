@@ -7,8 +7,8 @@ import { downloadTemplateCsv } from '../lib/csvTemplate.js';
 
 /**
  * First-run wizard (Phase 17). One focus per step, clear progress. Step 2 offers
- * the two ways to get data in — upload a file, or download a schema-shaped CSV
- * template to fill in — and both converge on a successful ingestion, which ends
+ * the two ways to get data in, upload a file, or download a schema-shaped CSV
+ * template to fill in, and both converge on a successful ingestion, which ends
  * the wizard and hands control back so the tour can start on real data.
  *
  * Skipping is always allowed; the caller marks onboarding done either way so the
@@ -67,7 +67,7 @@ export default function OnboardingWizard({ onComplete, onSkip }) {
             Welcome to AscendDV
           </h2>
           <p className="mt-2 text-sm leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
-            AscendDV turns whatever data you have — even if it's patchy — into a dashboard of
+            AscendDV turns whatever data you have, even if it's patchy, into a dashboard of
             what your organization can actually measure. Nothing is invented: a card only
             appears when there's enough data behind it. Let's get your first period of data in,
             then we'll walk through what it means.

@@ -1,5 +1,5 @@
 /**
- * Role gate — runs after requireAuth (which sets req.auth.role). Used for the
+ * Role gate, runs after requireAuth (which sets req.auth.role). Used for the
  * owner-only surface: team invites, member removal, data reset, and (Phase 27)
  * org deletion + data export.
  *

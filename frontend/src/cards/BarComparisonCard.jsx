@@ -12,7 +12,7 @@ import { formatValue } from '../lib/format.js';
 import { prefersReducedMotion } from '../lib/motion.js';
 
 /**
- * Bar Comparison card — magnitude of one measure across a handful of categories
+ * Bar Comparison card, magnitude of one measure across a handful of categories
  * (revenue by source). Horizontal bars, single sequential hue, values
  * direct-labelled; recessive axes. Only rendered when >= 2 categories exist.
  */

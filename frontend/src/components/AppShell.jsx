@@ -7,7 +7,7 @@ const SECTION_TITLES = { dashboard: 'Dashboard', data: 'Data', settings: 'Settin
 /**
  * Persistent app chrome: a fixed left sidebar on md+, an off-canvas drawer
  * below that, and a slim top bar over the scrolling content column. Purely
- * layout — every section's content is passed in as `children`.
+ * layout, every section's content is passed in as `children`.
  */
 export default function AppShell({
   user,

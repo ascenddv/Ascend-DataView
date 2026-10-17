@@ -2,19 +2,19 @@
  * Migration runner. Applies every `backend/db/migrations/NNN_*.sql` not yet in
  * `schema_migrations`, in numeric filename order, each in its own transaction.
  *
- *   npm run migrate            (local — loads ../../.env)
+ *   npm run migrate            (local, loads ../../.env)
  *   node db/migrate.js         (same)
- *   require('./migrate').migrate()   (from code — dotenv already loaded)
+ *   require('./migrate').migrate()   (from code, dotenv already loaded)
  *
  * Idempotent: a second run applies nothing. NOT run at request time (see
- * backend/app.js) — run it as a deploy step against the production database.
+ * backend/app.js), run it as a deploy step against the production database.
  *
  * Each applied migration's SHA-256 (over LF-normalised content) is stored in
  * `schema_migrations.checksum`. On every run, an already-applied migration whose
- * file no longer matches its recorded checksum is a hard error — you must never
+ * file no longer matches its recorded checksum is a hard error, you must never
  * edit an applied migration; add a new numbered file instead. Rows applied
  * before checksums existed are back-filled once with their current content as
- * the baseline (pre-existing drift cannot be recovered — that is why the column
+ * the baseline (pre-existing drift cannot be recovered, that is why the column
  * exists from the start).
  *
  * Known limitations (deliberate, not bugs):
@@ -79,7 +79,7 @@ async function migrate({ log = console.log } = {}) {
         throw new Error(
           `migration ${version} was modified after it was applied ` +
             `(checksum ${stored.slice(0, 12)}… on record, ${checksum.slice(0, 12)}… on disk). ` +
-            'Never edit an applied migration — add a new NNN_*.sql instead.'
+            'Never edit an applied migration, add a new NNN_*.sql instead.'
         );
       }
       continue;
@@ -105,7 +105,7 @@ async function migrate({ log = console.log } = {}) {
 
   // Drift guard: standardized_data must carry every canonical field column.
   // Catches "added a field to config/schema.js but forgot the migration".
-  // (Presence only — it does not check column types; that is a known limitation.)
+  // (Presence only, it does not check column types; that is a known limitation.)
   const { rows: cols } = await conn.query(
     `SELECT column_name FROM information_schema.columns WHERE table_name = 'standardized_data'`
   );
@@ -113,7 +113,7 @@ async function migrate({ log = console.log } = {}) {
   const missing = FIELD_NAMES.filter((f) => !have.has(f));
   if (missing.length) {
     throw new Error(
-      `standardized_data is missing column(s) [${missing.join(', ')}] — ` +
+      `standardized_data is missing column(s) [${missing.join(', ')}], ` +
         'a config/schema.js field needs its own migration.'
     );
   }

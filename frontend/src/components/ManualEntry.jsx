@@ -3,7 +3,7 @@ import { submitManualEntry } from '../lib/api.js';
 
 /**
  * Add one period by hand. The field list comes from GET /api/schema (never a
- * second copy of the canonical dictionary). Values are sent as-is — the backend
+ * second copy of the canonical dictionary). Values are sent as-is, the backend
  * runs them through the same normalization as a CSV cell, so "$12,400" works.
  */
 export default function ManualEntry({ onEntered }) {
@@ -99,7 +99,7 @@ export default function ManualEntry({ onEntered }) {
           {Object.entries(byCategory).map(([cat, fs]) => (
             <fieldset key={cat} className="mt-4">
               <legend className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>
-                {cat} — optional
+                {cat} (optional)
               </legend>
               <div className="mt-1 grid grid-cols-2 gap-3 sm:grid-cols-4">
                 {fs.map((f) => (

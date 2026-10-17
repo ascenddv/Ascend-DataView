@@ -1,11 +1,11 @@
 import CardShell, { CardLabel } from './CardShell.jsx';
 
 /**
- * Full-width AI insight card — the "why" and "what should we do" narrative,
+ * Full-width AI insight card, the "why" and "what should we do" narrative,
  * rendered prominently at the top of the Overview.
  *
  * `state` is one of: 'loading' | 'ready'. Any other condition (error, or the
- * service returning `status: 'unavailable'`) renders NOTHING — a missing
+ * service returning `status: 'unavailable'`) renders NOTHING, a missing
  * narrative must never break or clutter the dashboard (graceful degradation).
  * `Dashboard` only mounts this card when it will actually show something.
  */

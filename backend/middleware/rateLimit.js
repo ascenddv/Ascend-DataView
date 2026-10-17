@@ -1,12 +1,12 @@
 /**
  * Rate limiting.
  *
- * `authLimiter` — 10 requests / 15 minutes / IP on POST /api/auth/login and
+ * `authLimiter`, 10 requests / 15 minutes / IP on POST /api/auth/login and
  * POST /api/auth/signup. Enough for a real user fumbling a password, tight
  * enough to blunt brute-force and signup-spam.
  *
- * The four limiters below (Phase 23) protect the expensive endpoints — the LLM
- * calls, the PDF render, the file parse — that used to have no limit at all.
+ * The four limiters below (Phase 23) protect the expensive endpoints, the LLM
+ * calls, the PDF render, the file parse, that used to have no limit at all.
  * Each has its own window/ceiling and its own PgRateStore prefix, and is keyed
  * per **org + user** rather than per IP: a shared office NAT must not let one
  * tenant's abuse rate-limit another, and the thing actually being contained is
@@ -15,7 +15,7 @@
  *
  * On exceeding a hard limit: a clean 429 in the same shape every other error in
  * this app uses ({ ok: false, error }). The chat burst limiter is the one
- * exception — see `chatBurstLimiter`.
+ * exception, see `chatBurstLimiter`.
  *
  * Every count lives in Postgres (PgRateStore), not process memory, so a limit
  * holds across serverless instances. `app.set('trust proxy', 1)` in app.js
@@ -63,7 +63,7 @@ function hardLimiter({ prefix, limit, windowMs, error }) {
     standardHeaders: 'draft-7',
     legacyHeaders: false,
     keyGenerator: perUserKey,
-    // The key is org+user, never req.ip — the IPv6 fallback check doesn't apply.
+    // The key is org+user, never req.ip, the IPv6 fallback check doesn't apply.
     validate: { keyGeneratorIpFallback: false },
     store: new PgRateStore({ prefix }),
     handler: (_req, res) => res.status(429).json({ ok: false, error }),
@@ -105,7 +105,7 @@ const exportLimiter = hardLimiter({
   error: 'Too many data exports in a short time. Please wait a few minutes and try again.',
 });
 
-// AscendAI chat burst — a per-minute ceiling distinct from the per-org DAILY
+// AscendAI chat burst, a per-minute ceiling distinct from the per-org DAILY
 // cap enforced in routes/ascendai.js. A hit here does NOT surface as a 429:
 // the chat UI already renders { ok: true, status: 'rate_limited', reply }, so a
 // too-fast sender gets the same friendly in-conversation message the daily cap

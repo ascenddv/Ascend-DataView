@@ -348,7 +348,7 @@ test('AscendAI: when enabled, the header shows today’s message count', () => {
 
 test('AscendAI: the degraded server states render as friendly inline notices, from server copy', () => {
   const unavailableCopy = 'AscendAI is temporarily unavailable. Please try again in a moment.';
-  const rateLimitedCopy = "You've reached today's AscendAI message limit for your organization. It resets at 00:00 UTC — please try again then.";
+  const rateLimitedCopy = "You've reached today's AscendAI message limit for your organization. It resets at 00:00 UTC, please try again then.";
   const html = renderAscendAi(true, [
     { role: 'notice', kind: 'unavailable', content: unavailableCopy },
     { role: 'notice', kind: 'rate_limited', content: rateLimitedCopy },

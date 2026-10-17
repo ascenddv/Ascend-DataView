@@ -3,7 +3,7 @@ import React from 'react';
 /**
  * Catches any render/lifecycle error below it and shows a calm recovery card
  * instead of a white screen. Reports to Sentry if the SDK loaded (window.Sentry
- * — added via a script tag when SENTRY_DSN is configured); always logs a stable
+ *, added via a script tag when SENTRY_DSN is configured); always logs a stable
  * "UI_ERROR_BOUNDARY" line so it's greppable.
  */
 export default class ErrorBoundary extends React.Component {
@@ -49,7 +49,7 @@ export default class ErrorBoundary extends React.Component {
           </h1>
           <p className="mt-2 text-sm" style={{ color: 'var(--text-secondary)' }}>
             The page hit an unexpected error. Reloading usually fixes it. If it keeps happening,
-            your data is safe — nothing was lost.
+            your data is safe, nothing was lost.
           </p>
           <button
             type="button"

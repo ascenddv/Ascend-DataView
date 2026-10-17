@@ -1,5 +1,5 @@
 /**
- * Designed empty / degraded state — a small mark, a headline, one line of
+ * Designed empty / degraded state, a small mark, a headline, one line of
  * plain explanation, and an optional call to action. Used wherever the app
  * would otherwise show a bare bordered box of text (graceful degradation:
  * a sparse org gets a smaller, friendlier screen, never an error).

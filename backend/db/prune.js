@@ -1,5 +1,5 @@
 /**
- * One-shot retention prune — deletes chat_messages / ascendai_usage past their
+ * One-shot retention prune, deletes chat_messages / ascendai_usage past their
  * retention windows and expired pending_uploads.  `npm run prune`
  * (Vercel Cron calls the endpoint version in Phase 31.)
  */

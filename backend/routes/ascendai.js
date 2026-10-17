@@ -1,12 +1,12 @@
 /**
  * AscendAI chat (Stage 4).
  *
- *   POST   /api/ascendai/chat   — one turn, with a capped window of recent
+ *   POST   /api/ascendai/chat  , one turn, with a capped window of recent
  *                                 history as context; persists both sides on
  *                                 success; per-org daily rate limit; graceful
  *                                 degradation on a provider failure.
- *   GET    /api/ascendai/chat   — this user's stored conversation.
- *   DELETE /api/ascendai/chat   — clear this user's conversation (does not
+ *   GET    /api/ascendai/chat  , this user's stored conversation.
+ *   DELETE /api/ascendai/chat  , clear this user's conversation (does not
  *                                 reset the day's usage / rate limit).
  *
  * Behind requireAuth; org_id and user_id come from req.auth exactly like every
@@ -40,7 +40,7 @@ const MAX_MESSAGE_CHARS = 4000;
 const GET_LIMIT = 200;
 
 // The `trace` (system prompt, every tool call + result, token counts) is a
-// debugging aid — never expose it to end users. It is included in the chat
+// debugging aid, never expose it to end users. It is included in the chat
 // response only outside production, or when explicitly opted in, so the phase
 // gates can still inspect it.
 const EXPOSE_TRACE =
@@ -50,7 +50,7 @@ const EXPOSE_TRACE =
     !process.env.VERCEL);
 
 const RATE_LIMIT_REPLY =
-  "You've reached today's AscendAI message limit for your organization. It resets at 00:00 UTC — please try again then.";
+  "You've reached today's AscendAI message limit for your organization. It resets at 00:00 UTC, please try again then.";
 
 function startOfUtcDayIso() {
   const d = new Date();
@@ -72,7 +72,7 @@ function sumUsage(trace) {
 // OpenAI-style token keys sumUsage() reads. If it does not (the provider
 // omitted `usage`, or was swapped for one with a different shape), the token
 // telemetry for this turn silently records as zero. sumUsage()'s parsing is
-// left as-is on purpose — this only makes the silent-zero case observable.
+// left as-is on purpose, this only makes the silent-zero case observable.
 function usageIsParseable(trace) {
   const entries = (trace && trace.usage) || [];
   return entries.some(
@@ -138,7 +138,7 @@ router.post('/ascendai/chat', requireVerified, chatBurstLimiter, async (req, res
     // --- token-usage logging (also the source of truth for the rate limit) ---
     const usage = sumUsage(result.trace);
     if (result.status === 'ok' && !usageIsParseable(result.trace)) {
-      // Real answer, but no parseable provider usage — this turn's token
+      // Real answer, but no parseable provider usage, this turn's token
       // totals will record as zero. Surface it rather than hide it.
       captureMessage('ASCENDAI_USAGE_UNPARSED', {
         orgId,
@@ -154,7 +154,7 @@ router.post('/ascendai/chat', requireVerified, chatBurstLimiter, async (req, res
       iterations: (result.trace && result.trace.iterations) || 0,
     });
 
-    // Persist the turn only when it actually produced an answer — a failed turn
+    // Persist the turn only when it actually produced an answer, a failed turn
     // must not leave a dangling user message or an "unavailable" assistant turn
     // in the conversation context.
     if (result.status === 'ok') {

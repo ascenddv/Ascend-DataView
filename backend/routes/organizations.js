@@ -2,7 +2,7 @@
  * Organization-scoped endpoints.
  *
  *   POST   /api/organizations/:id/onboarding-complete   mark first-run done
- *   PATCH  /api/organizations/:id                       owner org settings — ascendaiEnabled (owner, verified)
+ *   PATCH  /api/organizations/:id                       owner org settings, ascendaiEnabled (owner, verified)
  *   DELETE /api/organizations/:id/data                  destructive data reset (owner, verified)
  *   GET    /api/organizations/:id/members               team roster (any member)
  *   DELETE /api/organizations/:id/members/:userId       remove a member (owner)
@@ -10,7 +10,7 @@
  *   GET    /api/organizations/:id/invitations           pending invites (owner)
  *   DELETE /api/organizations/:id/invitations/:token    revoke an invite (owner)
  *
- * Every route first checks that :id equals the session's org_id (`sameOrg`) —
+ * Every route first checks that :id equals the session's org_id (`sameOrg`) -
  * no org can act on another by changing the path parameter.
  */
 
@@ -82,11 +82,11 @@ router.delete('/organizations/:id/data', sameOrg, requireRole('owner'), requireV
 });
 
 /**
- * Permanently delete the whole organization — every user, dataset, chat, usage
+ * Permanently delete the whole organization, every user, dataset, chat, usage
  * row and invitation, via the cascade FKs. Owner + verified, typed-name
  * confirmation. The delete is one atomic `DELETE FROM organizations` statement:
  * the cascades to all child tables are all-or-nothing (a non-CASCADE FK would
- * make the whole statement fail and change nothing — see the Phase 22 gate's
+ * make the whole statement fail and change nothing, see the Phase 22 gate's
  * "every FK is ON DELETE CASCADE" check). The session cookie is cleared on the
  * way out; every other session dies on its next request once its user row is
  * gone (requireAuth's getUserById returns null).

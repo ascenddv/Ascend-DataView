@@ -1,5 +1,5 @@
 /**
- * DeepSeek provider — the AscendAI chat backend (Stage 4).
+ * DeepSeek provider, the AscendAI chat backend (Stage 4).
  *
  * Deliberately a SEPARATE module from ./provider.js (Gemini). Different vendor,
  * different key (`DEEPSEEK_API_KEY`), different prepaid balance, different
@@ -8,7 +8,7 @@
  * mutates the Gemini path.
  *
  * `deepseek-chat` (OpenAI-compatible). `deepseek-reasoner` is intentionally NOT
- * used — it doesn't support function/tool calling the way AscendAI needs.
+ * used, it doesn't support function/tool calling the way AscendAI needs.
  *
  * Billing: prepaid, no auto-recharge. The balance itself is the spend ceiling.
  */
@@ -30,7 +30,7 @@ function isConfigured() {
 /**
  * One raw chat/completions call with tool definitions. Returns the parsed
  * OpenAI-shaped response body ({ choices: [{ message, finish_reason }], usage }).
- * Throws on a non-retryable HTTP error or after exhausting retries — the caller
+ * Throws on a non-retryable HTTP error or after exhausting retries, the caller
  * (services/ascendai/chat.js) turns that into a graceful "unavailable".
  *
  * @param {{

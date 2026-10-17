@@ -1,8 +1,8 @@
 /**
- * GET /api/account/export — a full JSON dump of everything the acting
+ * GET /api/account/export, a full JSON dump of everything the acting
  * organization owns (organization + settings, members without password hashes,
  * standardized data, saved column mappings, chat messages, AscendAI usage,
- * invitations). Owner + verified. Scoped to req.auth.orgId — no id parameter,
+ * invitations). Owner + verified. Scoped to req.auth.orgId, no id parameter,
  * nothing to tamper with. Rate-limited (a heavy multi-query read) and never
  * cached (bulk sensitive data).
  */

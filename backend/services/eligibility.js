@@ -3,7 +3,7 @@
  *
  * For each of the 5 card types, decide 'Available' | 'Limited' | 'Unavailable'
  * from what the stored data can actually support. Every numeric threshold comes
- * from config/thresholds.js by name — there are no bare numbers in this file.
+ * from config/thresholds.js by name, there are no bare numbers in this file.
  *
  * Not every card uses all three states: KPI, Trend and the Health Score card
  * have a meaningful middle ground; Bar Comparison and Risk/Opportunity are
@@ -25,7 +25,7 @@ const LIMITED = 'Limited';
 const UNAVAILABLE = 'Unavailable';
 
 /**
- * KPI card — a headline number with a period-over-period change indicator.
+ * KPI card, a headline number with a period-over-period change indicator.
  * Needs two periods to show the change; one period shows the number only.
  */
 function kpiEligibility(periodCount) {
@@ -35,7 +35,7 @@ function kpiEligibility(periodCount) {
 }
 
 /**
- * Trend card — a sparkline over time. MIN_PERIODS_FOR_TREND_CARD is the floor to
+ * Trend card, a sparkline over time. MIN_PERIODS_FOR_TREND_CARD is the floor to
  * draw a line at all; exactly at the floor is renderable but too thin to
  * feature, so it is 'Limited'. Strictly more than the floor is 'Available'.
  */
@@ -46,7 +46,7 @@ function trendEligibility(periodCount) {
 }
 
 /**
- * Bar Comparison card — compares categories (e.g. revenue by source). Needs at
+ * Bar Comparison card, compares categories (e.g. revenue by source). Needs at
  * least MIN_CATEGORIES_FOR_COMPARISON_CARD populated categories in the latest
  * period. Binary.
  */
@@ -55,7 +55,7 @@ function barComparisonEligibility(categoryCount) {
 }
 
 /**
- * Health Score card — surfaces the dimension scores. 'Available' when every
+ * Health Score card, surfaces the dimension scores. 'Available' when every
  * dimension scores, 'Limited' when at least MIN_SUBMETRICS_FOR_HEALTH_SCORE of
  * them do (but not all), 'Unavailable' when none do.
  */
@@ -66,7 +66,7 @@ function healthScoreEligibility(scoredDimensionCount) {
 }
 
 /**
- * Risk/Opportunity card — shows the fired deterministic rules. Binary: it is
+ * Risk/Opportunity card, shows the fired deterministic rules. Binary: it is
  * 'Available' iff at least one rule fired.
  */
 function riskOpportunityEligibility(firedCount) {

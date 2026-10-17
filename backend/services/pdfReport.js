@@ -2,7 +2,7 @@
  * Point-in-time PDF snapshot of the Overview dashboard (Phase 16).
  *
  * A PDF is just another rendering of the SAME deterministic buildMetrics()
- * payload the JSON API and the React dashboard use — no new data, no new
+ * payload the JSON API and the React dashboard use, no new data, no new
  * calculation. It is clearly stamped as a snapshot as of a moment, not live
  * data. Scoping is the caller's job: the route hands us only the acting org's
  * computed metrics.
@@ -20,7 +20,7 @@ const number = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 });
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 const isNum = (v) => typeof v === 'number' && Number.isFinite(v);
-const fmtValue = (v, format) => (!isNum(v) ? '—' : format === 'currency' ? currency.format(v) : number.format(v));
+const fmtValue = (v, format) => (!isNum(v) ? '-' : format === 'currency' ? currency.format(v) : number.format(v));
 const fmtPct = (rate, digits = 1) =>
   !isNum(rate) ? null : `${rate > 0 ? '+' : rate < 0 ? '-' : ''}${(Math.abs(rate) * 100).toFixed(digits)}%`;
 const fmtSignedPct = (pct, digits = 1) =>
@@ -31,7 +31,7 @@ function fmtPeriod(iso) {
 }
 
 // Band thresholds come from the single shared config at the repo root, the same
-// file frontend/src/lib/healthBands.js reads — so the PDF's band labels can
+// file frontend/src/lib/healthBands.js reads, so the PDF's band labels can
 // never drift from the dashboard's. (test/healthBandsSync.test.mjs enforces it.)
 const { stableMin: STABLE_MIN, strongMin: STRONG_MIN } = require('../../shared/health-bands.json');
 const bandLabel = (score) =>
@@ -116,14 +116,14 @@ function render(doc, metrics, insight, meta) {
     timeStyle: 'short',
   });
 
-  doc.font('Helvetica-Bold').fontSize(18).fillColor(INK).text('AscendDV — Overview snapshot');
+  doc.font('Helvetica-Bold').fontSize(18).fillColor(INK).text('AscendDV: Overview snapshot');
   doc.font('Helvetica').fontSize(10).fillColor(MUTED).text(meta.orgName || 'Organization');
   doc.moveDown(0.5);
 
-  // The "this is not live data" stamp — deliberately prominent.
+  // The "this is not live data" stamp, deliberately prominent.
   doc.save().rect(left, doc.y, right - left, 30).fill('#eef2f7').restore();
   doc.font('Helvetica-Bold').fontSize(9).fillColor(ACCENT)
-    .text(`POINT-IN-TIME SNAPSHOT — as of ${stampLabel}`, left + 8, doc.y + 6, { width: right - left - 16 });
+    .text(`POINT-IN-TIME SNAPSHOT, as of ${stampLabel}`, left + 8, doc.y + 6, { width: right - left - 16 });
   doc.font('Helvetica').fontSize(8).fillColor(MUTED)
     .text('This is a saved snapshot, not a live view. Figures reflect the data on file at the time above.', left + 8, doc.y + 2, { width: right - left - 16 });
   doc.y += 14;
@@ -151,7 +151,7 @@ function render(doc, metrics, insight, meta) {
     doc.font('Helvetica').fontSize(10).fillColor(INK).text(insight.why, { width: right - left });
     doc.moveDown(0.4);
     doc.font('Helvetica-Bold').fontSize(9).fillColor(MUTED).text('WHAT TO DO');
-    doc.font('Helvetica').fontSize(10).fillColor(INK).text(insight.recommendation || '—', { width: right - left });
+    doc.font('Helvetica').fontSize(10).fillColor(INK).text(insight.recommendation || '-', { width: right - left });
   } else {
     sectionHeading(doc, 'Insight');
     doc.font('Helvetica-Oblique').fontSize(9).fillColor(MUTED)
@@ -211,7 +211,7 @@ function render(doc, metrics, insight, meta) {
   /* Revenue by source */
   const rbc = metrics.revenueByCategory || [];
   if (rbc.length >= 2 && metrics.cards && metrics.cards.BarComparison === 'Available') {
-    sectionHeading(doc, `Revenue by source — ${fmtPeriod(dataset.latestPeriod)}`);
+    sectionHeading(doc, `Revenue by source: ${fmtPeriod(dataset.latestPeriod)}`);
     barGroup(doc, rbc, 'currency');
   }
 
@@ -258,7 +258,7 @@ function buildOverviewPdf(metrics, insight, meta = {}) {
       margin: 48,
       compress: false,
       bufferPages: true,
-      info: { Title: `AscendDV Overview snapshot — ${meta.orgName || 'Organization'}` },
+      info: { Title: `AscendDV Overview snapshot: ${meta.orgName || 'Organization'}` },
     });
     const chunks = [];
     doc.on('data', (c) => chunks.push(c));
