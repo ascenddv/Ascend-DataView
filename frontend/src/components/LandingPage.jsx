@@ -3,6 +3,7 @@ import { Button } from './ui/primitives.jsx';
 import ThemeToggle from './ThemeToggle.jsx';
 import LandingClients from './LandingClients.jsx';
 import LandingContact from './LandingContact.jsx';
+import LandingTeam from './LandingTeam.jsx';
 import { IconCheck } from '../lib/icons.jsx';
 
 /**
@@ -23,10 +24,9 @@ const faint = { color: 'var(--text-muted)' };
 
 const NAV = [
   { href: '#how', label: 'How it works' },
-  { href: '#principle', label: 'Principles' },
   { href: '#ai', label: 'AscendAI' },
-  { href: '#product', label: 'Product' },
   { href: '#clients', label: 'Clients' },
+  { href: '/about', label: 'About' },
   { href: '#contact', label: 'Contact' },
 ];
 
@@ -298,6 +298,8 @@ export default function LandingPage() {
 
         <LandingClients />
 
+        <LandingTeam />
+
         <LandingContact />
 
         {/* Final CTA */}
@@ -332,6 +334,7 @@ export default function LandingPage() {
           <Logo size={20} />
           <nav aria-label="Footer" className="flex gap-6">
             <a href={SIGN_IN} className="hover:opacity-70">Sign in</a>
+            <a href="/about" className="hover:opacity-70">About</a>
             <a href="/legal/terms" className="hover:opacity-70">Terms</a>
             <a href="/legal/privacy" className="hover:opacity-70">Privacy</a>
           </nav>

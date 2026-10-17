@@ -4,6 +4,7 @@ import AuthPage from './AuthPage.jsx';
 import { VerifyEmailPage, ResetPasswordPage, AcceptInvitePage } from './AuthTokenPages.jsx';
 import { TermsPage, PrivacyPage } from './LegalPages.jsx';
 import LandingPage from './LandingPage.jsx';
+import AboutPage from './AboutPage.jsx';
 import Logo from './Logo.jsx';
 
 /**
@@ -54,6 +55,7 @@ export default function AuthGate({ children }) {
   if (path === '/verify-email') return <VerifyEmailPage token={token} />;
   if (path === '/reset-password') return <ResetPasswordPage token={token} />;
   if (path === '/accept-invite') return <AcceptInvitePage token={token} />;
+  if (path === '/about') return <AboutPage />;
   if (path === '/legal/terms') return <TermsPage />;
   if (path === '/legal/privacy') return <PrivacyPage />;
 
