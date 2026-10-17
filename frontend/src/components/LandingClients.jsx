@@ -21,6 +21,7 @@ const CLIENTS = [
   { name: 'PIT Solutions', kind: 'business', logo: '/logos/pits.png', blurb: "Software company offering custom development, AI, testing, ERP, cybersecurity and managed IT services.", url: 'https://www.pitsolutions.com/' },
   { name: 'Starintra IT Services', kind: 'business', logo: '/logos/starintra.svg', blurb: "IT services firm doing computer programming and consultancy.", url: 'https://www.falconebiz.com/LLP/STARINTRA-IT-SERVICES-LLP-ADB-7445' },
   { name: 'Titan Robotics Club', kind: 'business', logo: '/logos/titan.png', blurb: "Middle and high school program in Bellevue running FIRST robotics teams in FRC, FTC and FLL.", url: 'https://www.titanrobotics.com/' },
+  { name: 'Turtle Walkers', kind: 'business', logo: '/logos/turtlewalkers.png', blurb: "FTC robotics team from Redmond, Washington.", url: 'https://www.instagram.com/turtlewalkers_19745/' },
   { name: 'Gene The Plumber', kind: 'business', logo: '/logos/geneplumber.svg', blurb: "Bothell, WA plumber offering leak detection, repairs and HVAC maintenance for homes and businesses.", url: 'https://www.eventeny.com/company/?c=297995' },
   { name: 'Padmashree Residence', kind: 'business', logo: '/logos/padmashree.svg', blurb: "Residential property project in Katraj, Pune.", url: 'https://www.99acres.com/padmashree-katraj-pune-npxid-r406234' },
   { name: 'Kari Art', kind: 'business', logo: '/logos/kari.svg', blurb: "Seattle artist creating custom handcrafted paintings of people’s pets.", url: 'https://www.karikoleva.com' },
