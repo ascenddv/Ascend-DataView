@@ -1,7 +1,7 @@
 /**
  * Transactional email (Stage 5, Phase 25).
  *
- * One entry point — `sendEmail({ to, subject, html, text })`. With RESEND_API_KEY
+ * One entry point, `sendEmail({ to, subject, html, text })`. With RESEND_API_KEY
  * set it goes out through Resend's REST API; otherwise it drops to a dev logger
  * that prints the message (and any link inside it) to the console so local runs
  * and the phase gate can complete the verify / reset flows without real mail.
@@ -9,7 +9,7 @@
  * `EMAIL_FROM` is the sender ("AscendDV <noreply@yourdomain>"); `APP_BASE_URL`
  * is the origin used to build links (falls back to localhost for dev).
  *
- * A send failure never throws into a request handler — the caller decides
+ * A send failure never throws into a request handler, the caller decides
  * whether a missing email is fatal (it generally is not: the user can re-request
  * a verification or reset link). `sendEmail` returns { ok, id?, error?, dev? }.
  */
@@ -101,11 +101,11 @@ function passwordResetEmail(email, token) {
     subject: 'Reset your AscendDV password',
     text:
       `A password reset was requested for your AscendDV account.\n\nSet a new password:\n${link}\n\n` +
-      `This link expires in 1 hour and can be used once. If you didn't ask for this, ignore this message — your password is unchanged.`,
+      `This link expires in 1 hour and can be used once. If you didn't ask for this, ignore this message, your password is unchanged.`,
     html:
       `<p>A password reset was requested for your AscendDV account.</p><p>Set a new password:</p>` +
       `<p><a href="${link}">${link}</a></p><p>This link expires in 1 hour and can be used once. ` +
-      `If you didn't ask for this, ignore this message — your password is unchanged.</p>`,
+      `If you didn't ask for this, ignore this message, your password is unchanged.</p>`,
   };
 }
 

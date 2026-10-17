@@ -5,14 +5,14 @@
  * AscendDV design tokens
  * ─────────────────────────────────────────────────────────────────────────────
  * Role-based custom properties, consumed as Tailwind arbitrary values
- * (bg-[var(--surface-1)]), inline style props, and Recharts props — so a
+ * (bg-[var(--surface-1)]), inline style props, and Recharts props, so a
  * light/dark, density, or brand change happens in one place.
  *
- * Palette: a slate "ink" (#252A34) for anything that would otherwise be black —
- * text, dark surfaces, the logo tile — over plain cool-neutral light surfaces.
- * Green (#217A5E / #5CBFA0) is an ACCENT ONLY: primary actions, active nav,
- * links, focus, chart series. It is deliberately kept off decorative chrome.
- * The semantic status ramp is the validated dataviz reference set.
+ * Palette (ported from Ascend): deep spruce green (#1F6B4F) on a faintly
+ * green-tinted white, with a near-black green ink (#161C19). Dark theme is
+ * composed, not inverted: elevation reads as lighter surfaces and the accent
+ * lightens so it stays legible as text and chart lines. Inter runs the UI,
+ * Geist sets display headlines.
  *
  * Theme resolution:
  *   :root                                 → light (OS light, or unset)
@@ -20,7 +20,7 @@
  *   :root[data-theme="dark"]              → dark, always (Settings override)
  *   :root[data-theme="light"]             → light, always (Settings override)
  *
- * The two dark blocks below are byte-identical ON PURPOSE — plain CSS cannot
+ * The two dark blocks below are byte-identical ON PURPOSE, plain CSS cannot
  * share one declaration list across a media query and a plain selector. Edit
  * both, or neither. Search tag: DARK-TOKENS.
  */
@@ -42,45 +42,45 @@
   --text-2xl:  1.625rem;   /* 26 */
   --text-3xl:  2rem;       /* 32 */
 
-  /* Surfaces & text — cool neutral, no colour cast */
-  --page:            #f6f7f8;
-  --surface-1:       #fbfbfc;
+  /* Surfaces & text, Ascend: faintly green-tinted neutrals, near-black green ink */
+  --page:            #f6f8f6;
+  --surface-1:       #ffffff;
   --surface-2:       #ffffff;
-  --surface-sunken:  #eef0f2;
-  --surface-hover:   rgba(37, 42, 52, 0.045);
-  --text-primary:    #1b2027;
-  --text-secondary:  #49505b;
-  --text-muted:      #7c828d;
-  --gridline:        #e6e8eb;
-  --baseline:        #c7cbd1;
-  --border:          rgba(37, 42, 52, 0.10);
-  --border-strong:   rgba(37, 42, 52, 0.16);
+  --surface-sunken:  #ecf2ee;
+  --surface-hover:   rgba(22, 28, 25, 0.045);
+  --text-primary:    #161c19;
+  --text-secondary:  #4e5955;
+  --text-muted:      #66716c;
+  --gridline:        #e6ebe7;
+  --baseline:        #d6dcd7;
+  --border:          #e1e7e3;
+  --border-strong:   #d6dcd7;
 
-  /* Accent — single spruce-green hue: trend lines, comparison bars, active
+  /* Accent, single spruce-green hue: trend lines, comparison bars, active
      nav/tabs, primary CTAs. `series-1` is the charting alias of `accent`. */
-  --accent:          #217a5e;
-  --accent-strong:   #1a6550;
-  --accent-weak:     rgba(33, 122, 94, 0.10);
+  --accent:          #1f6b4f;
+  --accent-strong:   #185640;
+  --accent-weak:     #e1eee7;
   --accent-contrast: #ffffff;
-  --series-1:        #217a5e;
+  --series-1:        #1f6b4f;
 
-  /* Status / semantic — validated ramp, kept clear of the green accent */
-  --status-good:     #0ca30c;
-  --status-warning:  #f6a609;
-  --status-serious:  #ec835a;
-  --status-critical: #d03b3b;
-  --delta-up:        #0a7a3d;
+  /* Status / semantic, Ascend up/down/warn, with DV's good/serious steps kept */
+  --status-good:     #1f7a4d;
+  --status-warning:  #b97a0e;
+  --status-serious:  #d9733f;
+  --status-critical: #b83325;
+  --delta-up:        #1f7a4d;
 
   /* Shape & elevation */
   --radius-sm: 8px;
   --radius:    12px;
   --radius-lg: 16px;
   --radius-xl: 22px;
-  --shadow-sm: 0 1px 2px rgba(20, 24, 31, 0.05), 0 3px 10px rgba(20, 24, 31, 0.05);
-  --shadow-md: 0 4px 12px rgba(20, 24, 31, 0.08), 0 16px 40px rgba(20, 24, 31, 0.10);
-  --shadow-lg: 0 14px 34px rgba(20, 24, 31, 0.12), 0 34px 68px rgba(20, 24, 31, 0.14);
+  --shadow-sm: 0 1px 2px rgba(22, 28, 25, 0.05), 0 3px 10px rgba(22, 28, 25, 0.05);
+  --shadow-md: 0 4px 12px rgba(22, 28, 25, 0.08), 0 16px 40px rgba(22, 28, 25, 0.10);
+  --shadow-lg: 0 14px 34px rgba(22, 28, 25, 0.12), 0 34px 68px rgba(22, 28, 25, 0.14);
 
-  /* Motion — consumed by the .adv-* helpers and component transitions */
+  /* Motion, consumed by the .adv-* helpers and component transitions */
   --ease-out:    cubic-bezier(0.22, 1, 0.36, 1);
   --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
   --dur-fast: 120ms;
@@ -94,7 +94,7 @@
   --stack-gap: 24px;
 
   /* Shell */
-  --sidebar-w: 244px;
+  --sidebar-w: 250px;
 }
 
 /* ── DARK-TOKENS · auto: follow the OS unless the user forced light ────────── */
@@ -190,7 +190,8 @@ h1, h2, h3, h4 {
 }
 
 ::selection {
-  background: var(--accent-weak);
+  background: var(--accent);
+  color: var(--accent-contrast);
 }
 
 :focus-visible {
@@ -198,6 +199,34 @@ h1, h2, h3, h4 {
   outline-offset: 2px;
   border-radius: 3px;
 }
+
+h1, h2, h3 { text-wrap: balance; }
+p { text-wrap: pretty; }
+table { font-variant-numeric: tabular-nums; }
+input, textarea { caret-color: var(--accent); }
+input:-webkit-autofill,
+input:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0 1000px var(--surface-1) inset;
+  -webkit-text-fill-color: var(--text-primary);
+  caret-color: var(--text-primary);
+}
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-thumb {
+  background: var(--baseline);
+  border-radius: 999px;
+  border: 2px solid var(--page);
+}
+::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+/* Ascend display styles: heavier headlines, medium big headings, and the one
+   authored moment, a hero that settles into place. */
+.font-display { font-weight: 600; letter-spacing: -0.03em; }
+.headline { font-family: var(--font-display); font-weight: 500; letter-spacing: -0.025em; }
+@keyframes settle {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.settle { animation: settle 0.8s cubic-bezier(0.16, 1, 0.3, 1) both; }
 
 /* ── Motion helpers ─────────────────────────────────────────────────────────
  * Small, composable entrance animations. Everything here is disabled wholesale
@@ -238,17 +267,11 @@ h1, h2, h3, h4 {
 .adv-spin { animation: adv-spin 0.7s linear infinite; }
 .adv-pulse { animation: adv-pulse-soft 1.5s ease-in-out infinite; }
 
-/* Dashboard card surface: soft elevation, a quiet lift on hover. */
+/* Dashboard card surface (Ascend): elevation is the 1px border alone, no shadow, no lift. */
 .adv-card {
   background: var(--surface-1);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-sm);
-  transition: transform var(--dur) var(--ease-out), box-shadow var(--dur) var(--ease-out);
-}
-.adv-card:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-md);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
 }
 
 /* Frosted sticky bar (topbar). */

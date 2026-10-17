@@ -1,10 +1,10 @@
 /**
- * buildMetrics(rows) — turn the stored standardized dataset into the full
+ * buildMetrics(rows), turn the stored standardized dataset into the full
  * payload the dashboard consumes: KPIs, time series, revenue-by-category, the
  * dimension health scores, fired risks/opportunities, and the eligibility
  * verdict for each of the 5 card types.
  *
- * Pure transform of the rows array — no I/O. The route layer fetches the rows
+ * Pure transform of the rows array, no I/O. The route layer fetches the rows
  * and serializes the result.
  */
 
@@ -82,7 +82,7 @@ function buildSeries(rows) {
   return series;
 }
 
-/** Revenue subcategories present in the latest period — input to the Bar Comparison card. */
+/** Revenue subcategories present in the latest period, input to the Bar Comparison card. */
 function buildRevenueByCategory(rows) {
   const latest = rows[rows.length - 1];
   if (!latest) return [];

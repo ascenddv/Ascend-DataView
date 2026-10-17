@@ -3,7 +3,7 @@
  * (Phase 14b).
  *
  * When an upload produces a field in `fieldsNeedingConfirmation`, its parsed
- * rows are stashed here — NOT written to standardized_data — until the user
+ * rows are stashed here, NOT written to standardized_data, until the user
  * confirms or corrects each flagged mapping. Entries are single-use, expire
  * after TTL_MS, and are scoped by `orgId` on the way out (never leak another
  * tenant's rows).

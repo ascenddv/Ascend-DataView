@@ -54,7 +54,7 @@ export async function fetchAscendaiUsage() {
 
 /**
  * Send one chat turn. Resolves to { status, reply, reason } where status is
- * 'ok' | 'unavailable' | 'rate_limited' — the degraded statuses are a normal
+ * 'ok' | 'unavailable' | 'rate_limited', the degraded statuses are a normal
  * 200 response the caller renders, not an error.
  */
 export async function sendChatMessage(message) {

@@ -1,5 +1,5 @@
 /**
- * The Express app, with no network binding — shared by the local dev server
+ * The Express app, with no network binding, shared by the local dev server
  * (index.js, which calls app.listen) and the Vercel serverless entry
  * (../api/index.js, which exports this app directly).
  *
@@ -47,10 +47,10 @@ const ALLOWED_ORIGINS = (process.env.CORS_ORIGINS
   .filter(Boolean);
 
 const app = express();
-app.set('trust proxy', 1); // behind Vercel's proxy — needed for rate-limit + secure cookies
+app.set('trust proxy', 1); // behind Vercel's proxy, needed for rate-limit + secure cookies
 
 // Security headers. This is a JSON API (no inline scripts/styles served from
-// here — the SPA is static, served by Vercel), so the CSP is deliberately tight.
+// here, the SPA is static, served by Vercel), so the CSP is deliberately tight.
 app.use(
   helmet({
     contentSecurityPolicy: {
@@ -87,7 +87,7 @@ app.use(cookieParser());
 // observability layer redacts secrets; nothing here logs a body or a header.
 app.use((req, res, next) => {
   const start = Date.now();
-  // Capture the path now — by the time 'finish' fires, sub-router dispatch has
+  // Capture the path now, by the time 'finish' fires, sub-router dispatch has
   // rewritten req.url. req.originalUrl is stable; drop the query string.
   const path = (req.originalUrl || req.url || '').split('?')[0];
   res.on('finish', () => {
@@ -118,14 +118,14 @@ function ready() {
 app.ready = ready;
 
 // --- open routes (no DB needed) ----------------------------------------
-app.use('/api', healthRoutes); // /api/health — liveness check, works with no DB
+app.use('/api', healthRoutes); // /api/health, liveness check, works with no DB
 
 // Everything past here needs a reachable database.
 app.use('/api', (_req, res, next) => {
   ready().then(() => next()).catch(next);
 });
 
-app.use('/api', internalRoutes); // /api/internal/* — cron-secret auth, no session
+app.use('/api', internalRoutes); // /api/internal/*, cron-secret auth, no session
 
 app.use('/api/auth', authRoutes); // signup / login / logout / me
 
@@ -140,14 +140,14 @@ app.use('/api', pdfRoutes);
 app.use('/api', ascendaiRoutes);
 app.use('/api', accountRoutes);
 
-// Centralised error handler — clean JSON, not stack dumps. For 5xx the real
+// Centralised error handler, clean JSON, not stack dumps. For 5xx the real
 // error is logged server-side; the client gets a generic message so DB errors,
 // stack fragments and connection details never leak.
 app.use((err, _req, res, _next) => {
   if (err.code === 'LIMIT_FILE_SIZE') {
     return res
       .status(413)
-      .json({ ok: false, error: 'That file is too large — the maximum upload size is 4 MB.' });
+      .json({ ok: false, error: 'That file is too large, the maximum upload size is 4 MB.' });
   }
   const status = err.statusCode || 500;
   if (status >= 500) {

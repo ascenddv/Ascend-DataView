@@ -1,13 +1,13 @@
 /**
- * generateInsight(metrics) — the narrative "why" + "what should we do" layer.
+ * generateInsight(metrics), the narrative "why" + "what should we do" layer.
  *
  * Contract (CLAUDE.md "AI layer rules"):
- *   - Input is the ALREADY-COMPUTED metrics payload from buildMetrics() — health
+ *   - Input is the ALREADY-COMPUTED metrics payload from buildMetrics(), health
  *     scores, KPIs, revenue-by-category, triggered risk/opportunity objects.
  *     Raw CSV rows must never reach this function.
  *   - The model narrates numbers; it never computes them. The prompt forbids
  *     inventing or recomputing figures.
- *   - PII is stripped at the boundary as a hard guard, not a comment — even
+ *   - PII is stripped at the boundary as a hard guard, not a comment, even
  *     though the canonical schema has no PII fields, so a future schema change
  *     cannot silently leak an identifier into a prompt.
  *   - This is a separate function with its own prompt, distinct from column
@@ -21,8 +21,8 @@ const provider = require('./ai/provider');
 /* PII / raw-data guard                                                        */
 /* -------------------------------------------------------------------------- */
 
-// Keys that would indicate an individual identifier — or, since Phase 8, auth /
-// tenant metadata — crept into the payload. The metrics payload never contains
+// Keys that would indicate an individual identifier, or, since Phase 8, auth /
+// tenant metadata, crept into the payload. The metrics payload never contains
 // any of these; this guard makes sure a future change can't leak one.
 const IDENTIFIER_KEYS = new Set([
   'name', 'first_name', 'last_name', 'full_name', 'donor_name', 'contact',
@@ -33,7 +33,7 @@ const IDENTIFIER_KEYS = new Set([
   'org_id', 'orgid', 'org_name', 'orgname', 'organization', 'organization_name', 'role',
 ]);
 
-// Standardized-row shape — if we see this, someone passed raw ingested rows.
+// Standardized-row shape, if we see this, someone passed raw ingested rows.
 const RAW_ROW_MARKERS = ['period_date', 'source_meta'];
 
 const EMAIL_RE = /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/;
@@ -54,13 +54,13 @@ function sanitizeForPrompt(value, path = '$') {
     for (const key of keys) {
       if (IDENTIFIER_KEYS.has(key.toLowerCase())) {
         throw new Error(
-          `generateInsight: refusing to build a prompt — identifier-like key "${key}" at ${path}`
+          `generateInsight: refusing to build a prompt, identifier-like key "${key}" at ${path}`
         );
       }
     }
     if (RAW_ROW_MARKERS.some((m) => keys.includes(m))) {
       throw new Error(
-        `generateInsight: refusing to build a prompt — payload at ${path} looks like a raw ingested row, not computed metrics`
+        `generateInsight: refusing to build a prompt, payload at ${path} looks like a raw ingested row, not computed metrics`
       );
     }
 
@@ -119,7 +119,7 @@ function toNarrationInput(metrics) {
       vsTrailingAveragePct: k.vsTrailingAveragePct ?? null,
     })),
     // Phase 15: per-dimension trend + self-baseline, all computed in code. Empty
-    // when there isn't enough history — the prompt then narrates the latest
+    // when there isn't enough history, the prompt then narrates the latest
     // period only.
     trends: Object.fromEntries(
       Object.entries(metrics.trends || {}).map(([dimension, t]) => [
@@ -158,17 +158,17 @@ function buildPrompt(narrationInput) {
   const hasHistory = Object.keys(narrationInput.trends || {}).length > 0;
 
   const historyGuidance = hasHistory
-    ? `INPUT.trends holds, per dimension, a code-computed trend "direction" (increasing / flat / declining), a "consistency" read, a "consecutivePeriods" run count, and the latest value of that dimension's primary "metric" against the organization's OWN "trailingAverage" ("deltaFromTrailingPct"). INPUT.kpis may also carry "trailingAverage" / "vsTrailingAveragePct". You MAY use this for trend and self-relative framing — e.g. "the third consecutive month of decline" or "revenue is 12% above its own recent average" — but only with the exact direction, counts, and numbers given, and only where they are present.`
-    : `INPUT has no "trends" data — there isn't enough history yet. Narrate the latest period only, as a single-period snapshot. Do NOT describe a trend, a streak, or a comparison to past periods.`;
+    ? `INPUT.trends holds, per dimension, a code-computed trend "direction" (increasing / flat / declining), a "consistency" read, a "consecutivePeriods" run count, and the latest value of that dimension's primary "metric" against the organization's OWN "trailingAverage" ("deltaFromTrailingPct"). INPUT.kpis may also carry "trailingAverage" / "vsTrailingAveragePct". You MAY use this for trend and self-relative framing, e.g. "the third consecutive month of decline" or "revenue is 12% above its own recent average", but only with the exact direction, counts, and numbers given, and only where they are present.`
+    : `INPUT has no "trends" data, there isn't enough history yet. Narrate the latest period only, as a single-period snapshot. Do NOT describe a trend, a streak, or a comparison to past periods.`;
 
   return `You are the analyst voice for AscendDV, a dashboard for small nonprofits with incomplete data.
 
-You are given ONLY figures that deterministic code has already computed. Do NOT invent, recompute, estimate, or extrapolate any number. Every figure you mention must appear verbatim in INPUT. Do NOT compute a trend, average, or streak yourself — only cite the ones already in INPUT. If a health dimension is "Unavailable", say the data isn't there yet — never guess a score.
+You are given ONLY figures that deterministic code has already computed. Do NOT invent, recompute, estimate, or extrapolate any number. Every figure you mention must appear verbatim in INPUT. Do NOT compute a trend, average, or streak yourself, only cite the ones already in INPUT. If a health dimension is "Unavailable", say the data isn't there yet, never guess a score.
 
 ${historyGuidance}
 
 Produce two short pieces:
-- "why": ONE paragraph, 2-3 sentences. Anchor it to the single biggest signal in the data — the largest health-score movement, a triggered risk/opportunity, or a clear trend — and name the specific metric change behind it (cite the actual number).
+- "why": ONE paragraph, 2-3 sentences. Anchor it to the single biggest signal in the data, the largest health-score movement, a triggered risk/opportunity, or a clear trend, and name the specific metric change behind it (cite the actual number).
 - "recommendation": ONE short paragraph, 1-2 sentences, on the most useful next step, grounded in that same signal.
 
 Plain, concrete, specific to these numbers. No preamble, no bullet lists, no restating the whole dashboard.
@@ -210,12 +210,12 @@ async function generateInsight(metrics, deps = {}) {
     };
   }
 
-  // Guard clause — throws on raw rows / identifier keys, redacts PII-shaped text.
+  // Guard clause, throws on raw rows / identifier keys, redacts PII-shaped text.
   const safeMetrics = sanitizeForPrompt(metrics);
   const narrationInput = toNarrationInput(safeMetrics);
 
   // The narrative is non-essential (the dashboard renders without it), so keep
-  // the retry budget short — a throttled API should fail fast, not hang the card.
+  // the retry budget short, a throttled API should fail fast, not hang the card.
   const raw = await completeJson(buildPrompt(narrationInput), { retries: 1, timeoutMs: 25000 });
   const why = typeof raw?.why === 'string' ? raw.why.trim() : null;
   const recommendation =

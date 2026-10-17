@@ -4,7 +4,7 @@ import { METRIC_DEFINITIONS } from '../lib/metricDefinitions.js';
 /**
  * Interactive walkthrough of the populated Overview (Phase 17). Each step
  * highlights a real section of the user's own dashboard and explains it with
- * copy pulled from metricDefinitions.js — the same source the (i) tooltips use,
+ * copy pulled from metricDefinitions.js, the same source the (i) tooltips use,
  * never a second copy. Purely structural "where you are" lines (the tabs step,
  * the closing step) are the only text authored here.
  *
@@ -42,7 +42,7 @@ function buildSteps(metrics) {
   steps.push({
     anchor: 'tabs',
     title: 'One area at a time',
-    note: 'Switch tabs to focus on a single area of your organization — the same cards, filtered to that dimension.',
+    note: 'Switch tabs to focus on a single area of your organization, the same cards, filtered to that dimension.',
   });
   steps.push({
     anchor: null,
@@ -62,7 +62,7 @@ export default function DashboardTour({ metrics, onClose }) {
   const anchor = step ? step.anchor : null;
 
   // Position against the anchored element. Deps are primitives (anchor, idx) so
-  // this settles in one pass — no render loop.
+  // this settles in one pass, no render loop.
   useLayoutEffect(() => {
     if (!anchor || typeof document === 'undefined') {
       setRect(null);

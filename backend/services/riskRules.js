@@ -1,5 +1,5 @@
 /**
- * Deterministic risk / opportunity rules — the 4 from CLAUDE.md, exactly.
+ * Deterministic risk / opportunity rules, the 4 from CLAUDE.md, exactly.
  *
  * These run entirely in code. The AI layer (Phase 5) only narrates whatever
  * these functions return; it never decides whether a rule fired.

@@ -1,5 +1,5 @@
 /**
- * Gate for actions an unverified account may not take yet — upload, AscendAI,
+ * Gate for actions an unverified account may not take yet, upload, AscendAI,
  * team invites, data export. Runs *after* requireAuth, which has already loaded
  * the user and set req.auth.emailVerified.
  *

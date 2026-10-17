@@ -10,7 +10,7 @@ import {
 
 /**
  * Team roster + (for owners) invite / revoke / remove controls. Members see the
- * roster read-only. The server enforces every owner-only action — this just
+ * roster read-only. The server enforces every owner-only action, this just
  * hides the affordances a member can't use.
  */
 export default function TeamPanel({ org, currentUser }) {

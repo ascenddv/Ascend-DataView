@@ -1,13 +1,13 @@
 /**
- * POST /api/auth/signup               — create an org + its first user, log them in, email a verify link
- * POST /api/auth/login                — verify credentials, issue a session cookie
- * POST /api/auth/logout               — clear the session cookie (this browser only)
- * POST /api/auth/logout-all           — revoke every session for the current user
- * POST /api/auth/verify-email         — consume a verification token
- * POST /api/auth/resend-verification  — email a fresh verification link (auth'd)
- * POST /api/auth/forgot-password      — email a reset link (always 200, no enumeration)
- * POST /api/auth/reset-password       — consume a reset token: set the hash, kill sessions, verify the email (one txn)
- * GET  /api/auth/me                   — current session's user + org (authenticated:false if none)
+ * POST /api/auth/signup              , create an org + its first user, log them in, email a verify link
+ * POST /api/auth/login               , verify credentials, issue a session cookie
+ * POST /api/auth/logout              , clear the session cookie (this browser only)
+ * POST /api/auth/logout-all          , revoke every session for the current user
+ * POST /api/auth/verify-email        , consume a verification token
+ * POST /api/auth/resend-verification , email a fresh verification link (auth'd)
+ * POST /api/auth/forgot-password     , email a reset link (always 200, no enumeration)
+ * POST /api/auth/reset-password      , consume a reset token: set the hash, kill sessions, verify the email (one txn)
+ * GET  /api/auth/me                  , current session's user + org (authenticated:false if none)
  */
 
 const express = require('express');
@@ -97,7 +97,7 @@ router.post('/signup', authLimiter, async (req, res, next) => {
     // stray object must not pass. This is a signing owner affirmatively ticking
     // a box that shows the Terms + Privacy links; the timestamp recorded in
     // users.tos_accepted_at is evidence of that act. (Invited members take a
-    // different, weaker path — see routes below and db.acceptInvitation.)
+    // different, weaker path, see routes below and db.acceptInvitation.)
     if (acceptTos !== true) {
       errors.push('You must agree to the Terms of Service and Privacy Policy.');
     }
@@ -160,7 +160,7 @@ router.post('/logout-all', requireAuth, async (req, res, next) => {
   }
 });
 
-// The token in the body is the credential here — no session required (people
+// The token in the body is the credential here, no session required (people
 // click the link from an email client, not necessarily the logged-in browser).
 router.post('/verify-email', authLimiter, async (req, res, next) => {
   try {
@@ -190,7 +190,7 @@ router.post('/resend-verification', authLimiter, requireAuth, async (req, res, n
   }
 });
 
-// Always 200 with the same body, whether or not the email maps to an account —
+// Always 200 with the same body, whether or not the email maps to an account -
 // the response must not tell an attacker which addresses are registered, by
 // body OR by timing. The real branch's token INSERT + email send therefore run
 // AFTER the response is sent, so both branches return right after the same
@@ -250,7 +250,7 @@ router.post('/reset-password', authLimiter, async (req, res, next) => {
 });
 
 // Accept a team invitation. The invite ROW (looked up by the random 32-byte
-// token) is the sole source of org_id, role and email — the invitee supplies
+// token) is the sole source of org_id, role and email, the invitee supplies
 // only a password; any org_id/role/email in the request body is ignored.
 //
 // The account's email is marked verified on accept. The security boundary here
@@ -261,7 +261,7 @@ router.post('/reset-password', authLimiter, async (req, res, next) => {
 // CONSENT: there is no ToS checkbox on this flow. Accepting the invite is
 // treated as acceptance, and db.acceptInvitation stamps tos_accepted_at = now().
 // That timestamp therefore means "accepted the invite link", NOT "was shown and
-// affirmatively ticked a Terms checkbox" — a weaker consent record than the
+// affirmatively ticked a Terms checkbox", a weaker consent record than the
 // signing owner's (see the /signup handler above). If an evidentiary consent
 // record is ever required for members, add the checkbox to AcceptInvitePage and
 // gate this route on it.

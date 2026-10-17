@@ -1,5 +1,5 @@
 /**
- * Shared UI primitives for AscendDV — one small, consistent vocabulary of
+ * Shared UI primitives for AscendDV, one small, consistent vocabulary of
  * controls used across auth, settings, upload, team, and the AI panel. Styling
  * follows the house pattern: Tailwind for layout, inline `style` bound to the
  * CSS-var tokens for anything themeable.
@@ -130,7 +130,7 @@ export function Badge({ tone = 'neutral', children, className = '' }) {
   );
 }
 
-/** Inline notice block with a left rule — used for degraded/warning states. */
+/** Inline notice block with a left rule, used for degraded/warning states. */
 export function Callout({ tone = 'neutral', title, children, className = '' }) {
   const accent =
     tone === 'warning' ? 'var(--status-warning)'

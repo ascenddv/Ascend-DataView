@@ -2,12 +2,12 @@
  * Single source of truth for plain-language metric explanations (Phase 14c).
  *
  * The (i) definition tooltips on every card AND the Phase 17 onboarding tour
- * both read from this file — explanatory copy for a metric lives here and
+ * both read from this file, explanatory copy for a metric lives here and
  * nowhere else.
  *
  * `typicalRange` is hand-curated general guidance. There is NO benchmark
  * dataset behind AscendDV yet, so the copy says "generally" / "often" / "a
- * common pattern" — never "your peers", "the average nonprofit", or anything
+ * common pattern", never "your peers", "the average nonprofit", or anything
  * that implies a measured comparison group.
  */
 
@@ -25,56 +25,56 @@ const HEALTH = {
   Financial: {
     title: 'Financial health',
     definition:
-      'Looks at revenue, expenses and cash balance together — whether money is coming in at least as fast as it goes out and the cash cushion is holding or growing. ' +
+      'Looks at revenue, expenses and cash balance together, whether money is coming in at least as fast as it goes out and the cash cushion is holding or growing. ' +
       HEALTH_HOW_ITS_BUILT,
     typicalRange: HEALTH_TYPICAL,
   },
   Growth: {
     title: 'Growth health',
     definition:
-      'Tracks whether the organization is reaching more people and raising more money over time — revenue, donors, website visitors and social following. ' +
+      'Tracks whether the organization is reaching more people and raising more money over time, revenue, donors, website visitors and social following. ' +
       HEALTH_HOW_ITS_BUILT,
     typicalRange: HEALTH_TYPICAL,
   },
   Community: {
     title: 'Community health',
     definition:
-      'How well the organization is holding on to and engaging the people around it — donor retention, active volunteers and program participants. ' +
+      'How well the organization is holding on to and engaging the people around it, donor retention, active volunteers and program participants. ' +
       HEALTH_HOW_ITS_BUILT,
     typicalRange: HEALTH_TYPICAL,
   },
   People: {
     title: 'People health',
     definition:
-      'The state of the team itself — headcount growth and staff turnover. Rising turnover pulls this score down. ' +
+      'The state of the team itself, headcount growth and staff turnover. Rising turnover pulls this score down. ' +
       HEALTH_HOW_ITS_BUILT,
     typicalRange: HEALTH_TYPICAL,
   },
   Marketing: {
     title: 'Marketing health',
     definition:
-      'Reach and efficiency of outreach — email list size, email open rate, and revenue raised per marketing dollar spent. ' +
+      'Reach and efficiency of outreach, email list size, email open rate, and revenue raised per marketing dollar spent. ' +
       HEALTH_HOW_ITS_BUILT,
     typicalRange: HEALTH_TYPICAL,
   },
   Fundraising: {
     title: 'Fundraising health',
     definition:
-      'How fundraising efforts are converting — the grant award rate (awarded vs. submitted) and donor growth. ' +
+      'How fundraising efforts are converting, the grant award rate (awarded vs. submitted) and donor growth. ' +
       HEALTH_HOW_ITS_BUILT,
     typicalRange: HEALTH_TYPICAL,
   },
   Impact: {
     title: 'Impact health',
     definition:
-      'Whether programs are delivering what they set out to — outcomes achieved against outcomes targeted, alongside participant growth. ' +
+      'Whether programs are delivering what they set out to, outcomes achieved against outcomes targeted, alongside participant growth. ' +
       HEALTH_HOW_ITS_BUILT,
     typicalRange: HEALTH_TYPICAL,
   },
   Strategic: {
     title: 'Strategic health',
     definition:
-      'Progress against the organization’s own stated goals — goals completed vs. goals set. ' +
+      'Progress against the organization’s own stated goals, goals completed vs. goals set. ' +
       HEALTH_HOW_ITS_BUILT,
     typicalRange: HEALTH_TYPICAL,
   },
@@ -89,13 +89,13 @@ const METRIC = {
   },
   expenses: {
     title: 'Expenses',
-    definition: 'Total money spent in the period — program, staff, and overhead costs combined.',
+    definition: 'Total money spent in the period, program, staff, and overhead costs combined.',
     typicalRange:
       'Expenses generally track revenue over time. Spending consistently above income for several months is what draws down the cash cushion.',
   },
   cash_balance: {
     title: 'Cash balance',
-    definition: 'Cash on hand at the end of the period — the buffer available to cover expenses if income pauses.',
+    definition: 'Cash on hand at the end of the period, the buffer available to cover expenses if income pauses.',
     typicalRange:
       'A cushion of three or more months of typical expenses is generally considered a comfortable operating reserve.',
   },
@@ -110,7 +110,7 @@ const METRIC = {
     definition:
       'How the latest period’s revenue splits across donations, grants, events, and other income.',
     typicalRange:
-      'A more even split is generally more resilient. Any single source above about half of total revenue is often considered concentrated — a risk if that source dips.',
+      'A more even split is generally more resilient. Any single source above about half of total revenue is often considered concentrated, a risk if that source dips.',
   },
 };
 

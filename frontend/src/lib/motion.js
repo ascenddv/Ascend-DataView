@@ -1,5 +1,5 @@
 /**
- * Single source of truth for "should motion play right now" — honours both the
+ * Single source of truth for "should motion play right now", honours both the
  * OS `prefers-reduced-motion` setting and the explicit Settings toggle
  * (`<html data-reduce-motion="true">`, applied by usePreferences + the pre-paint
  * boot script). CSS animations are already handled in index.css; this is for

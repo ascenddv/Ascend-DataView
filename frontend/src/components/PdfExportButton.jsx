@@ -3,7 +3,7 @@ import { downloadOverviewPdf } from '../lib/api.js';
 
 /**
  * Downloads a point-in-time PDF snapshot of the current Overview. The file is
- * whatever the backend renders for the session's own org — no parameters.
+ * whatever the backend renders for the session's own org, no parameters.
  */
 export default function PdfExportButton() {
   const [status, setStatus] = useState('idle'); // idle | busy | error
@@ -41,7 +41,7 @@ export default function PdfExportButton() {
       {status === 'busy'
         ? 'Preparing PDF…'
         : status === 'error'
-          ? 'Export failed — retry'
+          ? 'Export failed, retry'
           : 'Download PDF'}
     </button>
   );

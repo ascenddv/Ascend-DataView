@@ -2,7 +2,7 @@
  * Provider-agnostic LLM interface.
  *
  * Every AI call in AscendDV goes through `complete()`. The rest of the codebase
- * never imports a vendor SDK or knows which model is behind this — swapping the
+ * never imports a vendor SDK or knows which model is behind this, swapping the
  * provider means editing only this file.
  *
  * Current provider: Google Gemini (Flash, free tier) via the REST API.
@@ -36,7 +36,7 @@ async function complete(prompt, opts = {}) {
     throw new Error('LLM provider not configured: GEMINI_API_KEY is missing');
   }
 
-  // The API key goes in the x-goog-api-key HEADER, never the URL — a URL can end
+  // The API key goes in the x-goog-api-key HEADER, never the URL, a URL can end
   // up in a fetch error message, a log line, or an error-report context; a
   // header does not.
   const url = `${GEMINI_ENDPOINT}/${GEMINI_MODEL}:generateContent`;
@@ -69,7 +69,7 @@ async function complete(prompt, opts = {}) {
       });
     } catch (err) {
       lastErr = new Error(`LLM request failed: ${err.message}`);
-      continue; // network hiccup / timeout — retry
+      continue; // network hiccup / timeout, retry
     } finally {
       clearTimeout(timer);
     }
@@ -78,7 +78,7 @@ async function complete(prompt, opts = {}) {
       const snippet = (await res.text()).slice(0, 300);
       lastErr = new Error(`LLM HTTP ${res.status}: ${snippet}`);
       if (RETRYABLE_STATUS.has(res.status)) continue;
-      throw lastErr; // 4xx (bad key, bad model, bad request) — no point retrying
+      throw lastErr; // 4xx (bad key, bad model, bad request), no point retrying
     }
 
     const data = await res.json();

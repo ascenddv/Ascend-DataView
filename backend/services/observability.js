@@ -1,5 +1,5 @@
 /**
- * Observability — structured request logging, redaction, and error capture
+ * Observability, structured request logging, redaction, and error capture
  * (Stage 5, Phase 29).
  *
  * Dependency-light by design, same as the migration runner: one-line JSON logs
@@ -15,17 +15,17 @@
  *   - Every value that leaves this module has been through `redact()`.
  *
  * `redact()` masks in two independent passes:
- *   1. by KEY NAME — a key that *contains* any secret-concept word
+ *   1. by KEY NAME, a key that *contains* any secret-concept word
  *      (password / secret / token / credential / api-key / private-key / auth /
  *      cookie / session / jwt / dsn / a *_url connection var) has its value
  *      replaced wholesale, at any depth.
- *   2. by VALUE SHAPE — inside every surviving string: DB connection strings,
+ *   2. by VALUE SHAPE, inside every surviving string: DB connection strings,
  *      `Authorization: Bearer …`, JWTs, Google `AIza…` keys, `sk-…` / `sk_live_…`
  *      / `re_…` provider keys, and `?token=` / `?key=` / `?secret=` /
  *      `?password=` query parameters.
  *
  * It is a safety net, not a substitute for not logging secrets in the first
- * place — but it is deliberately over-eager: over-masking a value like
+ * place, but it is deliberately over-eager: over-masking a value like
  * `authenticated: [redacted]` in a log line is acceptable; leaking one is not.
  */
 
@@ -63,7 +63,7 @@ const GOOGLE_KEY_RE = /\bAIza[0-9A-Za-z_-]{35}\b/g;
 const STRIPE_INFIX_RE = /\b(?:sk|rk|pk)_(?:live|test)_[A-Za-z0-9]{12,}\b/gi;
 const HYPHEN_KEY_RE = /\bsk-[A-Za-z0-9_-]{16,}\b/g;
 const UNDERSCORE_KEY_RE = /\b(?:sk|rk|re)_[A-Za-z0-9]{12,}\b/g;
-// A query parameter whose NAME contains a secret concept word — mask the value.
+// A query parameter whose NAME contains a secret concept word, mask the value.
 // Deliberately broad: masking `?zipcode=` in a log is harmless; leaking a
 // `?client_secret=` is not.
 const QS_SECRET_RE =
@@ -88,7 +88,7 @@ function redactString(input) {
 }
 
 /**
- * Deep copy with secrets masked. NEVER throws — any failure to process a node
+ * Deep copy with secrets masked. NEVER throws, any failure to process a node
  * degrades that node to a placeholder and processing continues.
  */
 function redact(value, seen = new WeakSet()) {
@@ -178,7 +178,7 @@ if (process.env.SENTRY_DSN) {
       beforeSend: (event) => redact(event),
     });
   } catch {
-    sentry = null; // SDK not installed — console-only is fine
+    sentry = null; // SDK not installed, console-only is fine
   }
 }
 const sentryEnabled = () => Boolean(sentry);
@@ -209,7 +209,7 @@ function requestLog({ method, path, status, ms, orgId }) {
 
 // Merge a redacted context into a base log object. If redaction of the context
 // didn't yield a plain object (hostile input -> a placeholder string), it is
-// attached under `context` rather than spread — so a caller can never inject or
+// attached under `context` rather than spread, so a caller can never inject or
 // break keys, and this never throws.
 function mergeContext(base, context) {
   let safe;
@@ -238,7 +238,7 @@ function captureError(err, context = {}) {
     const e = redact({ message: err && err.message, stack: err && err.stack });
     if (e && typeof e === 'object') Object.assign(line, e);
   } catch {
-    /* err had a hostile message/stack getter — skip it */
+    /* err had a hostile message/stack getter, skip it */
   }
   mergeContext(line, context);
   writeLine(process.stderr, line);

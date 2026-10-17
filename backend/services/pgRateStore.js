@@ -1,7 +1,7 @@
 /**
  * A Postgres-backed store for express-rate-limit (fixed window).
  *
- * The default MemoryStore keeps counts in process memory — on a serverless
+ * The default MemoryStore keeps counts in process memory, on a serverless
  * platform every function instance has its own, so a "10 per 15 minutes" limit
  * is really "10 per instance". This store puts the count in the shared
  * `rate_limits` table so it holds regardless of which instance serves a request.

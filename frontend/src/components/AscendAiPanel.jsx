@@ -5,7 +5,7 @@ import { IconSparkles, IconClose } from '../lib/icons.jsx';
 import { Button } from './ui/primitives.jsx';
 
 /**
- * AscendAI — a slide-out chat panel available from every dashboard view.
+ * AscendAI, a slide-out chat panel available from every dashboard view.
  *
  * Answers come from the tool-grounded backend (Phase 18/19). The two degraded
  * server states are rendered as inline notices using the backend's own copy:
@@ -14,7 +14,7 @@ import { Button } from './ui/primitives.jsx';
  * Neither is persisted server-side, so they are UI-only and vanish on reload.
  *
  * Visual language matches CardChrome / CardShell: --surface-1 panels, --border,
- * the --series-1 accent, rounded-xl, soft shadow — not a generic chat widget.
+ * the --series-1 accent, rounded-xl, soft shadow, not a generic chat widget.
  */
 export default function AscendAiPanel({ initialOpen = false, initialMessages = null, initialUsage = null }) {
   const [open, setOpen] = useState(initialOpen);
@@ -121,7 +121,7 @@ export default function AscendAiPanel({ initialOpen = false, initialMessages = n
     }
   }
 
-  // Disabled deployment-wide or by an owner for this org — no affordance at all.
+  // Disabled deployment-wide or by an owner for this org, no affordance at all.
   if (usage && usage.enabled === false) return null;
 
   if (!open) {

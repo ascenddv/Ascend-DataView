@@ -1,6 +1,6 @@
 /**
  * Public legal pages, reachable at /legal/terms and /legal/privacy (AuthGate
- * routes them by pathname — no session required).
+ * routes them by pathname, no session required).
  */
 
 const UPDATED = '2 September 2026';
@@ -27,7 +27,7 @@ function Page({ title, children }) {
 }
 
 const SUBPROCESSORS = [
-  ['Google (Gemini, paid AI Studio tier)', 'Generates the dashboard "insight" narrative and assists column mapping.', 'Computed metric aggregates only — never raw uploaded rows, never personal identifiers. Commercial-licensed tier; inputs are not used to train Google’s models.'],
+  ['Google (Gemini, paid AI Studio tier)', 'Generates the dashboard "insight" narrative and assists column mapping.', 'Computed metric aggregates only, never raw uploaded rows, never personal identifiers. Commercial-licensed tier; inputs are not used to train Google’s models.'],
   ['DeepSeek', 'Powers the AscendAI chat assistant.', 'The chat messages you send and computed metric values returned by tools. Separate prepaid account from Gemini.'],
   ['Supabase', 'Managed PostgreSQL database hosting.', 'All application data at rest: organizations, users (email + hashed password), uploaded/standardized metrics, chat history, usage logs.'],
   ['Vercel', 'Static frontend hosting and the serverless API runtime.', 'Request metadata and traffic in transit; no separate data store.'],

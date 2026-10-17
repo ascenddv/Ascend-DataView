@@ -2,7 +2,7 @@
  * Canonical field dictionary for AscendDV.
  *
  * This file is the single source of truth for field names. Ingestion, metric
- * calculation, card data and AI prompts all read names from here — nothing
+ * calculation, card data and AI prompts all read names from here, nothing
  * else in the codebase may define or alias a schema field name.
  *
  * One row = one time period (monthly for this build).

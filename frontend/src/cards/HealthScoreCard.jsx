@@ -3,9 +3,9 @@ import { healthBand } from '../lib/healthBands.js';
 import { useCountUp } from '../hooks/useCountUp.js';
 
 /**
- * Health Score card — a large 0–100 score with a qualitative label.
+ * Health Score card, a large 0–100 score with a qualitative label.
  *
- * The band label (Strong / Stable / Watch) is a DISPLAY concern only — the
+ * The band label (Strong / Stable / Watch) is a DISPLAY concern only, the
  * thresholds live in ../lib/healthBands.js and the scoring formula is untouched.
  * A dimension that did not score produces no card at all (handled by the
  * registry), so this component never has to render "N/A" or a placeholder.

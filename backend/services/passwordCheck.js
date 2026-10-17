@@ -43,7 +43,7 @@ async function isBreachedPassword(plain) {
       signal: ac.signal,
     });
     if (!res.ok) {
-      // Fail open, but make the degradation visible — a silently-broken breach
+      // Fail open, but make the degradation visible, a silently-broken breach
       // check should show up in the logs / Sentry, not just vanish.
       captureMessage('HIBP_DEGRADED', { reason: `HIBP responded ${res.status}` });
       return false;
@@ -58,7 +58,7 @@ async function isBreachedPassword(plain) {
     return false;
   } catch (err) {
     captureMessage('HIBP_DEGRADED', { reason: err && err.name === 'AbortError' ? 'timeout' : (err && err.message) || 'network error' });
-    return false; // network error / timeout / abort — fail open
+    return false; // network error / timeout / abort, fail open
   } finally {
     clearTimeout(timer);
   }

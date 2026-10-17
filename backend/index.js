@@ -1,7 +1,7 @@
 /**
  * Local dev entry point. Loads .env, applies pending migrations, then binds a
  * port. On Vercel the app is served through ../api/index.js (no listen, no
- * migrate — migrations run as a deploy step).
+ * migrate, migrations run as a deploy step).
  */
 require('dotenv').config({ path: require('path').join(__dirname, '..', '.env') });
 

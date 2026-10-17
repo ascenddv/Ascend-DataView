@@ -96,7 +96,7 @@ function Switch({ checked, onChange, label }) {
 }
 
 /**
- * Settings — a single page with a sub-nav. Appearance holds the per-browser
+ * Settings, a single page with a sub-nav. Appearance holds the per-browser
  * visual options (theme / density / reduced motion, from PreferencesProvider);
  * Team and Organization host the existing TeamPanel and owner-only DangerZone,
  * relocated here from the bottom of the dashboard.

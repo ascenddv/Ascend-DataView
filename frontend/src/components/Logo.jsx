@@ -1,14 +1,14 @@
 /**
- * AscendDV logo — the "signal steps" glyph (three climbing bars whose left-to-right
+ * AscendDV logo, the "signal steps" glyph (three climbing bars whose left-to-right
  * fade encodes graceful degradation, under a fixed top rule) plus the Geist wordmark.
  *
  *   variant  'lockup' (glyph + wordmark, default) | 'glyph'
- *   tone     'solid'  — filled #252A34 slate tile, for light surfaces (default)
- *            'onDark' — outlined tile + mint marks, for dark surfaces / hero art
+ *   tone     'solid' , filled #10261D slate tile, for light surfaces (default)
+ *            'onDark', outlined tile + mint marks, for dark surfaces / hero art
  *   size     glyph edge length in px; the wordmark scales from it
  *
  * The mark is self-contained (its own colours), so it does not inherit theme text
- * colour — only the wordmark does, and only in the 'solid' tone.
+ * colour, only the wordmark does, and only in the 'solid' tone.
  */
 
 const BARS = [
@@ -33,7 +33,7 @@ function Glyph({ size, tone }) {
       {onDark ? (
         <rect x="5" y="5" width="90" height="90" rx="12" fill="none" stroke="#B0E4CC" strokeOpacity="0.32" strokeWidth="4" />
       ) : (
-        <rect x="4" y="4" width="92" height="92" rx="12" fill="#252A34" />
+        <rect x="4" y="4" width="92" height="92" rx="12" fill="#10261D" />
       )}
       {BARS.map((b) => (
         <rect key={b.x} x={b.x} y={b.y} width="13" height={b.h} fill={mark} opacity={b.opacity} />

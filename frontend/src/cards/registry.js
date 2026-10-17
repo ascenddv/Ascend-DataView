@@ -1,5 +1,5 @@
 /**
- * Card registry — turns an /api/metrics payload into an ordered list of card
+ * Card registry, turns an /api/metrics payload into an ordered list of card
  * descriptors. The Overview page renders whatever this returns; it has no
  * hardcoded knowledge of which cards exist.
  *
@@ -10,7 +10,7 @@
  * data is actually present, so nothing downstream ever renders "N/A", a
  * stand-in zero, or an empty chart. Each descriptor also carries a `category`
  * (a health-dimension name) so the per-dimension views can filter this one list
- * — the eligibility decision still lives only in the backend engine.
+ *, the eligibility decision still lives only in the backend engine.
  *
  * Priority (lower = earlier): 1 health scores, 2 KPIs, 3 trend + comparison,
  * 4 risk/opportunity.
@@ -68,7 +68,7 @@ export function planCards(metrics) {
 
   const out = [];
 
-  // 1 — Health score cards: one per dimension that actually scored, in whatever
+  // 1, Health score cards: one per dimension that actually scored, in whatever
   // order the API returned them (backend emits them in health-config order).
   if (eligibility.HealthScore !== 'Unavailable') {
     for (const [dimension, h] of Object.entries(healthScores)) {
@@ -85,7 +85,7 @@ export function planCards(metrics) {
     }
   }
 
-  // 2 — KPI cards: whatever the API computed a headline for.
+  // 2, KPI cards: whatever the API computed a headline for.
   if (eligibility.KPI !== 'Unavailable') {
     for (const kpi of kpis) {
       out.push({
@@ -106,7 +106,7 @@ export function planCards(metrics) {
     }
   }
 
-  // 3 — Trend cards: only when Available (a Limited 3-point series is not shown).
+  // 3, Trend cards: only when Available (a Limited 3-point series is not shown).
   if (eligibility.Trend === 'Available') {
     for (const t of TREND_SERIES) {
       const points = series[t.key];
@@ -123,7 +123,7 @@ export function planCards(metrics) {
     }
   }
 
-  // 3 — Bar comparison: revenue by source for the latest period.
+  // 3, Bar comparison: revenue by source for the latest period.
   if (eligibility.BarComparison === 'Available' && revenueByCategory.length >= 2) {
     out.push({
       key: 'bar-revenue-by-source',
@@ -132,14 +132,14 @@ export function planCards(metrics) {
       priority: 3,
       span: 2,
       props: {
-        title: `Revenue by source — ${formatPeriod(dataset.latestPeriod)}`,
+        title: `Revenue by source: ${formatPeriod(dataset.latestPeriod)}`,
         data: revenueByCategory,
         format: 'currency',
       },
     });
   }
 
-  // 4 — Risk / opportunity cards: one per fired rule.
+  // 4, Risk / opportunity cards: one per fired rule.
   if (eligibility.RiskOpportunity === 'Available') {
     for (const r of risksOpportunities) {
       out.push({
@@ -154,7 +154,7 @@ export function planCards(metrics) {
   }
 
   // Phase 14: attach the per-card confidence tier and the plain-language
-  // definition. Both are display-only metadata — a missing entry just means the
+  // definition. Both are display-only metadata, a missing entry just means the
   // card shows no badge / no (i), never a fabricated one.
   for (const card of out) {
     card.props.confidence = confidence[card.key] || null;
@@ -171,7 +171,7 @@ export function dimensionViews(metrics) {
 
 /**
  * Cards for one view. `overview` = every card, unchanged. A dimension view is a
- * pure filter of the same list by `category` — it can never surface a card that
+ * pure filter of the same list by `category`, it can never surface a card that
  * `planCards` (and therefore the backend eligibility engine) did not produce.
  */
 export function cardsForView(metrics, view) {

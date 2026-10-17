@@ -26,7 +26,7 @@ const homeLink = (
   </a>
 );
 
-/** GET /verify-email?token=… — consumes the token, then sends the user home. */
+/** GET /verify-email?token=…, consumes the token, then sends the user home. */
 export function VerifyEmailPage({ token }) {
   const [state, setState] = useState('working'); // working | done | error
   const ran = useRef(false);
@@ -64,7 +64,7 @@ export function VerifyEmailPage({ token }) {
   );
 }
 
-/** GET /reset-password?token=… — form to set a new password. */
+/** GET /reset-password?token=…, form to set a new password. */
 export function ResetPasswordPage({ token }) {
   const [password, setPassword] = useState('');
   const [state, setState] = useState('form'); // form | working | done | error
@@ -146,7 +146,7 @@ export function ResetPasswordPage({ token }) {
   );
 }
 
-/** GET /accept-invite?token=… — set a password and join the inviting org. */
+/** GET /accept-invite?token=…, set a password and join the inviting org. */
 export function AcceptInvitePage({ token }) {
   const [password, setPassword] = useState('');
   const [state, setState] = useState('form'); // form | working | error
@@ -158,7 +158,7 @@ export function AcceptInvitePage({ token }) {
     setState('working');
     try {
       await acceptInvite(token, password);
-      // Session cookie is set — land on the app, which resolves the new session.
+      // Session cookie is set, land on the app, which resolves the new session.
       window.location.href = '/';
     } catch (err) {
       setError(err.message);

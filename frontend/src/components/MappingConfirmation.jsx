@@ -7,7 +7,7 @@ import { confirmUpload } from '../lib/api.js';
  * Shown when POST /api/upload comes back with `needsConfirmation`. The parsed
  * file is held server-side and NOTHING is stored until the user confirms or
  * corrects each low-confidence mapping here. Correcting a row changes what
- * actually gets stored — the corrected field, not the original guess.
+ * actually gets stored, the corrected field, not the original guess.
  */
 export default function MappingConfirmation({ pending, onConfirmed, onCancel }) {
   const flagged = pending.fieldsNeedingConfirmation || [];
@@ -51,7 +51,7 @@ export default function MappingConfirmation({ pending, onConfirmed, onCancel }) 
       </h3>
       <p className="mt-1 text-sm" style={{ color: 'var(--text-secondary)' }}>
         We matched these columns in <b>{pending.filename}</b> by name similarity, not exactly.
-        Check each one — nothing from this file is stored until you confirm.
+        Check each one, nothing from this file is stored until you confirm.
       </p>
 
       <div className="mt-4 space-y-3">
@@ -86,7 +86,7 @@ export default function MappingConfirmation({ pending, onConfirmed, onCancel }) 
                   color: 'var(--text-primary)',
                 }}
               >
-                <option value="">— Ignore this column —</option>
+                <option value="">Ignore this column</option>
                 {grouped.map(([cat, fields]) => (
                   <optgroup key={cat} label={cat}>
                     {fields.map((sf) => (

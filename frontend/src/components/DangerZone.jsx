@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { resetOrgData, exportAccount, deleteOrganization } from '../lib/api.js';
 
 /**
- * Low-prominence, collapsed-by-default "danger zone" (owner-only — App gates it).
+ * Low-prominence, collapsed-by-default "danger zone" (owner-only, App gates it).
  * Three actions, most to least reversible:
  *   - Export: a full JSON download of the org's data.
  *   - Reset data: wipe every stored period (a normal upload merges, never replaces).
@@ -56,7 +56,7 @@ export default function DangerZone({ org, onReset }) {
     setDeleteStatus({ kind: 'busy' });
     try {
       await deleteOrganization(org.id, deleteTyped.trim());
-      // The session cookie is gone — land on the app, which shows sign-in.
+      // The session cookie is gone, land on the app, which shows sign-in.
       window.location.href = '/';
     } catch (err) {
       setDeleteStatus({ kind: 'error', message: err.message });

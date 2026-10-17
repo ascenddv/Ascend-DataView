@@ -1,5 +1,5 @@
 /**
- * GET /api/schema — the canonical field dictionary, so the frontend
+ * GET /api/schema, the canonical field dictionary, so the frontend
  * (manual-entry form) never hardcodes a second copy of the field list.
  */
 

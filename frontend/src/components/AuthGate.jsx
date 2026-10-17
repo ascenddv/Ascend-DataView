@@ -8,7 +8,7 @@ import Logo from './Logo.jsx';
 
 /**
  * Wraps the app: first handles the two token landing pages (/verify-email and
- * /reset-password, reached from email links — the app has no router, so we read
+ * /reset-password, reached from email links, the app has no router, so we read
  * location directly), then resolves the current session once and shows
  * <AuthPage> if there isn't one, otherwise renders children with
  * { user, org, onLogout, onLogoutAll }.

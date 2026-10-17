@@ -80,7 +80,7 @@ function CardGrid({ cards }) {
 
 /**
  * Presentational dashboard. Renders the Overview (every card the registry
- * produces — unchanged from before Phase 11) plus a tab per health dimension;
+ * produces, unchanged from before Phase 11) plus a tab per health dimension;
  * a dimension view is a pure filter of the same card list by `category`.
  */
 export default function Dashboard({

@@ -5,7 +5,7 @@
  * Importing named constants from config is still pure (compile-time values).
  *
  * Missing-data contract: a calculation that has no defined answer returns
- * `null` — never `NaN`, never `Infinity`, never a thrown error, never a guessed
+ * `null`, never `NaN`, never `Infinity`, never a thrown error, never a guessed
  * number. Callers treat `null` as "this input isn't available" and drop it.
  */
 
@@ -16,7 +16,7 @@ const isFiniteNumber = (v) => typeof v === 'number' && Number.isFinite(v);
 /**
  * Period-over-period growth rate: (current - previous) / previous.
  *
- * Edge case — `previous === 0`: growth rate is mathematically undefined without
+ * Edge case, `previous === 0`: growth rate is mathematically undefined without
  * a non-zero base (the formula would yield ±Infinity or NaN), so we return
  * `null`. The health-score engine then simply omits this sub-metric rather than
  * letting an infinite value dominate the average.
@@ -63,7 +63,7 @@ function clamp(value, min, max) {
 }
 
 /**
- * Health score for one dimension — the v1 formula from CLAUDE.md, exactly:
+ * Health score for one dimension, the v1 formula from CLAUDE.md, exactly:
  *
  *   subScore     = clamp(50 + (growthRate * 100), 0, 100)   // 0% growth => 50
  *   dimension    = average of all available sub-scores
@@ -73,7 +73,7 @@ function clamp(value, min, max) {
  *   { key: string, growthRate: number, inverted?: boolean }
  * `inverted: true` (expense growth) negates the growth rate before scoring, so
  * that falling expenses raise the score. Deciding *which* sub-metrics are
- * "available" — and the native-signal eligibility rule — happens upstream in
+ * "available", and the native-signal eligibility rule, happens upstream in
  * services/subMetrics.js; this function only applies the formula it is given.
  */
 function calculateHealthScore(dimension, availableSubMetrics) {

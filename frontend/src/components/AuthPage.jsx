@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { login, signup, forgotPassword } from '../lib/api.js';
 import Logo from './Logo.jsx';
+import ThemeToggle from './ThemeToggle.jsx';
+import AuthShowcase from './AuthShowcase.jsx';
 import { Button, Input, Field } from './ui/primitives.jsx';
 
 /** Login / signup / forgot-password screen shown when there is no valid session. */
@@ -49,22 +51,21 @@ export default function AuthPage({ onAuthed }) {
 
   return (
     <div
-      className="flex min-h-screen items-center justify-center px-6"
+      className="grid min-h-screen lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)]"
       style={{ background: 'var(--page)' }}
     >
-      <div
-        className="adv-scale-in w-full max-w-sm border p-7"
-        style={{
-          background: 'var(--surface-2)',
-          borderColor: 'var(--border)',
-          borderRadius: 'var(--radius-lg)',
-          boxShadow: 'var(--shadow-md)',
-        }}
-      >
-        <h1>
-          <Logo size={26} />
+      <main className="flex flex-col px-6 py-8 sm:px-10">
+        <div className="flex items-center justify-between">
+          <a href="/" aria-label="AscendDV home">
+            <Logo size={26} />
+          </a>
+          <ThemeToggle />
+        </div>
+        <div className="adv-fade-up mx-auto flex w-full max-w-[400px] flex-1 flex-col justify-center py-10">
+        <h1 className="font-display text-3xl leading-tight" style={{ letterSpacing: '-0.03em' }}>
+          {mode === 'login' ? 'Welcome back' : mode === 'signup' ? 'Create your account' : 'Reset your password'}
         </h1>
-        <p className="mt-2 text-sm" style={{ color: 'var(--text-secondary)' }}>
+        <p className="mt-3 text-sm" style={{ color: 'var(--text-secondary)' }}>
           {mode === 'login'
             ? 'Sign in to your organization.'
             : mode === 'signup'
@@ -187,7 +188,12 @@ export default function AuthPage({ onAuthed }) {
           {' · '}
           <a href="/legal/privacy" style={{ textDecoration: 'underline' }}>Privacy</a>
         </p>
-      </div>
+        </div>
+        <p className="text-center text-xs" style={{ color: 'var(--text-muted)' }}>
+          &copy; {new Date().getFullYear()} AscendDV
+        </p>
+      </main>
+      <AuthShowcase />
     </div>
   );
 }

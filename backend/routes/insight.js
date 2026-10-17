@@ -1,5 +1,5 @@
 /**
- * GET /api/insight — the AI narrative for the current dataset.
+ * GET /api/insight, the AI narrative for the current dataset.
  *
  * Recomputes metrics deterministically (same path as /api/metrics), then hands
  * only those computed aggregates to generateInsight(). Raw rows never leave the
@@ -7,7 +7,7 @@
  *
  * `requireVerified`: this is an LLM-spend endpoint, so it is gated on email
  * verification exactly like /api/upload, /api/manual-entry and
- * /api/ascendai/chat — an unverified account can view /api/metrics but cannot
+ * /api/ascendai/chat, an unverified account can view /api/metrics but cannot
  * make the app spend on a provider call. The guard runs before insightLimiter
  * so an unverified caller doesn't consume rate-limit budget either.
  */
@@ -45,7 +45,7 @@ router.get('/insight', requireVerified, insightLimiter, async (req, res, next) =
     try {
       insight = await generateInsight(metrics);
     } catch (llmErr) {
-      // The narrative is optional — the dashboard renders fine without it. A
+      // The narrative is optional, the dashboard renders fine without it. A
       // provider failure (quota, timeout, outage) is a soft "unavailable", not
       // a 500, so the client degrades cleanly with no console error.
       captureError(llmErr, { code: 'GEMINI_FAILURE', path: '/api/insight', orgId: req.auth.orgId });

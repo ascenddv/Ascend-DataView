@@ -1,7 +1,7 @@
 /**
  * Deterministic historical context for the AI insight layer (Phase 15).
  *
- * For each scored dimension this derives — entirely in code, never by the model:
+ * For each scored dimension this derives, entirely in code, never by the model:
  *   - a trend DIRECTION over the trailing window: increasing / flat / declining
  *   - a CONSISTENCY read of that direction (how many recent steps agree, and the
  *     current consecutive run)
@@ -11,7 +11,7 @@
  * The model only narrates these; `generateInsight` passes them through its
  * allow-list and the prompt tells the model it may reference them when present.
  * With too little history a dimension simply gets no entry here, and the insight
- * falls back to the Stage 2 single-period style — same graceful degradation as
+ * falls back to the Stage 2 single-period style, same graceful degradation as
  * the rest of the app.
  *
  * Pure: a transform of the sorted rows array. No I/O.
@@ -51,7 +51,7 @@ const METRIC_LABELS = {
 const labelFor = (key) => METRIC_LABELS[key] || key.replace(/_/g, ' ');
 
 /**
- * The per-period series of a dimension's primary NATIVE metric — the first
+ * The per-period series of a dimension's primary NATIVE metric, the first
  * native sub-metric in the dimension's definition. Plain fields yield their own
  * value; ratio sub-metrics yield numerator[t] / denominator[t - lag].
  * @returns {{ label: string, values: number[] } | null}

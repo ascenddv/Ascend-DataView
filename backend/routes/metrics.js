@@ -1,5 +1,5 @@
 /**
- * GET /api/metrics — computed metrics, health scores, and card eligibility for
+ * GET /api/metrics, computed metrics, health scores, and card eligibility for
  * the current standardized dataset. All deterministic; no LLM involved.
  */
 

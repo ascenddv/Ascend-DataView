@@ -4,7 +4,7 @@
  * Each tool is a real function reading from the SAME deterministic
  * buildMetrics/eligibility/confidence layer the rest of the app uses. The model
  * decides what to look up; these functions compute it; the model narrates the
- * result — it never invents or calculates a number itself.
+ * result, it never invents or calculates a number itself.
  *
  * Every tool takes `orgId` explicitly and is scoped by it (via `loadMetrics`,
  * which reads `getStandardizedData(orgId)`), exactly like every other
@@ -37,7 +37,7 @@ const bandLabel = (score) =>
 const pct = (v) => (typeof v === 'number' && Number.isFinite(v) ? Number((v * 100).toFixed(1)) : null);
 
 /* -------------------------------------------------------------------------- */
-/* Tool schemas — OpenAI/DeepSeek function-calling format                     */
+/* Tool schemas, OpenAI/DeepSeek function-calling format                     */
 /* -------------------------------------------------------------------------- */
 
 const SCHEMAS = [

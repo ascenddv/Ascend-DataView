@@ -1,7 +1,7 @@
 /**
  * Card eligibility and mapping thresholds.
  *
- * These numbers must never be hardcoded inline anywhere else — the eligibility
+ * These numbers must never be hardcoded inline anywhere else, the eligibility
  * engine and ingestion layer reference these constants by name.
  */
 
@@ -21,7 +21,7 @@ const MIN_PERIODS_FOR_TREND_SIGNAL = 4;
 // baseline and the consistency window.
 const TREND_TRAILING_WINDOW = 6;
 // A latest-vs-trailing-average move within this fraction reads as "flat", not a
-// direction — keeps ordinary noise from being narrated as a trend.
+// direction, keeps ordinary noise from being narrated as a trend.
 const TREND_FLAT_BAND_PCT = 0.02;
 
 // --- AscendAI chat (Stage 4) ---
@@ -31,7 +31,7 @@ const TREND_FLAT_BAND_PCT = 0.02;
 const ASCENDAI_MAX_TOOL_ITERATIONS = 5;
 
 // How many of the most recent conversation messages (user + assistant) are
-// loaded as context for a turn. Caps tokens per call — history is a sliding
+// loaded as context for a turn. Caps tokens per call, history is a sliding
 // window, never the whole unbounded transcript.
 const ASCENDAI_HISTORY_WINDOW_MESSAGES = 12;
 
@@ -46,7 +46,7 @@ const ASCENDAI_DAILY_MESSAGE_LIMIT_PER_ORG = 50;
 // chat_messages. The user always saw the full reply in the UI; the stored copy
 // only feeds future-turn context, and DeepSeek replies are ~1-2 KB.
 const CHAT_MESSAGE_STORED_MAX_CHARS = 8000;
-// A paused-upload payload (parsed rows + mapping) larger than this is refused —
+// A paused-upload payload (parsed rows + mapping) larger than this is refused -
 // too many rows to hold in the pending_uploads row for a confirmation step.
 const PENDING_UPLOAD_MAX_BYTES = 3 * 1024 * 1024;
 // Retention windows for the prune job (backend/db pruneOldRows, wired to cron in
@@ -63,7 +63,7 @@ const ASCENDAI_USAGE_RETENTION_DAYS = 400;
 const INSIGHT_RATE_LIMIT = 20;
 const INSIGHT_RATE_WINDOW_MS = 10 * 60 * 1000;
 // AscendAI chat burst: a short-window ceiling on top of the daily cap. A hit
-// here is NOT a 429 — the chat route returns the same friendly
+// here is NOT a 429, the chat route returns the same friendly
 // { status: 'rate_limited' } shape the daily cap uses.
 const ASCENDAI_CHAT_BURST_LIMIT = 8;
 const ASCENDAI_CHAT_BURST_WINDOW_MS = 60 * 1000;
@@ -72,11 +72,11 @@ const PDF_RATE_WINDOW_MS = 10 * 60 * 1000;
 // Covers POST /api/upload and POST /api/upload/confirm together.
 const UPLOAD_RATE_LIMIT = 30;
 const UPLOAD_RATE_WINDOW_MS = 10 * 60 * 1000;
-// Team invitations send an email each — cap the rate an owner can fire them.
+// Team invitations send an email each, cap the rate an owner can fire them.
 const INVITE_RATE_LIMIT = 20;
 const INVITE_RATE_WINDOW_MS = 10 * 60 * 1000;
 // Account data export is a multi-query read + a full standardized_data scan +
-// a whole-bundle JSON serialization held in memory — an expensive endpoint in
+// a whole-bundle JSON serialization held in memory, an expensive endpoint in
 // the Phase 23 sense, keyed per org+user.
 const EXPORT_RATE_LIMIT = 10;
 const EXPORT_RATE_WINDOW_MS = 10 * 60 * 1000;
@@ -100,7 +100,7 @@ const AUTH_TOKEN_RETENTION_DAYS = 7;
 // --- Ingestion: revenue subcategory reconciliation ---
 // The revenue_* fields are an *optional, possibly partial* breakdown. The
 // sum-to-revenue check only runs when ALL four subcategory fields are present
-// for a row (see ingest.js) — a partial breakdown was never meant to account
+// for a row (see ingest.js), a partial breakdown was never meant to account
 // for the whole, so it is not an error. This constant is the allowed drift
 // between the subcategory sum and revenue before it counts as a mismatch
 // (min $1, for rounding).

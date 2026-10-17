@@ -4,7 +4,7 @@
  * Phase 7: storage engine SQLite -> Postgres (data helpers became async).
  * Phase 8: multi-tenancy. `organizations` + `users` tables; `standardized_data`
  * and `mapping_cache` gain a NOT NULL `org_id`. Every helper that reads or writes
- * tenant data takes `orgId` as its first argument and scopes the query by it —
+ * tenant data takes `orgId` as its first argument and scopes the query by it -
  * middleware is not the only line of defence. A missing/blank `orgId` throws
  * before any SQL runs (CLAUDE.md: an unscoped tenant query is a gate-blocking bug).
  *
@@ -27,7 +27,7 @@ const {
 /**
  * Normalise a connection string pasted into an env var: drop a stray `psql `
  * prefix, surrounding quotes, and ALL whitespace (a URL-form connection string
- * has none — a space usually means the value got line-wrapped on paste).
+ * has none, a space usually means the value got line-wrapped on paste).
  */
 function cleanConnectionString(raw) {
   if (!raw) return '';
@@ -54,7 +54,7 @@ let pool;
 
 // A hosted Postgres (Neon / Supabase / Vercel Postgres / RDS) needs TLS; the
 // local dev cluster on 127.0.0.1 does not. In a serverless runtime keep the
-// pool tiny — each concurrent invocation is its own process.
+// pool tiny, each concurrent invocation is its own process.
 const IS_LOCAL_DB = /(^|@)(localhost|127\.0\.0\.1)[:/]/.test(CONNECTION_STRING);
 const IS_SERVERLESS = Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
 
@@ -86,11 +86,11 @@ function getDb() {
   pool = new Pool(poolConfig());
   // A pooled connection that dies while idle (DB restart, dropped network,
   // pg_terminate_backend) makes node-postgres emit 'error' on the Pool. With no
-  // listener Node treats it as uncaught and crashes the process — outside any
+  // listener Node treats it as uncaught and crashes the process, outside any
   // request's try/catch. Swallow it: the broken client is discarded, the next
   // query gets a healthy one or fails inside a route's try/catch (clean 500).
   pool.on('error', (err) => {
-    console.error('Postgres pool: idle client error —', err.message);
+    console.error('Postgres pool: idle client error -', err.message);
   });
   return pool;
 }
@@ -105,7 +105,7 @@ async function closeDb() {
 /**
  * Apply any pending SQL migrations (backend/db/migrations). Kept under the old
  * name so existing callers (backend/index.js, the gate scripts) are unchanged.
- * NOT run at request time — see backend/app.js. `require` is lazy to avoid a
+ * NOT run at request time, see backend/app.js. `require` is lazy to avoid a
  * circular dependency with ./migrate.
  */
 async function initDb(opts) {
@@ -162,7 +162,7 @@ async function pruneOldRows() {
 }
 
 /* -------------------------------------------------------------------------- */
-/* org_id guard — an unscoped tenant query must never reach SQL               */
+/* org_id guard, an unscoped tenant query must never reach SQL               */
 /* -------------------------------------------------------------------------- */
 
 function assertOrgId(orgId, fnName) {
@@ -226,7 +226,7 @@ async function createUser({ orgId, email, passwordHash, role = 'owner', tosAccep
   return rows[0];
 }
 
-/** Full row incl. password_hash — for login verification only. */
+/** Full row incl. password_hash, for login verification only. */
 async function getUserByEmail(email) {
   const conn = getDb();
   const { rows } = await conn.query(
@@ -246,7 +246,7 @@ async function getUserById(id) {
 }
 
 /**
- * Invalidate every outstanding session for a user by bumping token_version —
+ * Invalidate every outstanding session for a user by bumping token_version -
  * requireAuth then rejects any JWT minted at the old value. Used by
  * POST /api/auth/logout-all and (Phase 25) password reset. Returns the new
  * version, or null if the user no longer exists.
@@ -270,7 +270,7 @@ async function updateUserPassword(userId, passwordHash) {
 }
 
 /* -------------------------------------------------------------------------- */
-/* email verification + password reset — single-use, time-boxed tokens        */
+/* email verification + password reset, single-use, time-boxed tokens        */
 /* -------------------------------------------------------------------------- */
 
 async function createEmailVerification(userId, token, ttlHours) {
@@ -284,7 +284,7 @@ async function createEmailVerification(userId, token, ttlHours) {
 
 /**
  * Consume a verification token: if it is unused and unexpired, mark it used and
- * stamp users.email_verified_at (idempotent — a second valid token is a no-op
+ * stamp users.email_verified_at (idempotent, a second valid token is a no-op
  * on an already-verified user). Returns { userId } on success, null otherwise.
  */
 async function consumeEmailVerification(token) {
@@ -343,7 +343,7 @@ async function consumePasswordReset(token) {
  * then in the SAME transaction set the new hash, bump token_version (killing
  * every existing session), and stamp email_verified_at if it wasn't already
  * (clicking the reset link proves mailbox control, same as the verify link).
- * All-or-nothing — there is no "password changed but sessions alive" or
+ * All-or-nothing, there is no "password changed but sessions alive" or
  * "sessions dead but password unchanged" window. Returns { userId } or null.
  */
 async function applyPasswordReset(token, passwordHash) {
@@ -381,7 +381,7 @@ async function applyPasswordReset(token, passwordHash) {
 }
 
 /* -------------------------------------------------------------------------- */
-/* team: invitations + member roster — org-scoped                             */
+/* team: invitations + member roster, org-scoped                             */
 /* -------------------------------------------------------------------------- */
 
 async function createInvitation({ orgId, email, role, invitedByUserId, token, ttlHours }) {
@@ -407,7 +407,7 @@ async function listPendingInvitations(orgId) {
 }
 
 /**
- * Look up an invitation by its token — NOT org-scoped, because the accept flow
+ * Look up an invitation by its token, NOT org-scoped, because the accept flow
  * has no session yet. Returns the row only if it is still claimable.
  */
 async function getInvitationByToken(token) {
@@ -433,7 +433,7 @@ async function deleteInvitation(orgId, token) {
 
 /**
  * Accept an invitation atomically: re-check it is claimable, create the user in
- * the invitation's org with the invitation's role (email pre-verified — they
+ * the invitation's org with the invitation's role (email pre-verified, they
  * proved control by receiving the link), and mark the invite accepted.
  * Returns the new user row, or null if the invite was consumed/expired in the
  * meantime or the email is already taken.
@@ -462,7 +462,7 @@ async function acceptInvitation({ token, email, passwordHash }) {
     }
     // email_verified_at: possession of the invite link stands in for a mailbox
     // round-trip (see routes/auth.js /accept-invite).
-    // tos_accepted_at: set unconditionally here — an invited member never sees a
+    // tos_accepted_at: set unconditionally here, an invited member never sees a
     // Terms checkbox, so this timestamp records "accepted the invite link", not
     // "affirmatively viewed and ticked a Terms checkbox" the way a signing
     // owner's does. Behaviour is intentional; don't tighten without adding the
@@ -507,12 +507,12 @@ async function removeOrgMember(orgId, userId) {
 }
 
 /* -------------------------------------------------------------------------- */
-/* account lifecycle — full delete + export (Phase 27)                        */
+/* account lifecycle, full delete + export (Phase 27)                        */
 /* -------------------------------------------------------------------------- */
 
 /**
- * Delete an organization and — via the ON DELETE CASCADE foreign keys added in
- * migrations 002 / 004 / 005 — every row that belongs to it: users,
+ * Delete an organization and, via the ON DELETE CASCADE foreign keys added in
+ * migrations 002 / 004 / 005, every row that belongs to it: users,
  * standardized_data, mapping_cache, chat_messages, ascendai_usage,
  * pending_uploads, invitations, and (through users) email_verifications and
  * password_resets. One statement, atomic. Returns the id, or null if unknown.
@@ -582,7 +582,7 @@ async function exportOrganizationData(orgId) {
 }
 
 /* -------------------------------------------------------------------------- */
-/* standardized_data — org-scoped                                             */
+/* standardized_data, org-scoped                                             */
 /* -------------------------------------------------------------------------- */
 
 const STD_COLS = ['org_id', ...FIELD_NAMES, 'source_meta'];
@@ -606,7 +606,7 @@ function stdRowValues(orgId, row) {
 
 /**
  * Merge a batch of standardized rows into an org's history (Phase 13): a period
- * already present is overwritten, a new one is added. NEVER deletes — a full
+ * already present is overwritten, a new one is added. NEVER deletes, a full
  * wipe only happens through deleteStandardizedData (the explicit reset action).
  * @returns {{ periodsAdded: number, periodsUpdated: number }}
  */
@@ -647,7 +647,7 @@ async function mergeStandardizedData(orgId, rows) {
 /**
  * Insert or update a single period's row for an org (manual entry). Upserts on
  * the (org_id, period_date) unique constraint so re-entering a period edits it.
- * @returns {{ inserted: boolean }} — true if this was a new period
+ * @returns {{ inserted: boolean }}, true if this was a new period
  */
 async function upsertStandardizedRow(orgId, row) {
   assertOrgId(orgId, 'upsertStandardizedRow');
@@ -690,7 +690,7 @@ async function getStandardizedData(orgId) {
 }
 
 /* -------------------------------------------------------------------------- */
-/* mapping_cache — org-scoped (no cross-org sharing, even on identical headers)*/
+/* mapping_cache, org-scoped (no cross-org sharing, even on identical headers)*/
 /* -------------------------------------------------------------------------- */
 
 async function getCachedMapping(orgId, headerHash) {
@@ -715,7 +715,7 @@ async function putCachedMapping(orgId, headerHash, mapping) {
 }
 
 /* -------------------------------------------------------------------------- */
-/* AscendAI chat — (org_id, user_id)-scoped conversation + per-org usage       */
+/* AscendAI chat, (org_id, user_id)-scoped conversation + per-org usage       */
 /* -------------------------------------------------------------------------- */
 
 function assertUserId(userId, fnName) {
@@ -724,7 +724,7 @@ function assertUserId(userId, fnName) {
   }
 }
 
-/** Cap a stored message — the user saw the full reply; this only feeds context. */
+/** Cap a stored message, the user saw the full reply; this only feeds context. */
 const capStoredContent = (c) => String(c ?? '').slice(0, CHAT_MESSAGE_STORED_MAX_CHARS);
 
 async function insertChatMessage(orgId, userId, role, content) {
@@ -786,7 +786,7 @@ async function recordAscendaiUsage(orgId, userId, { status, promptTokens = 0, co
 
 /**
  * How many *billable* AscendAI turns this ORG (all its users) has run since
- * `sinceIso` — i.e. turns that actually produced an answer (`status = 'ok'`).
+ * `sinceIso`, i.e. turns that actually produced an answer (`status = 'ok'`).
  * A provider outage records a `status = 'unavailable'` row for observability but
  * does NOT count toward the daily cap: an AI outage must degrade, never cascade
  * into a day-long lockout on top of it. Runaway-client protection during an
@@ -806,7 +806,7 @@ async function countAscendaiUsageSince(orgId, sinceIso) {
  * Turn count + token totals for this org since `sinceIso` (Phase 28 usage view).
  * `count` is billable turns only (`status = 'ok'`), so the "N of 50 today" line
  * matches exactly what the daily cap in countAscendaiUsageSince enforces. Token
- * sums are over every row — a failed turn contributes 0 tokens anyway.
+ * sums are over every row, a failed turn contributes 0 tokens anyway.
  */
 async function sumAscendaiUsageSince(orgId, sinceIso) {
   assertOrgId(orgId, 'sumAscendaiUsageSince');
@@ -823,7 +823,7 @@ async function sumAscendaiUsageSince(orgId, sinceIso) {
 }
 
 /* -------------------------------------------------------------------------- */
-/* pending_uploads — Phase 14b stash, DB-backed so it survives across          */
+/* pending_uploads, Phase 14b stash, DB-backed so it survives across          */
 /* serverless instances. Single-use + TTL + org scope enforced in one query.  */
 /* -------------------------------------------------------------------------- */
 

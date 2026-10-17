@@ -5,13 +5,13 @@
  * This is where the CLAUDE.md "Dimension -> sub-metric mapping" lives, plus two
  * rules layered on top of the raw formula:
  *
- *   1. ">= 2 periods of history" — a sub-metric needs its underlying field(s)
+ *   1. ">= 2 periods of history", a sub-metric needs its underlying field(s)
  *      populated in the latest two consecutive periods (MIN_PERIODS_FOR_GROWTH_RATE),
  *      and calculateGrowthRate must return a finite value for that pair.
  *
  *   2. Native-signal eligibility (established Stage 1, carries forward): a
  *      dimension only scores if >= 1 of its *available* sub-metrics is native to
- *      that dimension — the underlying field's schema category equals the
+ *      that dimension, the underlying field's schema category equals the
  *      dimension. A "borrowed" sub-metric (e.g. revenue growth feeding Growth,
  *      donor growth feeding Fundraising) contributes to the score once the
  *      dimension is otherwise eligible, but can't confer eligibility alone.
@@ -93,7 +93,7 @@ const DIMENSION_SUBMETRICS = {
     { key: 'email_subscriber_growth', field: 'email_subscribers', inverted: false },
     { key: 'email_open_rate_trend', field: 'email_open_rate', inverted: false },
     {
-      // revenue per marketing dollar, and its trend — borrowed revenue signal
+      // revenue per marketing dollar, and its trend, borrowed revenue signal
       key: 'marketing_spend_efficiency_growth',
       kind: 'ratio',
       numerator: 'revenue',

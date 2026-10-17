@@ -3,9 +3,9 @@
  *
  * Verifies the JWT from the httpOnly cookie, confirms the user still exists and
  * the token has not been revoked (its `tv` claim must match the user's current
- * token_version — see Phase 24 / logout-all), then attaches
+ * token_version, see Phase 24 / logout-all), then attaches
  * `req.auth = { userId, orgId, email }`. Downstream handlers still pass
- * `req.auth.orgId` explicitly into every db helper — this middleware is the
+ * `req.auth.orgId` explicitly into every db helper, this middleware is the
  * first check, not the only one.
  *
  * The user lookup adds one indexed primary-key read per request. That is the

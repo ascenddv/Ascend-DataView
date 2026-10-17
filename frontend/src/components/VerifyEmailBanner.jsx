@@ -37,7 +37,7 @@ export default function VerifyEmailBanner({ email }) {
       </span>
       <span className="flex items-center gap-2">
         {state === 'sent' ? (
-          <span style={{ color: 'var(--text-secondary)' }}>New link sent — check your inbox.</span>
+          <span style={{ color: 'var(--text-secondary)' }}>New link sent, check your inbox.</span>
         ) : (
           <button
             type="button"
@@ -51,7 +51,7 @@ export default function VerifyEmailBanner({ email }) {
         )}
         {state === 'error' && (
           <span role="alert" style={{ color: 'var(--status-critical)' }}>
-            Couldn’t send — try again shortly.
+            Couldn’t send. Try again shortly.
           </span>
         )}
       </span>

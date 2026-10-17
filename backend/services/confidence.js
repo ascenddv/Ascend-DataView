@@ -1,7 +1,7 @@
 /**
  * Per-card confidence tier (Phase 14a).
  *
- * A card's tier is the WEAKEST LINK across every field and period feeding it —
+ * A card's tier is the WEAKEST LINK across every field and period feeding it -
  * one shaky input is never diluted by several clean ones. The inputs to the
  * decision (CLAUDE.md "Confidence indicators"):
  *
@@ -50,13 +50,13 @@ const label = (f) => FIELD_LABELS[f] || f.replace(/_/g, ' ');
  */
 function fieldMappingTier(row, field) {
   const meta = row && row.source_meta;
-  // Pre-Phase-14 rows carry no source_meta — nothing proves them shaky.
+  // Pre-Phase-14 rows carry no source_meta, nothing proves them shaky.
   if (!meta) return { tier: TIERS.HIGH, reason: null };
   if (meta.source === 'manual_entry') return { tier: TIERS.HIGH, reason: null };
 
   const conf = (meta.mapping_confidence || {})[field];
   // Field wasn't mapped from a header in this upload (exact match not recorded,
-  // or value came from elsewhere) — treat as clean.
+  // or value came from elsewhere), treat as clean.
   if (conf === undefined || conf >= LLM_MAPPING_AUTO_ACCEPT_CONFIDENCE) {
     return { tier: TIERS.HIGH, reason: null };
   }

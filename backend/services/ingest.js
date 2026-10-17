@@ -2,7 +2,7 @@
  * Ingestion orchestrator.
  *
  * There is ONE pipeline. CSV, Excel and manual single-period entry all converge
- * on `ingestParsed` / `normalizeRow` — the parser is the only part that differs:
+ * on `ingestParsed` / `normalizeRow`, the parser is the only part that differs:
  *
  *   ingestCsv(text)     -> parseCsv    -> ingestParsed
  *   ingestXlsx(buffer)  -> parseXlsx   -> ingestParsed   (rows in the SAME
@@ -10,7 +10,7 @@
  *   ingestManualEntry(values)          -> normalizeRow    (canonical-keyed row,
  *                                                          no column mapping)
  *
- * No I/O and no DB writes here — the route layer persists the result.
+ * No I/O and no DB writes here, the route layer persists the result.
  *
  * Guarantees (unchanged from Stage 1):
  *   - A bad row is skipped with a reason; it never aborts the upload.
@@ -39,7 +39,7 @@ const {
 } = require('./mapColumns');
 
 /* -------------------------------------------------------------------------- */
-/* Parsers — each produces { headers, rows, parseErrors } in one shape        */
+/* Parsers, each produces { headers, rows, parseErrors } in one shape        */
 /* -------------------------------------------------------------------------- */
 
 function parseCsv(text) {
@@ -87,7 +87,7 @@ function parseXlsx(buffer) {
 }
 
 /* -------------------------------------------------------------------------- */
-/* Row normalization — shared by every ingestion path                        */
+/* Row normalization, shared by every ingestion path                        */
 /* -------------------------------------------------------------------------- */
 
 /**
@@ -135,7 +135,7 @@ function subcategorySumWarning(row) {
 }
 
 /* -------------------------------------------------------------------------- */
-/* ingestParsed — the file pipeline, parser-agnostic                          */
+/* ingestParsed, the file pipeline, parser-agnostic                          */
 /* -------------------------------------------------------------------------- */
 
 /**
@@ -148,7 +148,7 @@ async function ingestParsed(parsed, opts = {}) {
   const source = opts.source || 'file_upload';
   const mapColumns = opts.mapColumns || defaultMapColumns;
   // Phase 14b: a caller can supply an already-resolved (and user-corrected)
-  // mapping to re-run normalization against — the confirmation step does this.
+  // mapping to re-run normalization against, the confirmation step does this.
   const mappingOverride = opts.mapping || null;
   const confirmedFields = new Set(opts.confirmedFields || []);
   const uploadedAt = new Date().toISOString();
@@ -156,7 +156,7 @@ async function ingestParsed(parsed, opts = {}) {
   const { headers, rows: rawRows, parseErrors } = parsed;
 
   if (headers.length === 0) {
-    const err = new Error('That file has no header row — no columns could be read.');
+    const err = new Error('That file has no header row, no columns could be read.');
     err.statusCode = 422;
     throw err;
   }
@@ -220,7 +220,7 @@ async function ingestParsed(parsed, opts = {}) {
     }
 
     if (seenPeriods.has(out.period_date)) {
-      const msg = `Row ${rowNo}: duplicate period ${out.period_date} — kept the earlier row`;
+      const msg = `Row ${rowNo}: duplicate period ${out.period_date}, kept the earlier row`;
       duplicatesFlagged.push(msg);
       skippedReasons.push(msg);
       return;
@@ -316,7 +316,7 @@ async function ingestXlsx(buffer, opts = {}) {
 
 /**
  * Manual single-period entry. `values` is keyed by canonical field names (form
- * fields), so there is no column mapping — but every value still flows through
+ * fields), so there is no column mapping, but every value still flows through
  * the same normalizeRow / required-field / subcategory checks as a file cell.
  * @returns {{ row: Object, warnings: string[] }}  (row includes source_meta)
  * @throws  a 422 Error if a required field is missing or unparseable
@@ -339,7 +339,7 @@ function ingestManualEntry(values, opts = {}) {
     const detail = badParse.length
       ? `unparseable ${badParse.join(', ')}`
       : `missing required field(s): ${missing.join(', ')}`;
-    const err = new Error(`Manual entry rejected — ${detail}`);
+    const err = new Error(`Manual entry rejected, ${detail}`);
     err.statusCode = 422;
     throw err;
   }

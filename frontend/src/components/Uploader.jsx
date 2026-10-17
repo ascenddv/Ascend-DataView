@@ -2,9 +2,9 @@ import { useRef, useState } from 'react';
 
 /**
  * CSV upload control. POSTs multipart to /api/upload and reports the outcome:
- *   onResult(responseJson)  — a 2xx ingestion report (may still contain skipped
- *                             rows / warnings — that's a successful upload)
- *   onError(message)        — wrong file type, unparseable file, or server error
+ *   onResult(responseJson) , a 2xx ingestion report (may still contain skipped
+ *                             rows / warnings, that's a successful upload)
+ *   onError(message)       , wrong file type, unparseable file, or server error
  */
 export default function Uploader({ onResult, onError, onNeedsConfirmation }) {
   const inputRef = useRef(null);
@@ -112,7 +112,7 @@ export default function Uploader({ onResult, onError, onNeedsConfirmation }) {
         )}
         {status === 'done' && (
           <>
-            Loaded <b>{filename}</b>. Drop another file to merge in more periods — a
+            Loaded <b>{filename}</b>. Drop another file to merge in more periods, a
             new file adds new periods and overwrites any it shares.
           </>
         )}

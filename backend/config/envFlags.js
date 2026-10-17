@@ -3,7 +3,7 @@
  * ASCENDAI_ENABLED (config/aiFlags.js) and HIBP_CHECK_ENABLED
  * (services/passwordCheck.js) parse their values identically.
  *
- * A flag is OFF only when its value — trimmed, case-insensitive — is one of
+ * A flag is OFF only when its value, trimmed, case-insensitive, is one of
  * `0`, `false`, `off`, `no`. Anything else, including unset and empty string,
  * leaves it ON.
  */
